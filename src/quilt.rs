@@ -11,14 +11,14 @@ impl Square {
         cr.save();
 
         cr.set_source_rgb(1.0, 0.0, 0.0);
-        cr.line_to(0.0, 0.0);
+        cr.move_to(0.0, 0.0);
         cr.line_to(SQUARE_WIDTH, 0.0);
         cr.line_to(SQUARE_WIDTH, SQUARE_WIDTH);
         cr.line_to(0.0, SQUARE_WIDTH);
         cr.fill();
         cr.set_line_width(1.0);
         cr.set_source_rgb(0.0, 0.0, 0.0);
-        cr.line_to(0.0, 0.0);
+        cr.move_to(0.0, 0.0);
         cr.line_to(SQUARE_WIDTH, 0.0);
         cr.line_to(SQUARE_WIDTH, SQUARE_WIDTH);
         cr.line_to(0.0, SQUARE_WIDTH);

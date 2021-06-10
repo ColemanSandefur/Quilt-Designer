@@ -1,6 +1,7 @@
 extern crate gtk;
 pub mod quilt;
 pub mod window;
+pub mod frame_timing;
 
 use std::env;
 use gio::prelude::*;
