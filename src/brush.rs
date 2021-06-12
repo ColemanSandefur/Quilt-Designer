@@ -1,5 +1,6 @@
 
 
+//will probably make all brushes const and just pass references to everything to avoid cloning
 #[derive(Clone)]
 pub struct Brush {
     color: Option<(f64, f64, f64)>,
@@ -35,10 +36,5 @@ impl Brush {
         // }
 
         cr.restore();
-    }
-
-    pub fn set_color(&mut self, color: (f64, f64, f64)) {
-        self.color = Some(color);
-        self.texture = None;
     }
 }
