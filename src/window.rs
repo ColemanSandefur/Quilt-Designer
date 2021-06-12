@@ -2,6 +2,7 @@ use crate::quilt::Quilt;
 use crate::frame_timing::FrameTiming;
 use crate::click::Click;
 use crate::camera_transform::CameraTransform;
+use crate::brush::Brush;
 
 use cairo::Context;
 use gdk::{EventMask, ScrollDirection};
@@ -22,6 +23,7 @@ pub struct Window {
     frame_timing: Arc<Mutex<FrameTiming>>,
     zoom_amount: Arc<Mutex<f64>>,
     camera_transform: Arc<Mutex<CameraTransform>>,
+    brush: Arc<Mutex<Brush>>,
 }
 
 impl Window {
@@ -37,6 +39,7 @@ impl Window {
         let frame_timing = Arc::new(Mutex::new(FrameTiming::new()));
         let zoom_amount = Arc::new(Mutex::new(1.0));
         let camera_transform = Arc::new(Mutex::new(CameraTransform::new()));
+        let brush = Arc::new(Mutex::new(Brush::new()));
 
         let s = Arc::new(Self {
             window: Arc::clone(&window),
@@ -46,6 +49,7 @@ impl Window {
             frame_timing: Arc::clone(&frame_timing),
             zoom_amount: Arc::clone(&zoom_amount),
             camera_transform: Arc::clone(&camera_transform),
+            brush: Arc::clone(&brush),
         });
 
         //
@@ -218,7 +222,7 @@ impl Window {
         let mut mouse_clicks = self.mouse_clicks.lock().unwrap();
         while !mouse_clicks.is_empty() {
             let event = mouse_clicks.pop_front().unwrap();
-            self.quilt.lock().unwrap().click(cr, &event);
+            self.quilt.lock().unwrap().click(self, cr, &event);
         }
     }
 
@@ -227,5 +231,9 @@ impl Window {
 
         camera_transform.move_with_keys_pressed(&frame_timing.delta_frame_time());
         camera_transform.apply_transformation(cr);
+    }
+
+    pub fn get_brush(&self) -> Arc<Mutex<Brush>> {
+        Arc::clone(&self.brush)
     }
 }
