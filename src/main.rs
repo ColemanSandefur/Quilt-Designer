@@ -2,6 +2,8 @@ extern crate gtk;
 pub mod quilt;
 pub mod window;
 pub mod frame_timing;
+pub mod click;
+pub mod camera_transform;
 
 use std::env;
 use gio::prelude::*;
