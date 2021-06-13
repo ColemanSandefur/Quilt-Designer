@@ -60,6 +60,8 @@ impl Canvas {
             s_clone.lock().unwrap().on_scroll(drawing_area, event)
         });
 
+        camera_transform.lock().unwrap().offset = (20.0, 20.0);
+
         s
     }
 
@@ -69,9 +71,6 @@ impl Canvas {
         //save the context before the transformation
         //just in case we want to remove any transformations later
         cr.save();
-
-        //random offset that I'll remove later
-        cr.translate(20.0, 20.0);
 
         //will handle any necessary camera movements and apply them
         self.handle_camera(cr, frame_timing.deref());
@@ -111,10 +110,11 @@ impl Canvas {
         drawing_area.queue_draw();
     }
 
-    //will add any clicks that drawing area recieves and add it to a queue for handle_clicks to use on next draw
+    //will add any clicks that drawing area receives and add it to a queue for handle_clicks to use on next draw
     fn on_click(&self, _drawing_area: &DrawingArea, event: &gdk::EventButton) -> Inhibit {
         let mut mouse_clicks = self.mouse_clicks.lock().unwrap();
 
+        // println!("original: {:?}", event.get_position());
         mouse_clicks.push_back(event.to_owned());
         drop(mouse_clicks);
 
@@ -205,6 +205,7 @@ impl Canvas {
         //will pass clicks to the items drawn to the screen
         while !mouse_clicks.is_empty() {
             let event = mouse_clicks.pop_front().unwrap();
+            // println!("transformed: {:?}", cr.device_to_user(event.get_position().0, event.get_position().1));
             self.quilt.lock().unwrap().click(self, cr, &event);
         }
     }
@@ -213,6 +214,7 @@ impl Canvas {
     fn handle_camera(&self, cr: &Context, frame_timing: &FrameTiming) {
         let mut camera_transform = self.camera_transform.lock().unwrap();
 
+        // cr.identity_matrix();
         camera_transform.move_with_keys_pressed(&frame_timing.delta_frame_time());
         camera_transform.apply_transformation(cr);
     }
@@ -221,5 +223,7 @@ impl Canvas {
         Arc::clone(&self.window)
     }
 
-    
+    pub fn get_camera_transform(&self) -> Arc<Mutex<CameraTransform>> {
+        Arc::clone(&self.camera_transform)
+    }
 }

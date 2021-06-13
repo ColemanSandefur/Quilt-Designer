@@ -4,7 +4,6 @@ use crate::brush::Brush;
 use cairo::{Context};
 use gdk::EventButton;
 
-
 static SQUARE_WIDTH: f64 = 20.0;
 
 struct Square {
@@ -21,7 +20,7 @@ impl Square {
     pub fn draw(&self, cr: &Context) {
         cr.save();
 
-        let line_width = 0.5;
+        let line_width = 0.25;
 
         cr.move_to(0.0 + line_width, 0.0 + line_width);
         cr.line_to(SQUARE_WIDTH - line_width, 0.0 + line_width);
@@ -29,13 +28,14 @@ impl Square {
         cr.line_to(0.0 + line_width, SQUARE_WIDTH - line_width);
         cr.line_to(0.0 + line_width, 0.0 + line_width);
         self.brush.apply(cr);
-        cr.set_line_width(1.0);
+        cr.set_line_width(line_width * 2.0);
         cr.set_source_rgb(0.0, 0.0, 0.0);
         cr.move_to(0.0, 0.0);
         cr.line_to(SQUARE_WIDTH, 0.0);
         cr.line_to(SQUARE_WIDTH, SQUARE_WIDTH);
         cr.line_to(0.0, SQUARE_WIDTH);
         cr.line_to(0.0, 0.0);
+        cr.line_to(SQUARE_WIDTH, 0.0);
         cr.stroke();
 
         cr.restore();
@@ -43,8 +43,7 @@ impl Square {
 }
 
 impl Click for Square {
-    fn click(&mut self, window: &Canvas, cr: &Context, event: &EventButton) -> bool {
-        // let (tmp_x, tmp_y) = event.get_position();
+    fn click(&mut self, canvas: &Canvas, cr: &Context, event: &EventButton) -> bool {
         let (tmp_x, tmp_y) = event.get_position();
         let (x, y) = cr.device_to_user(tmp_x, tmp_y);
 
@@ -56,7 +55,7 @@ impl Click for Square {
             return false;
         }
 
-        self.brush = window.get_window().lock().unwrap()
+        self.brush = canvas.get_window().lock().unwrap()
             .get_brush().lock().unwrap().clone();
 
         true
@@ -111,36 +110,53 @@ impl Quilt {
 
 impl Click for Quilt {
     fn click(&mut self, window: &Canvas, cr: &Context, event: &EventButton) -> bool {
-        // let (tmp_x, tmp_y) = event.get_position();
-        let (tmp_x, tmp_y) = event.get_position();
-        let (x, y) = cr.device_to_user(tmp_x, tmp_y);
-
-        if x < 0.0 || x >= self.width as f64 * SQUARE_WIDTH {
-            return false;
-        }
-
-        if y < 0.0 || y >= self.height as f64 * SQUARE_WIDTH {
-            return false;
-        }
-
         cr.save();
 
-        for row in 0..self.height {
+        // a rather jank solution to click registration
+        // the left side bar messes up my original way to convert click position into canvas space,
+        // easy solution is to revert matrix back to default and then apply the camera transformations again
+        // this means that we are technically rendering the quilt in a different place than our click registration
+
+        cr.identity_matrix(); // remove all transformations
+        window.get_camera_transform().lock().unwrap().apply_transformation(cr); // re-apply the camera transformations
+        let (tmp_x, tmp_y) = event.get_position();
+        let (x, y) = cr.device_to_user(tmp_x, tmp_y); // calculate position
+
+        let result: bool;
+
+        println!("Clicked at: {:?}", (x, y));
+
+        if  x < 0.0 || x >= self.width  as f64 * SQUARE_WIDTH ||
+            y < 0.0 || y >= self.height as f64 * SQUARE_WIDTH  {
+            
+            result = false;
+
+        } else {
+
             cr.save();
 
-            for col in 0..self.width {
-                self.quilt[row][col].click(window, cr, event);
-                cr.translate(SQUARE_WIDTH, 0.0);
+            for row in 0..self.height {
+                cr.save();
+
+                for col in 0..self.width {
+                    self.quilt[row][col].click(window, cr, event);
+                    cr.translate(SQUARE_WIDTH, 0.0);
+                }
+
+                cr.restore();
+
+                cr.translate(0.0, SQUARE_WIDTH);
+
             }
 
             cr.restore();
 
-            cr.translate(0.0, SQUARE_WIDTH);
-
+            result = true;
+            
         }
-
+        
         cr.restore();
 
-        true
+        result
     }
 }

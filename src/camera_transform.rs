@@ -40,23 +40,6 @@ impl CameraTransform {
         cr.scale(self.scale, self.scale);
     }
 
-    pub fn move_left(&mut self) {
-        self.offset.0 -= MOVE_SPEED;
-    }
-
-    pub fn move_right(&mut self) {
-        self.offset.0 += MOVE_SPEED;
-    }
-
-    pub fn move_up(&mut self) {
-        self.offset.1 -= MOVE_SPEED;
-    }
-
-    pub fn move_down(&mut self) {
-        self.offset.1 += MOVE_SPEED;
-    }
-
-
     pub fn start_move_left(&mut self) {self.keys_pressed.left = true;}
     pub fn start_move_right(&mut self) {self.keys_pressed.right = true;}
     pub fn start_move_up(&mut self) {self.keys_pressed.up = true;}
