@@ -1,7 +1,8 @@
 pub mod texture_bar;
+pub mod canvas;
 
 use crate::brush::Brush;
-use crate::canvas::Canvas;
+use canvas::Canvas;
 use texture_bar::TextureBar;
 
 use gdk::EventMask;
@@ -10,14 +11,23 @@ use std::sync::{Arc, Mutex};
 use gtk::prelude::*;
 use std::ops::Deref;
 
+//
+// The main window of the application
+//
+// Will handle all the layout stuff and will handle key press events
+// it holds references to its children in the main struct
+//
+
 #[allow(dead_code)]
 pub struct Window {
     window: Arc<Mutex<gtk::ApplicationWindow>>,
 
+    // child widgets
     canvas: Option<Arc<Mutex<Canvas>>>,
     texture_bar: Option<Arc<Mutex<TextureBar>>>,
     
-    brush: Arc<Mutex<Brush>>,
+    // local fields
+    brush: Arc<Mutex<Arc<Brush>>>, // brush is immutable so we need to change the reference
 }
 
 impl Window {
@@ -26,7 +36,7 @@ impl Window {
         // just in case I want to use them later
         let window = Arc::new(Mutex::new(gtk::ApplicationWindow::new(application)));
 
-        let brush = Arc::new(Mutex::new(Brush::new()));
+        let brush = Arc::new(Mutex::new(Arc::new(Brush::new())));
 
         let s = Arc::new(Mutex::new(Self {
             window: Arc::clone(&window),
@@ -124,7 +134,7 @@ impl Window {
         Inhibit(false)
     }
 
-    pub fn get_brush(&self) -> Arc<Mutex<Brush>> {
+    pub fn get_brush(&self) -> Arc<Mutex<Arc<Brush>>> {
         Arc::clone(&self.brush)
     }
 }

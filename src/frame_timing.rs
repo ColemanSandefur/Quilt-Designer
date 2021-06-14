@@ -1,6 +1,10 @@
 use chrono::prelude::*;
 use chrono::{Duration, NaiveTime};
 
+//
+// Will keep track of how long it has been between frame renders
+//
+
 pub struct FrameTiming {
     last_frame: NaiveTime
 }

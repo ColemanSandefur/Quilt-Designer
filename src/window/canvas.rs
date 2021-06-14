@@ -13,14 +13,23 @@ use gtk::DrawingArea;
 use gtk::prelude::*;
 use std::ops::Deref;
 
+//
+// Main drawing window
+//
+// It will draw anything that I need drawn,
+//     as of right now I am planning on just drawing the quilt
+//
+// It also handles things like camera movement, click events and frame timings
+//
+
 #[allow(dead_code)]
 pub struct Canvas {
     drawing_area: Arc<Mutex<DrawingArea>>,
 
-    //reference to parent window
+    // reference to parent window
     window: Arc<Mutex<Window>>,
 
-    //local fields
+    // local fields
     mouse_clicks: Arc<Mutex<VecDeque<gdk::EventButton>>>,
     quilt: Arc<Mutex<Quilt>>,
     camera_transform: Arc<Mutex<CameraTransform>>,
@@ -72,14 +81,14 @@ impl Canvas {
     fn pre_draw(&self, _drawing_area: &DrawingArea, cr: &Context) {
         let frame_timing = self.frame_timing.lock().unwrap();
 
-        //save the context before the transformation
-        //just in case we want to remove any transformations later
+        // save the context before the transformation
+        // just in case we want to remove any transformations later
         cr.save();
 
-        //will handle any necessary camera movements and apply them
+        // will handle any necessary camera movements and apply them
         self.handle_camera(cr, frame_timing.deref());
         
-        //should handle clicks before draw
+        // should handle clicks before draw
         self.handle_clicks(cr);
     }
 
@@ -97,9 +106,10 @@ impl Canvas {
     fn post_draw(&self, drawing_area: &DrawingArea, cr: &Context) {
         let mut frame_timing = self.frame_timing.lock().unwrap();
 
+        // undo the save that occurred in the 'pre-draw' phase
         cr.restore();
 
-        //draw frame timing in top left corner
+        // draw frame timing in top left corner
         cr.save();
 
         cr.set_source_rgb(1.0, 1.0, 1.0);
@@ -109,23 +119,22 @@ impl Canvas {
 
         cr.restore();
 
-        //update the last recorded time we rendered a frame
+        // update the last recorded time we rendered a frame
         frame_timing.update_frame_time();
         drawing_area.queue_draw();
     }
 
-    //will add any clicks that drawing area receives and add it to a queue for handle_clicks to use on next draw
+    // will add any clicks that drawing area receives and add it to a queue for handle_clicks to use on next draw
     fn on_click(&self, _drawing_area: &DrawingArea, event: &gdk::EventButton) -> Inhibit {
         let mut mouse_clicks = self.mouse_clicks.lock().unwrap();
 
-        // println!("original: {:?}", event.get_position());
         mouse_clicks.push_back(event.to_owned());
         drop(mouse_clicks);
 
         Inhibit(false)
     }
 
-    //handles the on_scroll event
+    // handles the on_scroll event
     fn on_scroll(&self, _drawing_area: &DrawingArea, event: &gdk::EventScroll) -> Inhibit {
         let mut camera_transform = self.camera_transform.lock().unwrap();
 
@@ -140,7 +149,7 @@ impl Canvas {
         Inhibit(false)
     }
 
-    //called by Window (parent)
+    // called by Window (parent)
     pub fn on_key_press(&self, _application_window: &gtk::ApplicationWindow, event: &gdk::EventKey) -> bool {
         let key = event.get_keyval();
         let mut return_value = false;
@@ -176,7 +185,7 @@ impl Canvas {
         return_value
     }
 
-    //called by Window (parent)
+    // called by Window (parent)
     pub fn on_key_release(&self, _application_window: &gtk::ApplicationWindow, event: &gdk::EventKey) -> Inhibit {
         let key = event.get_keyval();
 
@@ -207,7 +216,7 @@ impl Canvas {
         Inhibit(false)
     }
 
-    //called on each draw call, will handle any clicks that have happened between frames
+    // called on each draw call, will handle any clicks that have happened between frames
     fn handle_clicks(&self, cr: &Context) {
         let mut mouse_clicks = self.mouse_clicks.lock().unwrap();
 
@@ -218,7 +227,7 @@ impl Canvas {
         }
     }
 
-    //called on each draw call, will automatically move the camera and apply any transformations
+    // called on each draw call, will automatically move the camera and apply any transformations
     fn handle_camera(&self, cr: &Context, frame_timing: &FrameTiming) {
         let mut camera_transform = self.camera_transform.lock().unwrap();
 

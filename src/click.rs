@@ -1,4 +1,4 @@
-use crate::canvas::Canvas;
+use crate::window::canvas::Canvas;
 use gdk::{EventButton};
 use cairo::Context;
 

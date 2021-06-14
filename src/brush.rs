@@ -1,7 +1,10 @@
 
+//
+// Used to paint areas with either a color or texture
+// Brush is immutable
+//
 
-//will probably make all brushes const and just pass references to everything to avoid cloning
-#[derive(Clone)]
+#[allow(dead_code)]
 pub struct Brush {
     color: Option<(f64, f64, f64)>,
     texture: Option<f64>
@@ -36,14 +39,5 @@ impl Brush {
         // }
 
         cr.restore();
-    }
-
-    pub fn set_color(&mut self, color: (f64, f64, f64)) {
-        self.texture = None;
-        self.color = Some(color);
-    }
-
-    pub fn get_color(&self) {
-
     }
 }

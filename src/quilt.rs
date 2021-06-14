@@ -1,19 +1,32 @@
-use crate::canvas::Canvas;
+use crate::window::canvas::Canvas;
 use crate::click::Click;
 use crate::brush::Brush;
+
 use cairo::{Context};
 use gdk::EventButton;
+use std::sync::Arc;
+
+//
+// The main thing that I will be drawing is the quilt
+//
+// The quilt is made up of a 2d array of squares
+// Squares will have different colors and shapes that will be filled
+// The main Window's brush will be used when changing a square's color:
+//   Brushes are immutable so when the user chooses a new brush the reference to the "main brush" changes
+//   Each square holds a reference to their paint brush and uses that to paint each frame
+//   These are atomic references so they will destruct when no pointers are left 
+//
 
 static SQUARE_WIDTH: f64 = 20.0;
 
 struct Square {
-    brush: Brush
+    brush: Arc<Brush>
 }
 
 impl Square {
     pub fn new() -> Self {
         Self {
-            brush: Brush::new_color((0.0, 1.0, 0.0))
+            brush: Arc::new(Brush::new_color((0.0, 1.0, 0.0)))
         }
     }
 
@@ -47,11 +60,10 @@ impl Click for Square {
         let (tmp_x, tmp_y) = event.get_position();
         let (x, y) = cr.device_to_user(tmp_x, tmp_y);
 
-        if x < 0.0 || x >= SQUARE_WIDTH {
-            return false;
-        }
-
-        if y < 0.0 || y >= SQUARE_WIDTH {
+        if  (event.get_button() != 1) ||
+            (x < 0.0 || x >= SQUARE_WIDTH) ||
+            (y < 0.0 || y >= SQUARE_WIDTH)
+        {
             return false;
         }
 
@@ -122,7 +134,7 @@ impl Click for Quilt {
         let (tmp_x, tmp_y) = event.get_position();
         let (x, y) = cr.device_to_user(tmp_x, tmp_y); // calculate position
 
-        let result: bool;
+        let mut result: bool = false;
 
         if  x < 0.0 || x >= self.width  as f64 * SQUARE_WIDTH ||
             y < 0.0 || y >= self.height as f64 * SQUARE_WIDTH  {
@@ -134,10 +146,11 @@ impl Click for Quilt {
             cr.save();
 
             for row in 0..self.height {
+
                 cr.save();
 
                 for col in 0..self.width {
-                    self.quilt[row][col].click(window, cr, event);
+                    result = result || self.quilt[row][col].click(window, cr, event);
                     cr.translate(SQUARE_WIDTH, 0.0);
                 }
 
@@ -148,8 +161,6 @@ impl Click for Quilt {
             }
 
             cr.restore();
-
-            result = true;
             
         }
         

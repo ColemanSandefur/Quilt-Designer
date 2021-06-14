@@ -5,7 +5,6 @@ pub mod frame_timing;
 pub mod click;
 pub mod camera_transform;
 pub mod brush;
-pub mod canvas;
 
 use std::env;
 use gio::prelude::*;

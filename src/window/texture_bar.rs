@@ -1,15 +1,27 @@
 use crate::window::Window;
+use crate::brush::Brush;
 
 use std::sync::{Arc, Mutex};
 use gtk::prelude::*;
 use std::ops::Deref;
 
+//
+// Texture Bar will hold all the different types of brushes that you might have,
+//
+// Planning on Texture Bar to consist of
+//  - a single color button to choose a specific color that will fill the squares
+//  - images of fabrics to fill the squares
+//
+
 #[allow(dead_code)]
 pub struct TextureBar {
+    // main window
     scrolled_window: Arc<Mutex<gtk::ScrolledWindow>>,
 
-    //reference to parent window
+    // reference to parent window
     window: Arc<Mutex<Window>>,
+
+    // private fields
     color_button: Arc<Mutex<gtk::ColorButton>>,
 }
 
@@ -27,13 +39,10 @@ impl TextureBar {
         let s_clone = s.clone();
         color_button.lock().unwrap().connect_color_set(move |color_selector| {
             let s_clone = s_clone.lock().unwrap();
-            let window = s_clone.window.lock().unwrap();
-            let brush = window.get_brush();
-            let mut brush = brush.lock().unwrap();
 
             let new_color = color_selector.get_rgba();
 
-            brush.set_color((new_color.red, new_color.green, new_color.blue));
+            s_clone.set_brush(Arc::new(Brush::new_color((new_color.red, new_color.green, new_color.blue))));
         });
 
         let scrolled_window = scrolled_window.lock().unwrap();
@@ -54,6 +63,8 @@ impl TextureBar {
 
         match event.get_keyval().to_unicode() {
             Some(val) => {
+
+                //opens the color selection panel when space is pressed
                 if val == ' ' {
                     color_button.emit_clicked();
             
@@ -64,5 +75,13 @@ impl TextureBar {
         }
 
         false
+    }
+
+    fn set_brush(&self, brush: Arc<Brush>) {
+        let window = self.window.lock().unwrap();
+        let window_brush = window.get_brush();
+        let mut window_brush = window_brush.lock().unwrap();
+
+        *window_brush = brush.clone();
     }
 }
