@@ -24,9 +24,16 @@ struct Square {
 }
 
 impl Square {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
             brush: Arc::new(Brush::new_color((0.0, 1.0, 0.0)))
+        }
+    }
+
+    pub fn with_brush(brush: Arc<Brush>) -> Self {
+        Self {
+            brush: brush.clone()
         }
     }
 
@@ -53,6 +60,12 @@ impl Square {
 
         cr.restore();
     }
+
+    // sets the square's brush to the same one that Window has
+    fn change_brush(&mut self, canvas: &Canvas) {
+        self.brush = canvas.get_window().lock().unwrap()
+            .get_brush().lock().unwrap().clone();
+    }
 }
 
 impl Click for Square {
@@ -67,8 +80,7 @@ impl Click for Square {
             return false;
         }
 
-        self.brush = canvas.get_window().lock().unwrap()
-            .get_brush().lock().unwrap().clone();
+        self.change_brush(canvas);
 
         true
     }
@@ -84,12 +96,13 @@ impl Quilt {
     pub fn new(width: usize, height: usize) -> Self {
 
         let mut quilt: Vec<Vec<Square>> = Vec::new();
+        let brush = Arc::new(Brush::new_color((1.0, 1.0, 0.0)));
 
         for _ in 0..height {
             let mut row = Vec::new();
 
             for _ in 0..width {
-                row.push(Square::new());
+                row.push(Square::with_brush(brush.clone()));
             }
 
             quilt.push(row);

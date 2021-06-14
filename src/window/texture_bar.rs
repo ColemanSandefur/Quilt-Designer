@@ -1,5 +1,6 @@
 use crate::window::Window;
 use crate::brush::Brush;
+use crate::keys_pressed::{KeysPressed, KeyListener};
 
 use std::sync::{Arc, Mutex};
 use gtk::prelude::*;
@@ -58,30 +59,25 @@ impl TextureBar {
         self.scrolled_window.clone()
     }
 
-    pub fn on_key_press(&self, _application_window: &gtk::ApplicationWindow, event: &gdk::EventKey) -> bool {
-        let color_button = self.color_button.lock().unwrap();
-
-        match event.get_keyval().to_unicode() {
-            Some(val) => {
-
-                //opens the color selection panel when space is pressed
-                if val == ' ' {
-                    color_button.emit_clicked();
-            
-                    return true;
-                }
-            },
-            None => {}
-        }
-
-        false
-    }
-
     fn set_brush(&self, brush: Arc<Brush>) {
         let window = self.window.lock().unwrap();
         let window_brush = window.get_brush();
         let mut window_brush = window_brush.lock().unwrap();
 
         *window_brush = brush.clone();
+    }
+}
+
+impl KeyListener for TextureBar {
+    fn on_key_change(&self, _keys_pressed: &KeysPressed, key_changed: Option<(&gdk::EventKey, bool)>) {
+        let color_button = self.color_button.lock().unwrap();
+
+        if let Some((key_event, is_pressed)) = &key_changed {
+
+            if *is_pressed && key_event.get_keyval() == gdk::keys::constants::space {
+                color_button.emit_clicked();
+            }
+
+        }
     }
 }

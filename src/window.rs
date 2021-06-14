@@ -2,6 +2,7 @@ pub mod texture_bar;
 pub mod canvas;
 
 use crate::brush::Brush;
+use crate::keys_pressed::{KeysPressed, KeyListener};
 use canvas::Canvas;
 use texture_bar::TextureBar;
 
@@ -28,6 +29,7 @@ pub struct Window {
     
     // local fields
     brush: Arc<Mutex<Arc<Brush>>>, // brush is immutable so we need to change the reference
+    keys_pressed: Arc<Mutex<KeysPressed>>,
 }
 
 impl Window {
@@ -37,6 +39,7 @@ impl Window {
         let window = Arc::new(Mutex::new(gtk::ApplicationWindow::new(application)));
 
         let brush = Arc::new(Mutex::new(Arc::new(Brush::new())));
+        let keys_pressed = Arc::new(Mutex::new(KeysPressed::new()));
 
         let s = Arc::new(Mutex::new(Self {
             window: Arc::clone(&window),
@@ -45,6 +48,7 @@ impl Window {
             texture_bar: None,
             
             brush: Arc::clone(&brush),
+            keys_pressed: Arc::clone(&keys_pressed),
         }));
 
         // circular dependency from my bad code, we have to create the Window struct before we create the canvas
@@ -112,23 +116,35 @@ impl Window {
         window.add(&paned2);
     }
 
-    fn on_key_press(&self, application_window: &gtk::ApplicationWindow, event: &gdk::EventKey) -> Inhibit {
+    fn on_key_press(&self, _application_window: &gtk::ApplicationWindow, event: &gdk::EventKey) -> Inhibit {
 
-        if let Some(canvas) = &self.canvas {
-            canvas.lock().unwrap().on_key_press(application_window, event);
-        }
+        {
+            let mut keys_pressed_unlocked = self.keys_pressed.lock().unwrap();
 
-        if let Some(texture_bar) = &self.texture_bar {
-            texture_bar.lock().unwrap().on_key_press(application_window, event);
+            keys_pressed_unlocked.set_pressed(event.get_keyval(), true);
+
+            if let Some(canvas) = &self.canvas {
+                canvas.lock().unwrap().on_key_change(&keys_pressed_unlocked, Some((event, true)));
+            }
+
+            if let Some(texture_bar) = &self.texture_bar {
+                texture_bar.lock().unwrap().on_key_change(&keys_pressed_unlocked, Some((event, true)));
+            }
         }
 
         Inhibit(false)
     }
 
-    fn on_key_release(&self, application_window: &gtk::ApplicationWindow, event: &gdk::EventKey) -> Inhibit {
+    fn on_key_release(&self, _application_window: &gtk::ApplicationWindow, event: &gdk::EventKey) -> Inhibit {
 
-        if let Some(canvas) = &self.canvas {
-            canvas.lock().unwrap().on_key_release(application_window, event);
+        {
+            let mut keys_pressed_unlocked = self.keys_pressed.lock().unwrap();
+
+            keys_pressed_unlocked.set_pressed(event.get_keyval(), false);
+
+            if let Some(canvas) = &self.canvas {
+                canvas.lock().unwrap().on_key_change(&keys_pressed_unlocked, Some((event, false)));
+            }
         }
 
         Inhibit(false)
@@ -136,5 +152,9 @@ impl Window {
 
     pub fn get_brush(&self) -> Arc<Mutex<Arc<Brush>>> {
         Arc::clone(&self.brush)
+    }
+
+    pub fn get_keys_pressed(&self) -> Arc<Mutex<KeysPressed>> {
+        Arc::clone(&self.keys_pressed)
     }
 }

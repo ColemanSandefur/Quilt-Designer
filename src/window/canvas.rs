@@ -3,6 +3,7 @@ use crate::frame_timing::FrameTiming;
 use crate::click::Click;
 use crate::camera_transform::CameraTransform;
 use crate::window::Window;
+use crate::keys_pressed::{KeysPressed, KeyListener};
 
 use cairo::Context;
 use gdk::{EventMask, ScrollDirection};
@@ -149,72 +150,7 @@ impl Canvas {
         Inhibit(false)
     }
 
-    // called by Window (parent)
-    pub fn on_key_press(&self, _application_window: &gtk::ApplicationWindow, event: &gdk::EventKey) -> bool {
-        let key = event.get_keyval();
-        let mut return_value = false;
-        
-        if let Some(name) = key.name() {
-            let mut camera_transform = self.camera_transform.lock().unwrap();
-
-            // toggles on the pressed keys for camera_transform
-            // the camera will actually be moved during the draw call 
-            // based off of the time since last frame
-
-            if name.eq("a") {
-                camera_transform.start_move_left();
-                return_value = true;
-            }
-
-            if name.eq("d") {
-                camera_transform.start_move_right();
-                return_value = true;
-            }
-
-            if name.eq("w") {
-                camera_transform.start_move_up();
-                return_value = true;
-            }
-
-            if name.eq("s") {
-                camera_transform.start_move_down();
-                return_value = true;
-            }
-        }
-
-        return_value
-    }
-
-    // called by Window (parent)
-    pub fn on_key_release(&self, _application_window: &gtk::ApplicationWindow, event: &gdk::EventKey) -> Inhibit {
-        let key = event.get_keyval();
-
-        if let Some(name) = key.name() {
-            let mut camera_transform = self.camera_transform.lock().unwrap();
-
-            // toggles off the pressed keys for camera_transform
-            // the camera will actually be moved during the draw call 
-            // based off of the time since last frame
-
-            if name.eq("a") {
-                camera_transform.stop_move_left();
-            }
-
-            if name.eq("d") {
-                camera_transform.stop_move_right();
-            }
-
-            if name.eq("w") {
-                camera_transform.stop_move_up();
-            }
-
-            if name.eq("s") {
-                camera_transform.stop_move_down();
-            }
-        }
-
-        Inhibit(false)
-    }
+    
 
     // called on each draw call, will handle any clicks that have happened between frames
     fn handle_clicks(&self, cr: &Context) {
@@ -246,5 +182,35 @@ impl Canvas {
 
     pub fn get_drawing_area(&self) -> Arc<Mutex<gtk::DrawingArea>> {
         Arc::clone(&self.drawing_area)
+    }
+}
+
+impl KeyListener for Canvas {
+    fn on_key_change(&self, keys_pressed: &KeysPressed, _key_changed: Option<(&gdk::EventKey, bool)>) {
+        let mut camera_transform = self.camera_transform.lock().unwrap();
+
+        if keys_pressed.is_pressed(&gdk::keys::constants::a) {
+            camera_transform.start_move_left();
+        } else {
+            camera_transform.stop_move_left();
+        }
+
+        if keys_pressed.is_pressed(&gdk::keys::constants::d) {
+            camera_transform.start_move_right();
+        } else {
+            camera_transform.stop_move_right();
+        }
+
+        if keys_pressed.is_pressed(&gdk::keys::constants::w) {
+            camera_transform.start_move_up();
+        } else {
+            camera_transform.stop_move_up();
+        }
+
+        if keys_pressed.is_pressed(&gdk::keys::constants::s) {
+            camera_transform.start_move_down();
+        } else {
+            camera_transform.stop_move_down();
+        }
     }
 }
