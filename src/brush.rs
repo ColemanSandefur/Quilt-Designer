@@ -37,4 +37,13 @@ impl Brush {
 
         cr.restore();
     }
+
+    pub fn set_color(&mut self, color: (f64, f64, f64)) {
+        self.texture = None;
+        self.color = Some(color);
+    }
+
+    pub fn get_color(&self) {
+
+    }
 }

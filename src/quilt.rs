@@ -124,8 +124,6 @@ impl Click for Quilt {
 
         let result: bool;
 
-        println!("Clicked at: {:?}", (x, y));
-
         if  x < 0.0 || x >= self.width  as f64 * SQUARE_WIDTH ||
             y < 0.0 || y >= self.height as f64 * SQUARE_WIDTH  {
             

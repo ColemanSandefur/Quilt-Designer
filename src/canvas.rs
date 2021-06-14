@@ -15,9 +15,12 @@ use std::ops::Deref;
 
 #[allow(dead_code)]
 pub struct Canvas {
-    window: Arc<Mutex<Window>>,
     drawing_area: Arc<Mutex<DrawingArea>>,
 
+    //reference to parent window
+    window: Arc<Mutex<Window>>,
+
+    //local fields
     mouse_clicks: Arc<Mutex<VecDeque<gdk::EventButton>>>,
     quilt: Arc<Mutex<Quilt>>,
     camera_transform: Arc<Mutex<CameraTransform>>,
@@ -25,7 +28,8 @@ pub struct Canvas {
 }
 
 impl Canvas {
-    pub fn new(window: Arc<Mutex<Window>>, drawing_area: Arc<Mutex<DrawingArea>>) -> Arc<Mutex<Self>> {
+    pub fn new(window: Arc<Mutex<Window>>) -> Arc<Mutex<Self>> {
+        let drawing_area = Arc::new(Mutex::new(Box::new(DrawingArea::new)()));
         let quilt = Arc::new(Mutex::new(Quilt::new(5,6)));
         let camera_transform = Arc::new(Mutex::new(CameraTransform::new()));
         let frame_timing = Arc::new(Mutex::new(FrameTiming::new()));
@@ -137,8 +141,9 @@ impl Canvas {
     }
 
     //called by Window (parent)
-    pub fn on_key_press(&self, _application_window: &gtk::ApplicationWindow, event: &gdk::EventKey) -> Inhibit {
+    pub fn on_key_press(&self, _application_window: &gtk::ApplicationWindow, event: &gdk::EventKey) -> bool {
         let key = event.get_keyval();
+        let mut return_value = false;
         
         if let Some(name) = key.name() {
             let mut camera_transform = self.camera_transform.lock().unwrap();
@@ -149,22 +154,26 @@ impl Canvas {
 
             if name.eq("a") {
                 camera_transform.start_move_left();
+                return_value = true;
             }
 
             if name.eq("d") {
                 camera_transform.start_move_right();
+                return_value = true;
             }
 
             if name.eq("w") {
                 camera_transform.start_move_up();
+                return_value = true;
             }
 
             if name.eq("s") {
                 camera_transform.start_move_down();
+                return_value = true;
             }
         }
 
-        Inhibit(false)
+        return_value
     }
 
     //called by Window (parent)
@@ -205,7 +214,6 @@ impl Canvas {
         //will pass clicks to the items drawn to the screen
         while !mouse_clicks.is_empty() {
             let event = mouse_clicks.pop_front().unwrap();
-            // println!("transformed: {:?}", cr.device_to_user(event.get_position().0, event.get_position().1));
             self.quilt.lock().unwrap().click(self, cr, &event);
         }
     }
@@ -225,5 +233,9 @@ impl Canvas {
 
     pub fn get_camera_transform(&self) -> Arc<Mutex<CameraTransform>> {
         Arc::clone(&self.camera_transform)
+    }
+
+    pub fn get_drawing_area(&self) -> Arc<Mutex<gtk::DrawingArea>> {
+        Arc::clone(&self.drawing_area)
     }
 }
