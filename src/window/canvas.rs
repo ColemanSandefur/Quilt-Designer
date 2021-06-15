@@ -1,9 +1,11 @@
-use crate::quilt::Quilt;
-use crate::frame_timing::FrameTiming;
-use crate::click::Click;
+// #[cfg(feature = "dox")]
+
 use crate::camera_transform::CameraTransform;
+use crate::util::frame_timing::FrameTiming;
+use crate::util::click::Click;
+use crate::util::keys_pressed::{KeysPressed, KeyListener};
+use crate::quilt::Quilt;
 use crate::window::Window;
-use crate::keys_pressed::{KeysPressed, KeyListener};
 
 use cairo::Context;
 use gdk::{EventMask, ScrollDirection};
@@ -12,7 +14,6 @@ use std::sync::{Arc, Mutex};
 use std::collections::VecDeque;
 use gtk::DrawingArea;
 use gtk::prelude::*;
-use std::ops::Deref;
 
 //
 // Main drawing window
@@ -35,6 +36,8 @@ pub struct Canvas {
     quilt: Arc<Mutex<Quilt>>,
     camera_transform: Arc<Mutex<CameraTransform>>,
     frame_timing: Arc<Mutex<FrameTiming>>,
+    saved_surface: Arc<Mutex<Option<cairo::ImageSurface>>>,
+    needs_updated: Arc<Mutex<bool>>,
 }
 
 impl Canvas {
@@ -44,6 +47,7 @@ impl Canvas {
         let camera_transform = Arc::new(Mutex::new(CameraTransform::new()));
         let frame_timing = Arc::new(Mutex::new(FrameTiming::new()));
         let mouse_clicks = Arc::new(Mutex::new(VecDeque::with_capacity(10)));
+        let saved_surface = Arc::new(Mutex::new(None));
 
         let s = Arc::new(Mutex::new(Self {
             window: Arc::clone(&window),
@@ -53,6 +57,8 @@ impl Canvas {
             camera_transform: Arc::clone(&camera_transform),
             frame_timing: Arc::clone(&frame_timing),
             mouse_clicks: Arc::clone(&mouse_clicks),
+            saved_surface: saved_surface.clone(),
+            needs_updated: Arc::new(Mutex::new(true)),
         }));
 
         let drawing_area = drawing_area.lock().unwrap();
@@ -80,26 +86,59 @@ impl Canvas {
     }
 
     fn pre_draw(&self, _drawing_area: &DrawingArea, cr: &Context) {
-        let frame_timing = self.frame_timing.lock().unwrap();
 
-        // save the context before the transformation
-        // just in case we want to remove any transformations later
         cr.save();
 
         // will handle any necessary camera movements and apply them
-        self.handle_camera(cr, frame_timing.deref());
+        self.camera_transform.lock().unwrap().apply_offset(cr);
         
         // should handle clicks before draw
         self.handle_clicks(cr);
     }
 
+    
     fn draw(&self, drawing_area: &DrawingArea, cr: &Context) -> Inhibit {
+        cr.save();
+
+        // self.camera_transform.lock().unwrap().apply_transformation(cr);
+
         self.pre_draw(drawing_area, cr);
 
-        self.quilt.lock().unwrap()
-            .draw(cr);
+        let mut saved_surface = self.saved_surface.lock().unwrap();
+
+        if *self.needs_updated.lock().unwrap() == true {
+            let (raw_width, raw_height) = self.quilt.lock().unwrap().get_dimensions_pixel();
+            let zoom = self.camera_transform.lock().unwrap().get_zoom();
+            let (width, height) = (raw_width * zoom, raw_height * zoom);
+
+            match cairo::ImageSurface::create(cairo::Format::ARgb32, width as i32, height as i32) {
+                Ok(surface) => {
+                    *saved_surface = Some(surface);
+                },
+                Err(err) => {
+                    println!("ERROR: {:?}", err);
+                }
+            }
+
+            let new_context = cairo::Context::new(&saved_surface.as_ref().unwrap());
+
+            self.camera_transform.lock().unwrap().apply_zoom(&new_context);
+
+            self.quilt.lock().unwrap()
+                .draw(&new_context);
+
+            *self.needs_updated.lock().unwrap() = false;
+        }
+
+        if let Some(surface) = &saved_surface.as_ref() {
+            cr.set_source_surface(surface, 0.0, 0.0);
+            cr.paint();
+        } else {
+            *self.needs_updated.lock().unwrap() = true;
+        }
 
         self.post_draw(drawing_area, cr);
+        cr.restore();
 
         Inhibit(false)
     }
@@ -107,7 +146,6 @@ impl Canvas {
     fn post_draw(&self, drawing_area: &DrawingArea, cr: &Context) {
         let mut frame_timing = self.frame_timing.lock().unwrap();
 
-        // undo the save that occurred in the 'pre-draw' phase
         cr.restore();
 
         // draw frame timing in top left corner
@@ -119,6 +157,8 @@ impl Canvas {
         cr.show_text(&format!("{}ms", frame_timing.delta_frame_time().num_milliseconds()));
 
         cr.restore();
+
+        self.camera_transform.lock().unwrap().move_with_keys_pressed(&frame_timing.delta_frame_time());
 
         // update the last recorded time we rendered a frame
         frame_timing.update_frame_time();
@@ -136,16 +176,34 @@ impl Canvas {
     }
 
     // handles the on_scroll event
-    fn on_scroll(&self, _drawing_area: &DrawingArea, event: &gdk::EventScroll) -> Inhibit {
+    fn on_scroll(&mut self, _drawing_area: &DrawingArea, event: &gdk::EventScroll) -> Inhibit {
         let mut camera_transform = self.camera_transform.lock().unwrap();
+        let scale;
+
+        {
+            let keys_pressed = self.window.lock().unwrap().get_keys_pressed();
+            let keys_pressed = keys_pressed.lock().unwrap();
+
+            if keys_pressed.is_pressed(&gdk::keys::constants::Shift_L) {
+                scale = 1.0;
+            } else if keys_pressed.is_pressed(&gdk::keys::constants::Control_L) {
+                scale = 0.1;
+            } else {
+                scale = 0.5;
+            }
+        }
+        
+        
 
         if event.get_direction() == ScrollDirection::Up {
-            camera_transform.scale += 0.1;
+            camera_transform.scale += scale;
         }
 
         if event.get_direction() == ScrollDirection::Down && camera_transform.scale > 0.1 {
-            camera_transform.scale -= 0.1;
+            camera_transform.scale -= scale;
         }
+
+        *self.needs_updated.lock().unwrap() = true;
 
         Inhibit(false)
     }
@@ -160,16 +218,14 @@ impl Canvas {
         while !mouse_clicks.is_empty() {
             let event = mouse_clicks.pop_front().unwrap();
             self.quilt.lock().unwrap().click(self, cr, &event);
+            {
+                let mut needs_updated = self.needs_updated.lock().unwrap();
+
+                *needs_updated = *needs_updated || self.quilt.lock().unwrap().click(self, cr, &event);
+            }
         }
-    }
 
-    // called on each draw call, will automatically move the camera and apply any transformations
-    fn handle_camera(&self, cr: &Context, frame_timing: &FrameTiming) {
-        let mut camera_transform = self.camera_transform.lock().unwrap();
 
-        // cr.identity_matrix();
-        camera_transform.move_with_keys_pressed(&frame_timing.delta_frame_time());
-        camera_transform.apply_transformation(cr);
     }
 
     pub fn get_window(&self) -> Arc<Mutex<Window>> {

@@ -40,6 +40,18 @@ impl CameraTransform {
         cr.scale(self.scale, self.scale);
     }
 
+    pub fn apply_zoom(&self, cr: &Context) {
+        cr.scale(self.scale, self.scale);
+    }
+
+    pub fn apply_offset(&self, cr: &Context) {
+        cr.translate(self.offset.0, self.offset.1);
+    }
+
+    pub fn get_zoom(&self) -> f64 {
+        self.scale
+    }
+
     pub fn start_move_left(&mut self) {self.keys_pressed.left = true;}
     pub fn start_move_right(&mut self) {self.keys_pressed.right = true;}
     pub fn start_move_up(&mut self) {self.keys_pressed.up = true;}
@@ -50,23 +62,30 @@ impl CameraTransform {
     pub fn stop_move_up(&mut self) {self.keys_pressed.up = false;}
     pub fn stop_move_down(&mut self) {self.keys_pressed.down = false;}
 
-    pub fn move_with_keys_pressed(&mut self, delta_time: &chrono::Duration) {
+    pub fn move_with_keys_pressed(&mut self, delta_time: &chrono::Duration) -> bool {
         let time_passed = delta_time.num_milliseconds() as f64 / 4.0;
+        let mut changed = false;
 
         if self.keys_pressed.left {
             self.offset.0 -= MOVE_SPEED * time_passed;
+            changed = true;
         }
 
         if self.keys_pressed.right {
             self.offset.0 += MOVE_SPEED * time_passed;
+            changed = true;
         }
 
         if self.keys_pressed.up {
             self.offset.1 -= MOVE_SPEED * time_passed;
+            changed = true;
         }
 
         if self.keys_pressed.down {
             self.offset.1 += MOVE_SPEED * time_passed;
+            changed = true;
         }
+
+        changed
     }
 }

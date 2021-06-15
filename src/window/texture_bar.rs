@@ -1,6 +1,6 @@
 use crate::window::Window;
 use crate::brush::Brush;
-use crate::keys_pressed::{KeysPressed, KeyListener};
+use crate::util::keys_pressed::{KeysPressed, KeyListener};
 
 use std::sync::{Arc, Mutex};
 use gtk::prelude::*;

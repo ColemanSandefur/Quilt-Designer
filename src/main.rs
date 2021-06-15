@@ -1,11 +1,9 @@
 extern crate gtk;
 pub mod quilt;
 pub mod window;
-pub mod frame_timing;
-pub mod click;
 pub mod camera_transform;
 pub mod brush;
-pub mod keys_pressed;
+pub mod util;
 
 use std::env;
 use gio::prelude::*;

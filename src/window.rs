@@ -2,7 +2,7 @@ pub mod texture_bar;
 pub mod canvas;
 
 use crate::brush::Brush;
-use crate::keys_pressed::{KeysPressed, KeyListener};
+use crate::util::keys_pressed::{KeysPressed, KeyListener};
 use canvas::Canvas;
 use texture_bar::TextureBar;
 
