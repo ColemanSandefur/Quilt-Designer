@@ -1,14 +1,11 @@
 use crate::window::canvas::Canvas;
 use crate::util::click::Click;
-use crate::brush::Brush;
+use crate::brush::{Brush, Texture};
 
 use cairo::{Context};
 use gdk::EventButton;
 use std::sync::Arc;
-use std::f64::consts::PI;
-use gdk::prelude::*;
 use std::*;
-use gdk_pixbuf::Pixbuf;
 
 //
 // The main thing that I will be drawing is the quilt
@@ -23,58 +20,45 @@ use gdk_pixbuf::Pixbuf;
 
 pub static SQUARE_WIDTH: f64 = 20.0;
 
+//
+// Child shapes
+//
+// These will be rendered by the square, these are the different patterns that a shape might have
+// They save their shape to a surface for easy rendering
+//
+
+#[allow(dead_code)]
+struct ChildShape {
+    brush: Arc<Brush>,
+    scale: f64,
+}
+
+impl ChildShape {
+
+}
+
+//
+// Square
+//
+
 struct Square {
     brush: Arc<Brush>,
-    image: Option<Arc<Pixbuf>>,
-    scale: f64,
 }
 
 impl Square {
 
-    fn load_image(name: &str) -> Option<Arc<Pixbuf>> {
-        match Pixbuf::from_file(name) {
-            Ok(buf) => Some(Arc::new(buf)),
-            Err(err) => {
-                println!("{:?}", err);
-                None
-            },
-        }
-    }
-
     #[allow(dead_code)]
     pub fn new() -> Self {
-        let image = Square::load_image("./test_image.png");
-        
-        let scale = match &image {
-            Some(pixbuf) => {
-                let small_side = std::cmp::min(pixbuf.get_width(), pixbuf.get_height());
-                SQUARE_WIDTH / small_side as f64
-            },
-            _ => 0.0
-        };
+        let brush = Arc::new(Brush::new());
 
         Self {
-            brush: Arc::new(Brush::new_color((0.0, 1.0, 0.0))),
-            image: image,
-            scale: scale,
+            brush: brush.clone(),
         }
     }
 
     pub fn with_brush(brush: Arc<Brush>) -> Self {
-        let image = Square::load_image("./test_image.png");
-        
-        let scale = match &image {
-            Some(pixbuf) => {
-                let small_side = std::cmp::min(pixbuf.get_width(), pixbuf.get_height());
-                SQUARE_WIDTH / small_side as f64
-            },
-            _ => 0.0
-        };
-
         Self {
             brush: brush.clone(),
-            image: image,
-            scale: scale,
         }
     }
 
@@ -100,23 +84,6 @@ impl Square {
         cr.line_to(0.0 + line_width, SQUARE_WIDTH - line_width);
         cr.line_to(0.0 + line_width, 0.0 + line_width);
         self.brush.apply(cr);
-
-        
-        if let Some(pixbuf) = &self.image {
-            cr.save();
-            cr.move_to(SQUARE_WIDTH, SQUARE_WIDTH/2.0);
-            cr.arc(SQUARE_WIDTH/2.0, SQUARE_WIDTH/2.0, SQUARE_WIDTH/2.0, 0.0, PI);
-            cr.line_to(SQUARE_WIDTH, SQUARE_WIDTH/2.0);
-
-            cr.clip();
-            
-            cr.scale(self.scale, self.scale);
-
-            cr.set_source_pixbuf(pixbuf, 0.0, 0.0);
-            cr.paint();
-
-            cr.restore();
-        }
 
         cr.restore();
 
@@ -158,6 +125,10 @@ impl Click for Square {
     }
 }
 
+//
+// Quilt
+//
+
 pub struct Quilt {
     pub width: usize,
     pub height: usize,
@@ -168,7 +139,16 @@ impl Quilt {
     pub fn new(width: usize, height: usize) -> Self {
 
         let mut quilt: Vec<Vec<Square>> = Vec::new();
-        let brush = Arc::new(Brush::new_color((1.0, 1.0, 0.0)));
+        let brush = match Texture::new("./test_image.png") {
+            Ok(texture) => {
+                println!("Texture found!");
+                Arc::new(Brush::new_texture(texture))
+            },
+            Err(err) => {
+                println!("{:?}", err);
+                Arc::new(Brush::new_color((1.0, 1.0, 0.0)))
+            }
+        };
 
         for _ in 0..height {
             let mut row = Vec::new();

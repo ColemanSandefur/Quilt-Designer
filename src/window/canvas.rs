@@ -104,6 +104,9 @@ impl Canvas {
 
         self.pre_draw(drawing_area, cr);
 
+        // I changed the rendering to draw to a surface, save the surface, and then render the surface on the cairo context
+        // this helps improve the frame timings when you are just panning around.
+        // I need to address the main rendering though (when you modify the square or change the zoom), it is still very slow
         let mut saved_surface = self.saved_surface.lock().unwrap();
 
         if *self.needs_updated.lock().unwrap() == true {
