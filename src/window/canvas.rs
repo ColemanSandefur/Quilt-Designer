@@ -112,7 +112,17 @@ impl Canvas {
         if *self.needs_updated.lock().unwrap() == true {
             let (raw_width, raw_height) = self.quilt.lock().unwrap().get_dimensions_pixel();
             let zoom = self.camera_transform.lock().unwrap().get_zoom();
-            let (width, height) = (raw_width * zoom, raw_height * zoom);
+
+            println!("{:?}", zoom);
+            let (mut width, mut height) = (raw_width * zoom + 1.0, raw_height * zoom + 1.0);
+
+            if width < 10.0 {
+                width = 10.0;
+            }
+
+            if height < 10.0 {
+                height = 10.0;
+            }
 
             match cairo::ImageSurface::create(cairo::Format::ARgb32, width as i32, height as i32) {
                 Ok(surface) => {
@@ -123,12 +133,15 @@ impl Canvas {
                 }
             }
 
-            let new_context = cairo::Context::new(&saved_surface.as_ref().unwrap());
+            if let Some(surface) = saved_surface.as_ref() {
+                let new_context = cairo::Context::new(surface);
 
-            self.camera_transform.lock().unwrap().apply_zoom(&new_context);
+                self.camera_transform.lock().unwrap().apply_zoom(&new_context);
 
-            self.quilt.lock().unwrap()
-                .draw(&new_context);
+                self.quilt.lock().unwrap()
+                    .draw(&new_context);
+            }
+            
 
             *self.needs_updated.lock().unwrap() = false;
         }
@@ -180,7 +193,7 @@ impl Canvas {
 
     // handles the on_scroll event
     fn on_scroll(&mut self, _drawing_area: &DrawingArea, event: &gdk::EventScroll) -> Inhibit {
-        let mut camera_transform = self.camera_transform.lock().unwrap();
+        let camera_transform: &mut CameraTransform = &mut self.camera_transform.lock().unwrap();
         let scale;
 
         {
@@ -196,14 +209,13 @@ impl Canvas {
             }
         }
         
-        
 
         if event.get_direction() == ScrollDirection::Up {
-            camera_transform.scale += scale;
+            camera_transform.set_scale(camera_transform.get_scale() + scale);
         }
 
-        if event.get_direction() == ScrollDirection::Down && camera_transform.scale > 0.1 {
-            camera_transform.scale -= scale;
+        if event.get_direction() == ScrollDirection::Down {
+            camera_transform.set_scale(camera_transform.get_scale() - scale);
         }
 
         *self.needs_updated.lock().unwrap() = true;

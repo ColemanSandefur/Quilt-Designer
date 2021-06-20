@@ -139,7 +139,7 @@ impl Quilt {
     pub fn new(width: usize, height: usize) -> Self {
 
         let mut quilt: Vec<Vec<Square>> = Vec::new();
-        let brush = match Texture::new("./test_image.png") {
+        let brush = match Texture::new("./test_image.jpg") {
             Ok(texture) => {
                 println!("Texture found!");
                 Arc::new(Brush::new_texture(texture))

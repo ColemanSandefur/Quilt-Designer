@@ -22,11 +22,13 @@ impl KeysPressed {
 
 pub struct CameraTransform {
     pub offset: (f64, f64),
-    pub scale: f64,
+    scale: f64,
     keys_pressed: KeysPressed
 }
 
 impl CameraTransform {
+    pub const MIN_ZOOM: f64 = 0.1;
+
     pub fn new() -> Self {
         Self {
             offset: (0.0, 0.0),
@@ -87,5 +89,19 @@ impl CameraTransform {
         }
 
         changed
+    }
+
+    pub fn get_scale(&self) -> f64 {
+        self.scale
+    }
+
+    pub fn set_scale(&mut self, value: f64) -> f64 {
+        self.scale = match value {
+            v if v <= CameraTransform::MIN_ZOOM => CameraTransform::MIN_ZOOM,
+            v if v > CameraTransform::MIN_ZOOM => v,
+            _ => CameraTransform::MIN_ZOOM,
+        };
+
+        self.scale
     }
 }

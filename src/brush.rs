@@ -14,8 +14,31 @@ pub struct Texture {
 
 impl Texture {
 
+    const IMAGE_SIZE: i32 = 400; // the side length of the shortest side of an image
+
     fn load_image(name: &str) -> Result<Pixbuf, glib::Error> {
-        match Pixbuf::from_file(name) {
+
+        // bad way to find the original size of the image
+        let og_buf = match Pixbuf::from_file(name) {
+            Ok(buf) => buf,
+            Err(err) => return Err(err),
+        };
+
+        let aspect_ratio = og_buf.get_width() / og_buf.get_height();
+
+        // sets the shortest side to Texture::IMAGE_SIZE, but keeps the aspect ratio
+        let (import_width, import_height) = match og_buf.get_width() < og_buf.get_height() {
+            true => {
+                (Texture::IMAGE_SIZE, Texture::IMAGE_SIZE * aspect_ratio)
+            },
+            false => {
+                (Texture::IMAGE_SIZE * aspect_ratio, Texture::IMAGE_SIZE)
+            }
+        };
+
+        // imported with the desire import dimensions helps improve performance
+        // you don't need to be rendering a 6000x6000 image at full res you can get away with a somewhat low res image
+        match Pixbuf::from_file_at_size(name, import_width, import_height) {
             Ok(buf) => Ok(buf),
             Err(err) => {
                 println!("{:?}", err);

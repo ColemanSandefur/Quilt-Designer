@@ -98,7 +98,7 @@ impl TextureBar {
 
             let color_buttons = &mut s.color_buttons;
             
-            if let Ok(color) = Brush::try_new_texture("./test_image.png") {
+            if let Ok(color) = Brush::try_new_texture("./test_image.jpg") {
                 let color = Arc::new(color);
                 for _ in 0..30 {
                     color_buttons.push(color.clone());
