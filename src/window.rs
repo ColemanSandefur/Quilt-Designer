@@ -102,7 +102,7 @@ impl Window {
         let left_bar = self.texture_bar.as_ref().unwrap().lock().unwrap().get_scrolled_window();
         let right_bar = Arc::new(Mutex::new(gtk::ScrolledWindowBuilder::new().build()));
 
-        left_bar.lock().unwrap().set_size_request(100, 500);
+        left_bar.lock().unwrap().set_size_request(120, 500);
         drawing_area.lock().unwrap().set_size_request(400, 500);
 
         paned.pack1(left_bar.lock().unwrap().deref(), false, false);

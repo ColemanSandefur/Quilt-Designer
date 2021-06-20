@@ -73,6 +73,19 @@ impl Brush {
         }
     }
 
+    pub fn try_new_texture(path: &str) -> Result<Self, glib::Error> {
+        let texture = match Texture::new(path) {
+            Ok(texture) => {
+                texture
+            },
+            Err(err) => {
+                return Err(err);
+            }
+        };
+
+        Ok(Brush::new_texture(texture))
+    }
+
     pub fn apply(&self, cr: &cairo::Context) {
         cr.save();
 
@@ -91,4 +104,7 @@ impl Brush {
         cr.restore();
     }
 
+    pub fn get_color(&self) -> Option<(f64, f64, f64)> {
+        self.color
+    }
 }
