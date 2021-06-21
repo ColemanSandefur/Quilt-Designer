@@ -35,7 +35,9 @@ impl TextureBar {
     fn create_button(window: Arc<Mutex<Window>>, brush: Arc<Brush>) -> gtk::Button {
         let button_builder = gtk::ButtonBuilder::new()
             .valign(gtk::Align::Center)
-            .halign(gtk::Align::Center);
+            .halign(gtk::Align::Center)
+            .height_request(60)
+            .width_request(60);
         // let button_builder = button_builder.vexpand_set(false);
             
         let button = button_builder.build();
@@ -50,8 +52,6 @@ impl TextureBar {
             *window_brush = brush_clone.clone();
         });
 
-        button.set_size_request(60, 60);
-
         button
     }
     pub fn new(window: Arc<Mutex<Window>>) -> Arc<Mutex<Self>> {
@@ -61,13 +61,15 @@ impl TextureBar {
 
         let color_button_builder = gtk::ColorButtonBuilder::new()
             .valign(gtk::Align::Center)
-            .halign(gtk::Align::Center);
+            .halign(gtk::Align::Center)
+            .height_request(60)
+            .width_request(60);
 
         let color_button_builder = match window.lock().unwrap().get_brush().lock().unwrap().get_color() {
             Some(color) => {
-                color_button_builder.rgba(&gdk::RGBA {red: color.0, green: color.1, blue: color.2, alpha: 100.0})
+                color_button_builder.rgba(&gdk::RGBA {red: color.0, green: color.1, blue: color.2, alpha: 1.0})
             },
-            None => color_button_builder
+            None => color_button_builder.rgba(&gdk::RGBA {red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0})
         };
         
 

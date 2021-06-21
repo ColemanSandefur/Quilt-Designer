@@ -112,17 +112,7 @@ impl Canvas {
         if *self.needs_updated.lock().unwrap() == true {
             let (raw_width, raw_height) = self.quilt.lock().unwrap().get_dimensions_pixel();
             let zoom = self.camera_transform.lock().unwrap().get_zoom();
-
-            println!("{:?}", zoom);
-            let (mut width, mut height) = (raw_width * zoom + 1.0, raw_height * zoom + 1.0);
-
-            if width < 10.0 {
-                width = 10.0;
-            }
-
-            if height < 10.0 {
-                height = 10.0;
-            }
+            let (width, height) = (raw_width * zoom, raw_height * zoom);
 
             match cairo::ImageSurface::create(cairo::Format::ARgb32, width as i32, height as i32) {
                 Ok(surface) => {

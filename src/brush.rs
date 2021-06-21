@@ -1,6 +1,8 @@
-use gdk_pixbuf::Pixbuf;
-use gdk::prelude::*;
 use crate::quilt;
+use crate::util::image::Image;
+
+use gdk_pixbuf::Pixbuf;
+use std::sync::{Mutex};
 
 //
 // Used to paint areas with either a color or texture
@@ -8,26 +10,25 @@ use crate::quilt;
 //
 
 pub struct Texture {
-    pub pixbuf: Pixbuf,
+    pub image: Image,
     pub scale: f64,
 }
 
 impl Texture {
 
-    const IMAGE_SIZE: i32 = 400; // the side length of the shortest side of an image
+    const IMAGE_SIZE: i32 = 500; // the side length of the shortest side of an image
 
-    fn load_image(name: &str) -> Result<Pixbuf, glib::Error> {
+    fn load_image(name: &str) -> Result<Image, glib::Error> {
 
-        // bad way to find the original size of the image
-        let og_buf = match Pixbuf::from_file(name) {
-            Ok(buf) => buf,
-            Err(err) => return Err(err),
+        let (_pixbuf_format, width, height) = match Pixbuf::get_file_info(name) {
+            Some(data) => data,
+            None => return Err(glib::error::Error::new(glib::FileError::Failed, "Could not get file info"))
         };
 
-        let aspect_ratio = og_buf.get_width() / og_buf.get_height();
+        let aspect_ratio = width / height;
 
         // sets the shortest side to Texture::IMAGE_SIZE, but keeps the aspect ratio
-        let (import_width, import_height) = match og_buf.get_width() < og_buf.get_height() {
+        let (import_width, import_height) = match width < height {
             true => {
                 (Texture::IMAGE_SIZE, Texture::IMAGE_SIZE * aspect_ratio)
             },
@@ -38,17 +39,27 @@ impl Texture {
 
         // imported with the desire import dimensions helps improve performance
         // you don't need to be rendering a 6000x6000 image at full res you can get away with a somewhat low res image
-        match Pixbuf::from_file_at_size(name, import_width, import_height) {
-            Ok(buf) => Ok(buf),
+        let buf = match Pixbuf::from_file_at_size(name, import_width, import_height) {
+            Ok(buf) => buf,
             Err(err) => {
                 println!("{:?}", err);
-                Err(err)
+                return Err(err)
             },
-        }
+        };
+
+        let mut image = Image::new(import_width, import_height);
+
+        let bytes = gdk_pixbuf::Pixbuf::read_pixel_bytes(&buf).unwrap();
+
+        let b: &[u8] = &bytes;
+
+        image.set_data(b);
+
+        Ok(image)
     }
 
     pub fn new(file_path: &str) -> Result<Self, glib::Error> {
-        let image: Pixbuf = match Texture::load_image(file_path){
+        let image: Image = match Texture::load_image(file_path){
             Ok(pixbuf) => pixbuf,
             Err(err) => return Err(err),
         };
@@ -58,19 +69,18 @@ impl Texture {
         let scale = quilt::SQUARE_WIDTH / small_side as f64;
 
         let s = Self {
-            pixbuf: image,
+            image: image,
             scale: scale,
         };
 
         Ok(s)
     }
-
 }
 
 #[allow(dead_code)]
 pub struct Brush {
     color: Option<(f64, f64, f64)>,
-    texture: Option<Texture>,
+    texture: Option<Mutex<Texture>>,
 }
 
 impl Brush {
@@ -92,7 +102,7 @@ impl Brush {
     pub fn new_texture(texture: Texture) -> Self {
         Self {
             color: None,
-            texture: Some(texture),
+            texture: Some(Mutex::new(texture)),
         }
     }
 
@@ -118,10 +128,17 @@ impl Brush {
         }
 
         if let Some(texture) = &self.texture {
-            cr.clip();
-            cr.scale(texture.scale, texture.scale);
-            cr.set_source_pixbuf(&texture.pixbuf, 0.0, 0.0);
-            cr.paint();
+            let mut texture = texture.lock().unwrap();
+            let scale = texture.scale;
+
+            texture.image.with_surface(|surface| {
+                cr.save();
+                cr.clip();
+                cr.scale(scale, scale);
+                cr.set_source_surface(surface, 0.0, 0.0);
+                cr.paint();
+                cr.restore();
+            });
         }
 
         cr.restore();
