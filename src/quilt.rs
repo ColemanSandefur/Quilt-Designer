@@ -1,10 +1,12 @@
 use crate::window::canvas::Canvas;
 use crate::util::click::Click;
+use crate::util::image::Image;
 use crate::brush::{Brush, Texture};
+use crate::camera_transform::CameraTransform;
 
 use cairo::{Context};
 use gdk::EventButton;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::*;
 
 //
@@ -41,6 +43,7 @@ impl ChildShape {
 // Square
 //
 
+#[derive(Clone)]
 struct Square {
     brush: Arc<Brush>,
 }
@@ -63,6 +66,7 @@ impl Square {
     }
 
     pub fn draw(&self, cr: &Context) {
+
         cr.save();
 
         let line_width = 0.25;
@@ -136,6 +140,7 @@ pub struct Quilt {
 }
 
 impl Quilt {
+
     pub fn new(width: usize, height: usize) -> Self {
 
         let mut quilt: Vec<Vec<Square>> = Vec::new();
@@ -167,27 +172,107 @@ impl Quilt {
         }
     }
 
-    pub fn draw(&mut self, cr: &Context) {
+    const NUM_THREADS: usize = 2;
+
+    fn start_thread(squares: Arc<Mutex<Vec<(Square, u32)>>>, width: i32, zoom: f64) -> std::thread::JoinHandle<Vec<(Image, u32)>> {
+        let mut images: Vec<(Image, u32)> = Vec::with_capacity(squares.lock().unwrap().len());
+
+        thread::spawn(move || {
+            
+            // let image = Image::new(width, width);
+            
+            let squares = squares.lock().unwrap();
+
+            for (square, original_index) in squares.iter() {
+                let mut image = Image::new(width, width);
+
+                image.with_surface(|surface| {
+                    let cr = cairo::Context::new(&surface);
+
+                    cr.scale(zoom, zoom);
+
+                    square.draw(&cr);
+                });
+
+                images.push((image, *original_index));
+            }
+
+            images
+
+        })
+    }
+
+    pub fn draw(this: Arc<Mutex<Self>>, cr: &Context, camera_transform: Arc<Mutex<CameraTransform>>) {
         cr.save();
 
-        cr.move_to(0.0, 0.0);
-        cr.line_to(SQUARE_WIDTH * self.width as f64, 0.0);
-        cr.line_to(SQUARE_WIDTH * self.width as f64, SQUARE_WIDTH * self.height as f64);
-        cr.line_to(0.0, SQUARE_WIDTH * self.height as f64);
-        cr.line_to(0.0, 0.0);
+        let scale = camera_transform.lock().unwrap().get_scale();
+
+        {
+            let this = this.lock().unwrap();
+            cr.move_to(0.0, 0.0);
+            cr.line_to(SQUARE_WIDTH * this.width as f64, 0.0);
+            cr.line_to(SQUARE_WIDTH * this.width as f64, SQUARE_WIDTH * this.height as f64);
+            cr.line_to(0.0, SQUARE_WIDTH * this.height as f64);
+            cr.line_to(0.0, 0.0);
+        }
 
         cr.clip();
 
-        for row in 0..self.height {
-                        
-            for col in 0..self.width {
-                self.quilt[row][col].draw(cr);
-                cr.translate(SQUARE_WIDTH, 0.0);
+        let mut all_threads = Vec::with_capacity(Quilt::NUM_THREADS);
+
+        let mut all_squares;
+        {
+            let this = this.lock().unwrap(); 
+            all_squares = Vec::with_capacity(Quilt::NUM_THREADS);
+
+            for _ in 0..Quilt::NUM_THREADS {
+                all_squares.push(Arc::new(Mutex::new(Vec::with_capacity((this.width * this.height) / Quilt::NUM_THREADS + 1))));
             }
 
-            cr.translate(SQUARE_WIDTH * -(self.width as f64), SQUARE_WIDTH);
+            let mut thread_number = 0;
+            let mut index = 0;
+            for row in &this.quilt {
+                for square in row {
+                    thread_number = thread_number % Quilt::NUM_THREADS;
+
+                    all_squares[thread_number].lock().unwrap().push((square.clone(), index));
+
+                    thread_number += 1;
+                    index += 1;
+                }
+            }
+        }
+
+
+        for thread_num in 0..Quilt::NUM_THREADS {
+            all_threads.push(Quilt::start_thread(all_squares[thread_num].clone(), (scale * SQUARE_WIDTH) as i32, scale));
+        }
+
+        let width = this.lock().unwrap().width;
+
+        cr.save();
+        cr.scale(1.0/scale, 1.0/scale);
+        for thread in all_threads {
+            let res = thread.join().unwrap();
+
+            for (mut image, index) in res {
+
+                let row = index as usize / width;
+                let column = index as usize % width;
+                
+
+                image.with_surface(|surface| {
+                    cr.set_source_surface(surface, SQUARE_WIDTH * column as f64 * scale, SQUARE_WIDTH * row as f64 * scale);
+
+                    cr.paint();
+
+                    cr.set_source_rgb(0.0, 0.0, 0.0);
+                });
+
+            }
 
         }
+        cr.restore();
 
         cr.restore();
 

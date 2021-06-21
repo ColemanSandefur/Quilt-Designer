@@ -128,8 +128,7 @@ impl Canvas {
 
                 self.camera_transform.lock().unwrap().apply_zoom(&new_context);
 
-                self.quilt.lock().unwrap()
-                    .draw(&new_context);
+                Quilt::draw(self.quilt.clone(), &new_context, self.camera_transform.clone());
             }
             
 
