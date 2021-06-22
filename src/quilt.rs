@@ -6,8 +6,9 @@ use crate::camera_transform::CameraTransform;
 
 use cairo::{Context};
 use gdk::EventButton;
-use std::sync::{Arc, Mutex};
-use std::*;
+use std::borrow::BorrowMut;
+use std::sync::{Arc, Mutex, mpsc};
+use std::thread;
 
 //
 // The main thing that I will be drawing is the quilt
@@ -132,18 +133,31 @@ impl Click for Square {
 //
 // Quilt
 //
+// the images property is a cache of previous renderings, to update the cache you must queue an update
+// the update will then be automatically put on a dedicated thread to render, it then gets sent to the ready_rx thread
+// that thread will then update the cache and in the next draw call it will be rendered
+//
 
+#[allow(dead_code)]
 pub struct Quilt {
     pub width: usize,
     pub height: usize,
     quilt: Vec<Vec<Square>>,
+    images: Arc<Mutex<Vec<(Image, f64)>>>, //pairs image with the scale it was rendered at
+    
+    
+    //for multi threading
+    ready_tx: glib::Sender<((Image, f64), usize)>, // sending rendered images to be displayed on screen
+    
+    thread_streams: Vec<mpsc::Sender<(Square, f64, usize)>>, // sending squares to be rendered
+    next_thread_index: u8, // manages which thread will be used next
 }
 
 impl Quilt {
+    const NUM_THREADS: usize = 2;
 
     pub fn new(width: usize, height: usize) -> Self {
 
-        let mut quilt: Vec<Vec<Square>> = Vec::new();
         let brush = match Texture::new("./test_image.jpg") {
             Ok(texture) => {
                 println!("Texture found!");
@@ -154,127 +168,149 @@ impl Quilt {
                 Arc::new(Brush::new_color((1.0, 1.0, 0.0)))
             }
         };
-
+        
+        let mut quilt: Vec<Vec<Square>> = Vec::with_capacity(height);
         for _ in 0..height {
             let mut row = Vec::new();
-
+            
             for _ in 0..width {
                 row.push(Square::with_brush(brush.clone()));
             }
-
+            
             quilt.push(row);
+        }
+        
+        let mut images = Vec::with_capacity(width * height);
+        for index in 0..width*height {
+
+
+            let mut image = Image::new(SQUARE_WIDTH as i32, SQUARE_WIDTH as i32);
+
+            image.with_surface(|surface| {
+                let cr = cairo::Context::new(&surface);
+
+                let row = index as usize / width;
+                let column = index as usize % width;
+
+                quilt[row][column].draw(&cr);
+            });
+
+            images.push((image, 1.0));
+
+        }
+
+        let images = Arc::new(Mutex::new(images));
+
+        let (ready_tx, ready_rx) = glib::MainContext::channel::<((Image, f64), usize)>(glib::PRIORITY_DEFAULT); //image, zoom, index
+
+        let images_clone = images.clone();
+        ready_rx.attach(None, move |(data, index)| {
+            let images = images_clone.clone();
+
+            images.lock().unwrap()[index] = data;
+
+            glib::Continue(true)
+        });
+
+        let mut thread_streams = Vec::with_capacity(Quilt::NUM_THREADS);
+        for _thread_num in 0..Quilt::NUM_THREADS {
+            let (tx, rx) = mpsc::channel::<(Square, f64, usize)>();
+
+            Quilt::start_render_thread(rx, ready_tx.clone());
+
+            thread_streams.push(tx);
         }
 
         Quilt {
             width: width,
             height: height,
             quilt: quilt,
+            images: images,
+
+            ready_tx: ready_tx,
+            thread_streams: thread_streams,
+            next_thread_index: 0,
         }
     }
 
-    const NUM_THREADS: usize = 2;
 
-    fn start_thread(squares: Arc<Mutex<Vec<(Square, u32)>>>, width: i32, zoom: f64) -> std::thread::JoinHandle<Vec<(Image, u32)>> {
-        let mut images: Vec<(Image, u32)> = Vec::with_capacity(squares.lock().unwrap().len());
+    fn queue_draw(&mut self, index: usize, scale: f64) {
+        self.next_thread_index = self.next_thread_index % Quilt::NUM_THREADS as u8;
 
+        let transmitter = &self.thread_streams[self.next_thread_index as usize];
+        let row = index as usize / self.width;
+        let column = index as usize % self.width;
+        let square = &self.quilt[row][column];
+
+        let _ = transmitter.send((square.clone(), scale, index));
+
+        self.next_thread_index += 1;
+    }
+
+    pub fn queue_complete_redraw(&mut self, scale: f64) {
+        let num_squares = self.width * self.height;
+
+        for i in 0..num_squares {
+            self.queue_draw(i, scale);
+        }
+    }
+
+    fn start_render_thread(rx: mpsc::Receiver<(Square, f64, usize)>, ready_tx: glib::Sender<((Image, f64), usize)>) {
         thread::spawn(move || {
-            
-            // let image = Image::new(width, width);
-            
-            let squares = squares.lock().unwrap();
-
-            for (square, original_index) in squares.iter() {
-                let mut image = Image::new(width, width);
-
+            for (square, scale, index) in rx.iter() {
+                let mut image = Image::new((SQUARE_WIDTH * scale) as i32, (SQUARE_WIDTH * scale) as i32);
                 image.with_surface(|surface| {
                     let cr = cairo::Context::new(&surface);
 
-                    cr.scale(zoom, zoom);
+                    cr.scale(scale, scale);
 
                     square.draw(&cr);
                 });
-
-                images.push((image, *original_index));
+                // self.images[index] = (image, scale);
+                let _ = ready_tx.send(((image, scale), index));
             }
-
-            images
-
-        })
+        });
     }
 
-    pub fn draw(this: Arc<Mutex<Self>>, cr: &Context, camera_transform: Arc<Mutex<CameraTransform>>) {
+    pub fn draw(&mut self, cr: &Context, _camera_transform: Arc<Mutex<CameraTransform>>) {
         cr.save();
 
-        let scale = camera_transform.lock().unwrap().get_scale();
-
         {
-            let this = this.lock().unwrap();
             cr.move_to(0.0, 0.0);
-            cr.line_to(SQUARE_WIDTH * this.width as f64, 0.0);
-            cr.line_to(SQUARE_WIDTH * this.width as f64, SQUARE_WIDTH * this.height as f64);
-            cr.line_to(0.0, SQUARE_WIDTH * this.height as f64);
+            cr.line_to(SQUARE_WIDTH * self.width as f64, 0.0);
+            cr.line_to(SQUARE_WIDTH * self.width as f64, SQUARE_WIDTH * self.height as f64);
+            cr.line_to(0.0, SQUARE_WIDTH * self.height as f64);
             cr.line_to(0.0, 0.0);
         }
 
         cr.clip();
 
-        let mut all_threads = Vec::with_capacity(Quilt::NUM_THREADS);
+        let width = self.width;
+        
+        let mut images = self.images.lock().unwrap();
 
-        let mut all_squares;
-        {
-            let this = this.lock().unwrap(); 
-            all_squares = Vec::with_capacity(Quilt::NUM_THREADS);
+        for index in 0..images.len() {
+            let (image, scale) = &mut images[index];
 
-            for _ in 0..Quilt::NUM_THREADS {
-                all_squares.push(Arc::new(Mutex::new(Vec::with_capacity((this.width * this.height) / Quilt::NUM_THREADS + 1))));
-            }
+            let scale = *scale;
+            cr.save();
+            cr.scale(1.0/scale, 1.0/scale);
 
-            let mut thread_number = 0;
-            let mut index = 0;
-            for row in &this.quilt {
-                for square in row {
-                    thread_number = thread_number % Quilt::NUM_THREADS;
-
-                    all_squares[thread_number].lock().unwrap().push((square.clone(), index));
-
-                    thread_number += 1;
-                    index += 1;
-                }
-            }
-        }
-
-
-        for thread_num in 0..Quilt::NUM_THREADS {
-            all_threads.push(Quilt::start_thread(all_squares[thread_num].clone(), (scale * SQUARE_WIDTH) as i32, scale));
-        }
-
-        let width = this.lock().unwrap().width;
-
-        cr.save();
-        cr.scale(1.0/scale, 1.0/scale);
-        for thread in all_threads {
-            let res = thread.join().unwrap();
-
-            for (mut image, index) in res {
+            image.borrow_mut().with_surface(|surface| {
 
                 let row = index as usize / width;
                 let column = index as usize % width;
-                
 
-                image.with_surface(|surface| {
-                    cr.set_source_surface(surface, SQUARE_WIDTH * column as f64 * scale, SQUARE_WIDTH * row as f64 * scale);
+                cr.set_source_surface(surface, SQUARE_WIDTH * column as f64 * scale, SQUARE_WIDTH * row as f64 * scale);
 
-                    cr.paint();
+                cr.paint();
 
-                    cr.set_source_rgb(0.0, 0.0, 0.0);
-                });
-
-            }
-
+                cr.set_source_rgb(0.0, 0.0, 0.0);
+            });
+            cr.restore();
         }
-        cr.restore();
 
-        cr.restore();
+        cr.restore()
 
     }
 
@@ -316,7 +352,15 @@ impl Click for Quilt {
                 cr.save();
 
                 for col in 0..self.width {
-                    result = result || self.quilt[row][col].click(window, cr, event);
+                    result = result || match self.quilt[row][col].click(window, cr, event) {
+                        true => {
+                            self.queue_draw(row * self.width + col, window.get_camera_transform().lock().unwrap().get_scale());
+
+                            true
+                        },
+                        false => false
+                    };
+                    
                     cr.translate(SQUARE_WIDTH, 0.0);
                 }
 

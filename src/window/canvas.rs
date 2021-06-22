@@ -85,9 +85,19 @@ impl Canvas {
         s
     }
 
-    fn pre_draw(&self, _drawing_area: &DrawingArea, cr: &Context) {
+    fn pre_draw(&self, drawing_area: &DrawingArea, cr: &Context) {
 
         cr.save();
+
+        let width = drawing_area.get_allocated_width() as f64;
+        let height = drawing_area.get_allocated_height() as f64;
+
+        cr.move_to(0.0, 0.0);
+        cr.line_to(width, 0.0);
+        cr.line_to(width, height);
+        cr.line_to(0.0, height);
+        cr.line_to(0.0, 0.0);
+        cr.clip();
 
         // will handle any necessary camera movements and apply them
         self.camera_transform.lock().unwrap().apply_offset(cr);
@@ -122,20 +132,15 @@ impl Canvas {
                     println!("ERROR: {:?}", err);
                 }
             }
-
-            if let Some(surface) = saved_surface.as_ref() {
-                let new_context = cairo::Context::new(surface);
-
-                self.camera_transform.lock().unwrap().apply_zoom(&new_context);
-
-                Quilt::draw(self.quilt.clone(), &new_context, self.camera_transform.clone());
-            }
             
 
             *self.needs_updated.lock().unwrap() = false;
         }
 
         if let Some(surface) = &saved_surface.as_ref() {
+            let new_context = cairo::Context::new(surface);
+            self.camera_transform.lock().unwrap().apply_zoom(&new_context);
+            self.quilt.lock().unwrap().draw(&new_context, self.camera_transform.clone());
             cr.set_source_surface(surface, 0.0, 0.0);
             cr.paint();
         } else {
@@ -207,6 +212,8 @@ impl Canvas {
             camera_transform.set_scale(camera_transform.get_scale() - scale);
         }
 
+        self.quilt.lock().unwrap().queue_complete_redraw(camera_transform.get_scale());
+
         *self.needs_updated.lock().unwrap() = true;
 
         Inhibit(false)
@@ -228,7 +235,6 @@ impl Canvas {
                 *needs_updated = *needs_updated || self.quilt.lock().unwrap().click(self, cr, &event);
             }
         }
-
 
     }
 
