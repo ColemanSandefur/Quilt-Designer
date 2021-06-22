@@ -104,4 +104,8 @@ impl CameraTransform {
 
         self.scale
     }
+
+    pub fn get_offset(&self) -> (f64, f64) {
+        self.offset
+    }
 }

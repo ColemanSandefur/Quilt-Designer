@@ -1,6 +1,10 @@
+pub mod square;
+
+use square::Square;
 use crate::window::canvas::Canvas;
 use crate::util::click::Click;
 use crate::util::image::Image;
+use crate::util::rectangle::Rectangle;
 use crate::brush::{Brush, Texture};
 use crate::camera_transform::CameraTransform;
 
@@ -21,115 +25,6 @@ use std::thread;
 //   These are atomic references so they will destruct when no pointers are left 
 //
 
-pub static SQUARE_WIDTH: f64 = 20.0;
-
-//
-// Child shapes
-//
-// These will be rendered by the square, these are the different patterns that a shape might have
-// They save their shape to a surface for easy rendering
-//
-
-#[allow(dead_code)]
-struct ChildShape {
-    brush: Arc<Brush>,
-    scale: f64,
-}
-
-impl ChildShape {
-
-}
-
-//
-// Square
-//
-
-#[derive(Clone)]
-struct Square {
-    brush: Arc<Brush>,
-}
-
-impl Square {
-
-    #[allow(dead_code)]
-    pub fn new() -> Self {
-        let brush = Arc::new(Brush::new());
-
-        Self {
-            brush: brush.clone(),
-        }
-    }
-
-    pub fn with_brush(brush: Arc<Brush>) -> Self {
-        Self {
-            brush: brush.clone(),
-        }
-    }
-
-    pub fn draw(&self, cr: &Context) {
-
-        cr.save();
-
-        let line_width = 0.25;
-        
-        cr.save();
-
-        cr.move_to(0.0, 0.0);
-        cr.line_to(SQUARE_WIDTH, 0.0);
-        cr.line_to(SQUARE_WIDTH, SQUARE_WIDTH);
-        cr.line_to(0.0, SQUARE_WIDTH);
-        cr.line_to(0.0, 0.0);
-        cr.line_to(SQUARE_WIDTH, 0.0);
-
-        cr.clip();
-
-        cr.move_to(0.0 + line_width, 0.0 + line_width);
-        cr.line_to(SQUARE_WIDTH - line_width, 0.0 + line_width);
-        cr.line_to(SQUARE_WIDTH - line_width, SQUARE_WIDTH - line_width);
-        cr.line_to(0.0 + line_width, SQUARE_WIDTH - line_width);
-        cr.line_to(0.0 + line_width, 0.0 + line_width);
-        self.brush.apply(cr);
-
-        cr.restore();
-
-        cr.set_line_width(line_width * 2.0);
-        cr.set_source_rgb(0.0, 0.0, 0.0);
-        cr.move_to(0.0, 0.0);
-        cr.line_to(SQUARE_WIDTH, 0.0);
-        cr.line_to(SQUARE_WIDTH, SQUARE_WIDTH);
-        cr.line_to(0.0, SQUARE_WIDTH);
-        cr.line_to(0.0, 0.0);
-        cr.line_to(SQUARE_WIDTH, 0.0);
-        cr.stroke();
-
-        cr.restore();
-    }
-
-    // sets the square's brush to the same one that Window has
-    fn change_brush(&mut self, canvas: &Canvas) {
-        self.brush = canvas.get_window().lock().unwrap()
-            .get_brush().lock().unwrap().clone();
-    }
-}
-
-impl Click for Square {
-    fn click(&mut self, canvas: &Canvas, cr: &Context, event: &EventButton) -> bool {
-        let (tmp_x, tmp_y) = event.get_position();
-        let (x, y) = cr.device_to_user(tmp_x, tmp_y);
-
-        if  (event.get_button() != 1) ||
-            (x < 0.0 || x >= SQUARE_WIDTH) ||
-            (y < 0.0 || y >= SQUARE_WIDTH)
-        {
-            return false;
-        }
-
-        self.change_brush(canvas);
-
-        true
-    }
-}
-
 //
 // Quilt
 //
@@ -149,12 +44,14 @@ pub struct Quilt {
     //for multi threading
     ready_tx: glib::Sender<((Image, f64), usize)>, // sending rendered images to be displayed on screen
     
-    thread_streams: Vec<mpsc::Sender<(Square, f64, usize)>>, // sending squares to be rendered
+    thread_streams: Vec<mpsc::Sender<(Square, f64, usize, Arc<Mutex<(bool, bool)>>)>>, // sending squares to be rendered
     next_thread_index: u8, // manages which thread will be used next
+    queued_squares: Box<[Arc<Mutex<(bool, bool)>>]>, // should draw, force draw
 }
 
 impl Quilt {
-    const NUM_THREADS: usize = 2;
+    const NUM_THREADS: usize = 4;
+    const OVER_SCALE: f64 = 2.0; // added to actual scale when rendering should make zooming in less jarring
 
     pub fn new(width: usize, height: usize) -> Self {
 
@@ -184,7 +81,7 @@ impl Quilt {
         for index in 0..width*height {
 
 
-            let mut image = Image::new(SQUARE_WIDTH as i32, SQUARE_WIDTH as i32);
+            let mut image = Image::new(Square::SQUARE_WIDTH as i32, Square::SQUARE_WIDTH as i32);
 
             image.with_surface(|surface| {
                 let cr = cairo::Context::new(&surface);
@@ -214,12 +111,14 @@ impl Quilt {
 
         let mut thread_streams = Vec::with_capacity(Quilt::NUM_THREADS);
         for _thread_num in 0..Quilt::NUM_THREADS {
-            let (tx, rx) = mpsc::channel::<(Square, f64, usize)>();
+            let (tx, rx) = mpsc::channel::<(Square, f64, usize, Arc<Mutex<(bool, bool)>>)>();
 
             Quilt::start_render_thread(rx, ready_tx.clone());
 
             thread_streams.push(tx);
         }
+
+        let queued_squares = vec![Arc::new(Mutex::new((false, false))); width * height].into();
 
         Quilt {
             width: width,
@@ -230,19 +129,24 @@ impl Quilt {
             ready_tx: ready_tx,
             thread_streams: thread_streams,
             next_thread_index: 0,
+            queued_squares
         }
     }
 
-
     fn queue_draw(&mut self, index: usize, scale: f64) {
+        if let Some(status) = self.queued_squares.get(index) {
+            (*status.lock().unwrap()).0 = false;
+        }
         self.next_thread_index = self.next_thread_index % Quilt::NUM_THREADS as u8;
 
         let transmitter = &self.thread_streams[self.next_thread_index as usize];
         let row = index as usize / self.width;
         let column = index as usize % self.width;
         let square = &self.quilt[row][column];
+        let status = Arc::new(Mutex::new((true, false)));
 
-        let _ = transmitter.send((square.clone(), scale, index));
+        self.queued_squares[index] = status.clone();
+        let _ = transmitter.send((square.clone(), scale + Quilt::OVER_SCALE, index, status.clone()));
 
         self.next_thread_index += 1;
     }
@@ -255,10 +159,42 @@ impl Quilt {
         }
     }
 
-    fn start_render_thread(rx: mpsc::Receiver<(Square, f64, usize)>, ready_tx: glib::Sender<((Image, f64), usize)>) {
+    fn is_square_on_screen(row: f64, col: f64, scale: f64, rect: &Rectangle<f64>) -> bool {
+        let top_left_x = Square::SQUARE_WIDTH * col as f64 * scale + rect.x;
+        let top_left_y = Square::SQUARE_WIDTH * row as f64 * scale + rect.y;
+
+        (top_left_x < rect.width  && top_left_x > -Square::SQUARE_WIDTH * scale) &&
+        (top_left_y < rect.height && top_left_y > -Square::SQUARE_WIDTH * scale)
+    }
+    
+    pub fn queue_window_redraw(&mut self, scale: f64, rect: &Rectangle<f64>) {
+        for row in 0..self.height {
+            for column in 0..self.width {
+
+                if Quilt::is_square_on_screen(row as f64, column as f64, scale, rect) {
+                    
+                    self.queue_draw(row * self.width + column, scale);
+
+                } else {
+                    if let Some(status) = self.queued_squares.get(row * self.width + column) {
+                        (*status.lock().unwrap()).0 = false;
+                    }
+                }
+            }
+        }
+    }
+
+    // spawn a thread that will update the image buffer
+    fn start_render_thread(rx: mpsc::Receiver<(Square, f64, usize, Arc<Mutex<(bool, bool)>>)>, ready_tx: glib::Sender<((Image, f64), usize)>) {
         thread::spawn(move || {
-            for (square, scale, index) in rx.iter() {
-                let mut image = Image::new((SQUARE_WIDTH * scale) as i32, (SQUARE_WIDTH * scale) as i32);
+            for (square, scale, index, status) in rx.iter() {
+                if let Ok(lock) = status.try_lock() {
+                    if !(lock.0 || lock.1) {
+                        continue
+                    }
+                }
+
+                let mut image = Image::new((Square::SQUARE_WIDTH * scale) as i32, (Square::SQUARE_WIDTH * scale) as i32);
                 image.with_surface(|surface| {
                     let cr = cairo::Context::new(&surface);
 
@@ -266,30 +202,36 @@ impl Quilt {
 
                     square.draw(&cr);
                 });
-                // self.images[index] = (image, scale);
+                
                 let _ = ready_tx.send(((image, scale), index));
             }
         });
     }
 
-    pub fn draw(&mut self, cr: &Context, _camera_transform: Arc<Mutex<CameraTransform>>) {
+    pub fn draw(&mut self, cr: &Context, camera_transform: Arc<Mutex<CameraTransform>>, rect: &Rectangle<f64>) {
         cr.save();
 
-        {
-            cr.move_to(0.0, 0.0);
-            cr.line_to(SQUARE_WIDTH * self.width as f64, 0.0);
-            cr.line_to(SQUARE_WIDTH * self.width as f64, SQUARE_WIDTH * self.height as f64);
-            cr.line_to(0.0, SQUARE_WIDTH * self.height as f64);
-            cr.line_to(0.0, 0.0);
-        }
+        cr.move_to(0.0, 0.0);
+        cr.line_to(Square::SQUARE_WIDTH * self.width as f64, 0.0);
+        cr.line_to(Square::SQUARE_WIDTH * self.width as f64, Square::SQUARE_WIDTH * self.height as f64);
+        cr.line_to(0.0, Square::SQUARE_WIDTH * self.height as f64);
+        cr.line_to(0.0, 0.0);
 
         cr.clip();
 
         let width = self.width;
-        
+        let scale = camera_transform.lock().unwrap().get_scale();
         let mut images = self.images.lock().unwrap();
 
         for index in 0..images.len() {
+            let row = index as usize / width;
+            let column = index as usize % width;
+
+            //Don't render squares that aren't on screen
+            if !Quilt::is_square_on_screen(row as f64, column as f64, scale, rect) {
+                continue;
+            }
+
             let (image, scale) = &mut images[index];
 
             let scale = *scale;
@@ -298,14 +240,12 @@ impl Quilt {
 
             image.borrow_mut().with_surface(|surface| {
 
-                let row = index as usize / width;
-                let column = index as usize % width;
-
-                cr.set_source_surface(surface, SQUARE_WIDTH * column as f64 * scale, SQUARE_WIDTH * row as f64 * scale);
+                cr.set_source_surface(surface, Square::SQUARE_WIDTH * column as f64 * scale, Square::SQUARE_WIDTH * row as f64 * scale);
 
                 cr.paint();
 
                 cr.set_source_rgb(0.0, 0.0, 0.0);
+
             });
             cr.restore();
         }
@@ -316,8 +256,8 @@ impl Quilt {
 
     pub fn get_dimensions_pixel(&self) -> (f64, f64) {
         return (
-            SQUARE_WIDTH * self.width as f64, 
-            SQUARE_WIDTH * self.height as f64
+            Square::SQUARE_WIDTH * self.width as f64, 
+            Square::SQUARE_WIDTH * self.height as f64
         )
     }
 }
@@ -338,8 +278,8 @@ impl Click for Quilt {
 
         let mut result: bool = false;
 
-        if  x < 0.0 || x >= self.width  as f64 * SQUARE_WIDTH ||
-            y < 0.0 || y >= self.height as f64 * SQUARE_WIDTH  {
+        if  x < 0.0 || x >= self.width  as f64 * Square::SQUARE_WIDTH ||
+            y < 0.0 || y >= self.height as f64 * Square::SQUARE_WIDTH  {
             
             result = false;
 
@@ -361,12 +301,12 @@ impl Click for Quilt {
                         false => false
                     };
                     
-                    cr.translate(SQUARE_WIDTH, 0.0);
+                    cr.translate(Square::SQUARE_WIDTH, 0.0);
                 }
 
                 cr.restore();
 
-                cr.translate(0.0, SQUARE_WIDTH);
+                cr.translate(0.0, Square::SQUARE_WIDTH);
 
             }
 

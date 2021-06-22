@@ -4,6 +4,7 @@ use crate::camera_transform::CameraTransform;
 use crate::util::frame_timing::FrameTiming;
 use crate::util::click::Click;
 use crate::util::keys_pressed::{KeysPressed, KeyListener};
+use crate::util::rectangle::Rectangle;
 use crate::quilt::Quilt;
 use crate::window::Window;
 
@@ -137,10 +138,19 @@ impl Canvas {
             *self.needs_updated.lock().unwrap() = false;
         }
 
+        let (offset_x, offset_y) = self.camera_transform.lock().unwrap().get_offset();
+
+        let bounds = Rectangle {
+            x: offset_x, 
+            y: offset_y, 
+            width: drawing_area.get_allocated_width() as f64, 
+            height: drawing_area.get_allocated_height() as f64
+        };
+
         if let Some(surface) = &saved_surface.as_ref() {
             let new_context = cairo::Context::new(surface);
             self.camera_transform.lock().unwrap().apply_zoom(&new_context);
-            self.quilt.lock().unwrap().draw(&new_context, self.camera_transform.clone());
+            self.quilt.lock().unwrap().draw(&new_context, self.camera_transform.clone(), &bounds);
             cr.set_source_surface(surface, 0.0, 0.0);
             cr.paint();
         } else {
@@ -212,6 +222,8 @@ impl Canvas {
             camera_transform.set_scale(camera_transform.get_scale() - scale);
         }
 
+        // let (offset_x, offset_y) = camera_transform.get_offset();
+        // self.quilt.lock().unwrap().queue_window_redraw(camera_transform.get_scale(), offset_x, offset_y, drawing_area.get_allocated_width() as f64, drawing_area.get_allocated_height() as f64);
         self.quilt.lock().unwrap().queue_complete_redraw(camera_transform.get_scale());
 
         *self.needs_updated.lock().unwrap() = true;

@@ -1,4 +1,4 @@
-use crate::quilt;
+use crate::quilt::square::Square;
 use crate::util::image::Image;
 
 use gdk_pixbuf::Pixbuf;
@@ -16,7 +16,7 @@ pub struct Texture {
 
 impl Texture {
 
-    const IMAGE_SIZE: i32 = 500; // the side length of the shortest side of an image
+    const IMAGE_SIZE: i32 = 800; // the side length of the shortest side of an image
 
     fn load_image(name: &str) -> Result<Image, glib::Error> {
 
@@ -66,7 +66,7 @@ impl Texture {
 
         let small_side = std::cmp::min(image.get_width(), image.get_height());
         //scale required to fill the whole square of a quilt
-        let scale = quilt::SQUARE_WIDTH / small_side as f64;
+        let scale = Square::SQUARE_WIDTH / small_side as f64;
 
         let s = Self {
             image: image,
