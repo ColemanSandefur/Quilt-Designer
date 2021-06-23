@@ -18,7 +18,8 @@ use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 pub struct BlockPattern {
-    pattern: Vec<ChildShape>
+    rotation: f64,
+    pattern: Vec<ChildShape>,
 }
 
 impl BlockPattern {
@@ -28,25 +29,43 @@ impl BlockPattern {
         pattern.push(ChildShape::new());
 
         Self {
-            pattern
+            pattern,
+            rotation: 0.0,
         }
     }
 
     pub fn new_pattern(pattern: Vec<ChildShape>) -> Self {
         Self {
-            pattern
+            pattern,
+            rotation: 0.0,
         }
     }
 
+    pub fn apply_transformation(&self, cr: &Context) {
+        cr.translate(Square::SQUARE_WIDTH / 2.0, Square::SQUARE_WIDTH / 2.0);
+        cr.rotate(self.rotation);
+        cr.translate(-Square::SQUARE_WIDTH / 2.0, -Square::SQUARE_WIDTH / 2.0);
+    }
+
     pub fn draw(&self, cr: &Context) {
+
+        self.apply_transformation(cr);
+
         for child in &self.pattern {
             child.draw(cr);
         }
+    }
+
+    pub fn rotate(&mut self, amount_radians: f64) {
+        let rot = self.rotation;
+        self.rotation = rot + amount_radians;
     }
 }
 
 impl Click for BlockPattern {
     fn click(&mut self, canvas: &Canvas, cr: &Context, event: &EventButton) -> bool {
+
+        self.apply_transformation(cr);
 
         for child in &mut self.pattern {
             if child.click(canvas, cr, event) {

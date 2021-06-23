@@ -14,6 +14,7 @@ use glib::signal::Inhibit;
 use std::sync::{Arc, Mutex};
 use gtk::prelude::*;
 use std::ops::Deref;
+use std::f64::consts::FRAC_PI_2;
 
 //
 // The main window of the application
@@ -130,6 +131,18 @@ impl Window {
             let mut keys_pressed_unlocked = self.keys_pressed.lock().unwrap();
 
             keys_pressed_unlocked.set_pressed(event.get_keyval(), true);
+
+
+            let pattern = {self.brush.lock().unwrap().get_block_pattern()};
+            if let Some(mut brush) =  pattern {
+                if keys_pressed_unlocked.is_pressed(&gdk::keys::constants::r) {
+                    brush.rotate(FRAC_PI_2);
+                } else if keys_pressed_unlocked.is_pressed(&gdk::keys::constants::R) {
+                    brush.rotate(-FRAC_PI_2);
+                }
+
+                self.brush.lock().unwrap().set_block_pattern(brush);
+            }
 
             if let Some(canvas) = &self.canvas {
                 canvas.lock().unwrap().on_key_change(&keys_pressed_unlocked, Some((event, true)));

@@ -106,16 +106,10 @@ impl PatternBar {
         self.scrolled_window.clone()
     }
 
-    // fn set_brush(&self, brush: Arc<BlockPattern>) {
-    //     let window = self.window.lock().unwrap();
-    //     let window_brush = window.get_brush();
-    //     let mut window_brush = window_brush.lock().unwrap();
-
-    //     window_brush.set_block_pattern(brush.clone());
-    // }
-
     fn load_patterns(&mut self) {
         let patterns = &mut self.patterns;
+
+        patterns.push(BlockPattern::new_pattern(vec![]));
 
         patterns.push(BlockPattern::new_pattern(vec![
             child_shape::prefab::create_rect(0.0, 0.0, 
