@@ -44,16 +44,24 @@ impl ChildShape {
         cr.move_to(0.0, 0.0);
 
         self.create_bounds(cr);
+        self.brush.apply(cr);
         
         cr.save();
-        cr.set_line_width(0.25);
-        cr.close_path();
-        cr.set_source_rgb(0.0, 0.0, 0.0);
-        cr.stroke_preserve();
+        {
+            cr.save();
+            {
+                cr.scale(0.99, 0.99);
+                self.create_bounds(cr);
+                cr.close_path();
+            }
+            cr.restore();
+            
+            cr.set_line_width(0.25);
+            cr.set_source_rgb(0.0, 0.0, 0.0);
+            cr.stroke();
+        }
+
         cr.restore();
-        self.brush.apply(cr);
-
-
     }
 
     fn change_brush(&mut self, canvas: &Canvas) {

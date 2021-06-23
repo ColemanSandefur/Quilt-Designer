@@ -3,6 +3,7 @@ use crate::window::Window;
 use crate::util::keys_pressed::{KeysPressed, KeyListener};
 use crate::quilt::square::{BlockPattern, Square};
 use crate::quilt::child_shape;
+use crate::util::image::Image;
 
 use std::sync::{Arc, Mutex};
 use gtk::prelude::*;
@@ -54,6 +55,18 @@ impl PatternBar {
             // *window_brush = brush_clone.clone();
             window_brush.set_block_pattern(brush_clone.clone());
         });
+
+        let mut util_image = Image::new(60, 60);
+        
+        util_image.with_surface(|surface| {
+            let cr = cairo::Context::new(surface);
+            
+            cr.scale(60.0 / Square::SQUARE_WIDTH, 60.0 / Square::SQUARE_WIDTH);
+            brush.draw(&cr);
+        });
+            
+        let image = gtk::Image::from_surface(Some(&util_image.to_surface().unwrap()));
+        button.set_image(Some(&image));
 
         button
     }

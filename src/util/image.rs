@@ -50,6 +50,20 @@ impl Image {
         );
     }
 
+    pub fn to_surface(mut self) -> std::result::Result<cairo::ImageSurface, cairo::Error> {
+        let image = self.data.take().expect("Empty image");
+
+        let surface = ImageSurface::create_for_data(
+            image,
+            Image::FORMAT_TYPE,
+            self.width,
+            self.height,
+            self.stride, // how many bytes until next row (r, g, b, a, all have a byte allocated thats why it is 4*width)
+        );
+
+        surface
+    }
+
     pub fn set_data(&mut self, data: &[u8]) {
         let mut image_data = self.data.take().expect("Empty image");
 

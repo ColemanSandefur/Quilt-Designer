@@ -1,6 +1,8 @@
 use crate::window::Window;
 use crate::texture_brush::TextureBrush;
 use crate::util::keys_pressed::{KeysPressed, KeyListener};
+use crate::util::image::Image;
+use crate::quilt::square::Square;
 
 use std::sync::{Arc, Mutex};
 use gtk::prelude::*;
@@ -51,6 +53,19 @@ impl TextureBar {
 
             window_brush.set_texture(brush_clone.clone()); 
         });
+
+        let mut util_image = Image::new(60, 60);
+        
+        util_image.with_surface(|surface| {
+            let cr = cairo::Context::new(surface);
+            
+            cr.scale(60.0 / Square::SQUARE_WIDTH, 60.0 / Square::SQUARE_WIDTH);
+            cr.rectangle(0.0, 0.0, Square::SQUARE_WIDTH, Square::SQUARE_WIDTH);
+            brush.apply(&cr);
+        });
+        
+        let image = gtk::Image::from_surface(Some(&util_image.to_surface().unwrap()));
+        button.set_image(Some(&image));
 
         button
     }
