@@ -111,8 +111,7 @@ impl Canvas {
     fn draw(&self, drawing_area: &DrawingArea, cr: &Context) -> Inhibit {
         cr.save();
 
-        // self.camera_transform.lock().unwrap().apply_transformation(cr);
-
+        // before any rendering
         self.pre_draw(drawing_area, cr);
 
         // I changed the rendering to draw to a surface, save the surface, and then render the surface on the cairo context
@@ -133,7 +132,6 @@ impl Canvas {
                     println!("ERROR: {:?}", err);
                 }
             }
-            
 
             *self.needs_updated.lock().unwrap() = false;
         }

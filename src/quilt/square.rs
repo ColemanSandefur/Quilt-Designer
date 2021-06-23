@@ -1,11 +1,11 @@
 use crate::window::canvas::Canvas;
 use crate::util::click::Click;
 use crate::brush::Brush;
+use crate::path::{Path, Line, Move};
 
 use cairo::{Context};
 use gdk::EventButton;
 use std::sync::{Arc, Mutex};
-use std::f64::consts::PI;
 
 //
 // Child shapes
@@ -15,11 +15,10 @@ use std::f64::consts::PI;
 //
 
 #[allow(dead_code)]
-#[derive(Clone)]
 struct ChildShape {
     brush: Arc<Brush>,
-    // scale: f64,
     location: (f64, f64),
+    paths: Vec<Arc<dyn Path>>
 }
 
 impl ChildShape {
@@ -27,14 +26,26 @@ impl ChildShape {
         let brush = Arc::new(Brush::new());
         let location = (0.0, 0.0);
 
+        let inset = 5.0;
+        let paths: Vec<Arc<dyn Path>> = vec![
+            Arc::new(Move::new(inset, inset)),
+            Arc::new(Line::new(Square::SQUARE_WIDTH - inset, inset)),
+            Arc::new(Line::new(Square::SQUARE_WIDTH - inset, Square::SQUARE_WIDTH - inset)),
+            Arc::new(Line::new(inset, Square::SQUARE_WIDTH - inset)),
+            Arc::new(Line::new(inset, inset))
+        ];
+
         Self {
             brush: brush.clone(),
             location,
+            paths,
         }
     }
 
     fn create_bounds(&self, cr: &Context) {
-        cr.arc(Square::SQUARE_WIDTH / 2.0, Square::SQUARE_WIDTH / 2.0, Square::SQUARE_WIDTH / 4.0, 0.0, 2.0 * PI);
+        for path in &self.paths {
+            path.draw_path(cr);
+        }
     }
 
     pub fn draw(&self, cr: &Context) {
@@ -67,6 +78,22 @@ impl Click for ChildShape {
         self.change_brush(canvas);
 
         true
+    }
+}
+
+impl Clone for ChildShape {
+    fn clone(&self) -> Self {
+        let mut paths = Vec::with_capacity(self.paths.len());
+
+        for path in &self.paths {
+            paths.push(path.clone_path());
+        }
+
+        Self {
+            brush: self.brush.clone(),
+            location: self.location.clone(),
+            paths,
+        }
     }
 }
 

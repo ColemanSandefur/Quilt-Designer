@@ -4,6 +4,7 @@ pub mod window;
 pub mod camera_transform;
 pub mod brush;
 pub mod util;
+pub mod path;
 
 use std::env;
 use gio::prelude::*;
