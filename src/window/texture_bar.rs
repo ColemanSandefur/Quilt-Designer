@@ -1,5 +1,5 @@
 use crate::window::Window;
-use crate::brush::Brush;
+use crate::texture_brush::TextureBrush;
 use crate::util::keys_pressed::{KeysPressed, KeyListener};
 
 use std::sync::{Arc, Mutex};
@@ -28,11 +28,11 @@ pub struct TextureBar {
     // private fields
     color_button: Arc<Mutex<gtk::ColorButton>>,
 
-    color_buttons: Vec<Arc::<Brush>>,
+    color_buttons: Vec<Arc::<TextureBrush>>,
 }
 
 impl TextureBar {
-    fn create_button(window: Arc<Mutex<Window>>, brush: Arc<Brush>) -> gtk::Button {
+    fn create_button(window: Arc<Mutex<Window>>, brush: Arc<TextureBrush>) -> gtk::Button {
         let button_builder = gtk::ButtonBuilder::new()
             .valign(gtk::Align::Center)
             .halign(gtk::Align::Center)
@@ -49,7 +49,7 @@ impl TextureBar {
             let window_brush = window.get_brush();
             let mut window_brush = window_brush.lock().unwrap();
 
-            *window_brush = brush_clone.clone();
+            window_brush.set_texture(brush_clone.clone()); 
         });
 
         button
@@ -59,18 +59,24 @@ impl TextureBar {
         // let scrolled_window_builder = scrolled_window_builder.vexpand_set(false);
         let scrolled_window = Arc::new(Mutex::new(scrolled_window_builder.build()));
 
-        let color_button_builder = gtk::ColorButtonBuilder::new()
+        let mut color_button_builder = gtk::ColorButtonBuilder::new()
             .valign(gtk::Align::Center)
             .halign(gtk::Align::Center)
             .height_request(60)
             .width_request(60);
 
-        let color_button_builder = match window.lock().unwrap().get_brush().lock().unwrap().get_color() {
-            Some(color) => {
-                color_button_builder.rgba(&gdk::RGBA {red: color.0, green: color.1, blue: color.2, alpha: 1.0})
-            },
-            None => color_button_builder.rgba(&gdk::RGBA {red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0})
-        };
+        let texture_brush = window.lock().unwrap().get_brush().lock().unwrap().get_texture();
+
+        if let Some(brush) = texture_brush {
+            color_button_builder = match brush.get_color() {
+                Some(color) => {
+                    color_button_builder.rgba(&gdk::RGBA {red: color.0, green: color.1, blue: color.2, alpha: 1.0})
+                },
+                None => color_button_builder.rgba(&gdk::RGBA {red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0})
+            };
+        } else {
+            color_button_builder = color_button_builder.rgba(&gdk::RGBA {red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0})
+        }
         
 
         let color_button = Arc::new(Mutex::new(color_button_builder.build()));
@@ -100,7 +106,7 @@ impl TextureBar {
 
             let color_buttons = &mut s.color_buttons;
             
-            if let Ok(color) = Brush::try_new_texture("./test_image.jpg") {
+            if let Ok(color) = TextureBrush::try_new_texture("./test_image.jpg") {
                 let color = Arc::new(color);
                 for _ in 0..30 {
                     color_buttons.push(color.clone());
@@ -114,7 +120,7 @@ impl TextureBar {
 
             let new_color = color_selector.get_rgba();
 
-            s_clone.set_brush(Arc::new(Brush::new_color((new_color.red, new_color.green, new_color.blue))));
+            s_clone.set_brush(Arc::new(TextureBrush::new_color((new_color.red, new_color.green, new_color.blue))));
         });
 
         let flow_box = flow_box.lock().unwrap();
@@ -142,12 +148,12 @@ impl TextureBar {
         self.scrolled_window.clone()
     }
 
-    fn set_brush(&self, brush: Arc<Brush>) {
+    fn set_brush(&self, brush: Arc<TextureBrush>) {
         let window = self.window.lock().unwrap();
         let window_brush = window.get_brush();
         let mut window_brush = window_brush.lock().unwrap();
 
-        *window_brush = brush.clone();
+        window_brush.set_texture(brush.clone()); 
     }
 }
 

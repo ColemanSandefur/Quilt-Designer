@@ -1,10 +1,13 @@
 pub mod texture_bar;
 pub mod canvas;
+pub mod pattern_bar;
 
+use crate::texture_brush::TextureBrush;
 use crate::brush::Brush;
 use crate::util::keys_pressed::{KeysPressed, KeyListener};
 use canvas::Canvas;
 use texture_bar::TextureBar;
+use pattern_bar::PatternBar;
 
 use gdk::EventMask;
 use glib::signal::Inhibit;
@@ -26,9 +29,10 @@ pub struct Window {
     // child widgets
     canvas: Option<Arc<Mutex<Canvas>>>,
     texture_bar: Option<Arc<Mutex<TextureBar>>>,
+    pattern_bar: Option<Arc<Mutex<PatternBar>>>,
     
     // local fields
-    brush: Arc<Mutex<Arc<Brush>>>, // brush is immutable so we need to change the reference
+    brush: Arc<Mutex<Brush>>,
     keys_pressed: Arc<Mutex<KeysPressed>>,
 }
 
@@ -38,7 +42,7 @@ impl Window {
         // just in case I want to use them later
         let window = Arc::new(Mutex::new(gtk::ApplicationWindow::new(application)));
 
-        let brush = Arc::new(Mutex::new(Arc::new(Brush::new())));
+        let brush = Arc::new(Mutex::new(Brush::with_texture(Arc::new(TextureBrush::new()))));
         let keys_pressed = Arc::new(Mutex::new(KeysPressed::new()));
 
         let s = Arc::new(Mutex::new(Self {
@@ -46,6 +50,7 @@ impl Window {
 
             canvas: None,
             texture_bar: None,
+            pattern_bar: None,
             
             brush: Arc::clone(&brush),
             keys_pressed: Arc::clone(&keys_pressed),
@@ -58,6 +63,9 @@ impl Window {
 
         let texture_bar = TextureBar::new(s.clone());
         s.lock().unwrap().texture_bar = Some(texture_bar);
+
+        let pattern_bar = PatternBar::new(s.clone());
+        s.lock().unwrap().pattern_bar = Some(pattern_bar);
 
         //
         // Event handlers
@@ -100,7 +108,7 @@ impl Window {
 
         let drawing_area = self.canvas.as_ref().unwrap().lock().unwrap().get_drawing_area();
         let left_bar = self.texture_bar.as_ref().unwrap().lock().unwrap().get_scrolled_window();
-        let right_bar = Arc::new(Mutex::new(gtk::ScrolledWindowBuilder::new().build()));
+        let right_bar = self.pattern_bar.as_ref().unwrap().lock().unwrap().get_scrolled_window();
 
         left_bar.lock().unwrap().set_size_request(120, 500);
         drawing_area.lock().unwrap().set_size_request(400, 500);
@@ -130,6 +138,10 @@ impl Window {
             if let Some(texture_bar) = &self.texture_bar {
                 texture_bar.lock().unwrap().on_key_change(&keys_pressed_unlocked, Some((event, true)));
             }
+
+            if let Some(pattern_bar) = &self.pattern_bar {
+                pattern_bar.lock().unwrap().on_key_change(&keys_pressed_unlocked, Some((event, true)));
+            }
         }
 
         Inhibit(false)
@@ -150,7 +162,7 @@ impl Window {
         Inhibit(false)
     }
 
-    pub fn get_brush(&self) -> Arc<Mutex<Arc<Brush>>> {
+    pub fn get_brush(&self) -> Arc<Mutex<Brush>> {
         Arc::clone(&self.brush)
     }
 

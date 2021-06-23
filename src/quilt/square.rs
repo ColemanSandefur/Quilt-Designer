@@ -1,7 +1,8 @@
+
+use crate::quilt::child_shape::ChildShape;
 use crate::window::canvas::Canvas;
 use crate::util::click::Click;
-use crate::brush::Brush;
-use crate::path::{Path, Line, Move};
+use crate::texture_brush::TextureBrush;
 
 use cairo::{Context};
 use gdk::EventButton;
@@ -14,89 +15,8 @@ use std::sync::{Arc, Mutex};
 // They save their shape to a surface for easy rendering
 //
 
-#[allow(dead_code)]
-struct ChildShape {
-    brush: Arc<Brush>,
-    location: (f64, f64),
-    paths: Vec<Arc<dyn Path>>
-}
 
-impl ChildShape {
-    pub fn new() -> Self {
-        let brush = Arc::new(Brush::new());
-        let location = (0.0, 0.0);
-
-        let inset = 5.0;
-        let paths: Vec<Arc<dyn Path>> = vec![
-            Arc::new(Move::new(inset, inset)),
-            Arc::new(Line::new(Square::SQUARE_WIDTH - inset, inset)),
-            Arc::new(Line::new(Square::SQUARE_WIDTH - inset, Square::SQUARE_WIDTH - inset)),
-            Arc::new(Line::new(inset, Square::SQUARE_WIDTH - inset)),
-            Arc::new(Line::new(inset, inset))
-        ];
-
-        Self {
-            brush: brush.clone(),
-            location,
-            paths,
-        }
-    }
-
-    fn create_bounds(&self, cr: &Context) {
-        for path in &self.paths {
-            path.draw_path(cr);
-        }
-    }
-
-    pub fn draw(&self, cr: &Context) {
-        cr.move_to(0.0, 0.0);
-
-        self.create_bounds(cr);
-        self.brush.apply(cr);
-    }
-
-    fn change_brush(&mut self, canvas: &Canvas) {
-        self.brush = canvas.get_window().lock().unwrap()
-            .get_brush().lock().unwrap().clone();
-    }
-}
-
-impl Click for ChildShape {
-    fn click(&mut self, canvas: &Canvas, cr: &Context, event: &EventButton) -> bool {
-        let (tmp_x, tmp_y) = event.get_position();
-        let (x, y) = cr.device_to_user(tmp_x, tmp_y);
-
-        cr.save();
-        self.create_bounds(cr);
-        let in_bounds = cr.in_fill(x, y);
-        cr.restore();
-
-        if  event.get_button() != 1 || !in_bounds {
-            return false;
-        }
-
-        self.change_brush(canvas);
-
-        true
-    }
-}
-
-impl Clone for ChildShape {
-    fn clone(&self) -> Self {
-        let mut paths = Vec::with_capacity(self.paths.len());
-
-        for path in &self.paths {
-            paths.push(path.clone_path());
-        }
-
-        Self {
-            brush: self.brush.clone(),
-            location: self.location.clone(),
-            paths,
-        }
-    }
-}
-
+#[derive(Clone)]
 pub struct BlockPattern {
     pattern: Vec<ChildShape>
 }
@@ -112,6 +32,12 @@ impl BlockPattern {
         }
     }
 
+    pub fn new_pattern(pattern: Vec<ChildShape>) -> Self {
+        Self {
+            pattern
+        }
+    }
+
     pub fn draw(&self, cr: &Context) {
         for child in &self.pattern {
             child.draw(cr);
@@ -121,6 +47,7 @@ impl BlockPattern {
 
 impl Click for BlockPattern {
     fn click(&mut self, canvas: &Canvas, cr: &Context, event: &EventButton) -> bool {
+
         for child in &mut self.pattern {
             if child.click(canvas, cr, event) {
                 return true;
@@ -137,8 +64,8 @@ impl Click for BlockPattern {
 
 #[derive(Clone)]
 pub struct Square {
-    brush: Arc<Brush>,
-    child_shapes: Arc<Mutex<BlockPattern>>,
+    brush: Arc<TextureBrush>,
+    block_pattern: Arc<Mutex<BlockPattern>>,
 }
 
 impl Square {
@@ -146,24 +73,21 @@ impl Square {
     
     #[allow(dead_code)]
     pub fn new() -> Self {
-        let brush = Arc::new(Brush::new());
-        let child_shapes = BlockPattern::new();
+        let brush = Arc::new(TextureBrush::new());
+        let block_pattern = BlockPattern::new();
 
         Self {
             brush: brush.clone(),
-            child_shapes: Arc::new(Mutex::new(child_shapes)),
+            block_pattern: Arc::new(Mutex::new(block_pattern)),
         }
     }
 
-    pub fn with_brush(brush: Arc<Brush>) -> Self {
-        let mut child_shapes = Vec::new();
-
-        child_shapes.push(ChildShape::new());
-        let child_shapes = BlockPattern::new();
+    pub fn with_brush(brush: Arc<TextureBrush>) -> Self {
+        let block_pattern = BlockPattern::new();
 
         Self {
             brush: brush.clone(),
-            child_shapes: Arc::new(Mutex::new(child_shapes)),
+            block_pattern: Arc::new(Mutex::new(block_pattern)),
         }
     }
 
@@ -193,7 +117,7 @@ impl Square {
         cr.line_to(0.0, 0.0);
         self.brush.apply(cr);
 
-        self.child_shapes.lock().unwrap().draw(cr);
+        self.block_pattern.lock().unwrap().draw(cr);
 
         cr.restore();
 
@@ -212,8 +136,12 @@ impl Square {
 
     // sets the square's brush to the same one that Window has
     fn change_brush(&mut self, canvas: &Canvas) {
-        self.brush = canvas.get_window().lock().unwrap()
-            .get_brush().lock().unwrap().clone();
+        let brush = canvas.get_window().lock().unwrap().get_brush();
+        let brush = brush.lock().unwrap();
+
+        if brush.is_texture_brush() {
+            self.brush = brush.get_texture().unwrap().clone()
+        }
     }
 }
 
@@ -229,7 +157,18 @@ impl Click for Square {
             return false;
         }
 
-        if self.child_shapes.lock().unwrap().click(canvas, cr, event) {
+        {
+            let brush = canvas.get_window().lock().unwrap().get_brush();
+            let brush = brush.lock().unwrap();
+
+            if brush.is_block_pattern_brush() {
+                self.block_pattern = Arc::new(Mutex::new(brush.get_block_pattern().unwrap().clone()));
+
+                return true
+            }
+        }
+
+        if self.block_pattern.lock().unwrap().click(canvas, cr, event) {
             return true
         }
 
@@ -238,3 +177,4 @@ impl Click for Square {
         true
     }
 }
+

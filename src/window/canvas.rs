@@ -238,7 +238,7 @@ impl Canvas {
         //will pass clicks to the items drawn to the screen
         while !mouse_clicks.is_empty() {
             let event = mouse_clicks.pop_front().unwrap();
-            self.quilt.lock().unwrap().click(self, cr, &event);
+            
             {
                 let mut needs_updated = self.needs_updated.lock().unwrap();
 

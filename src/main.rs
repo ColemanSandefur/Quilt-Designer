@@ -2,6 +2,7 @@ extern crate gtk;
 pub mod quilt;
 pub mod window;
 pub mod camera_transform;
+pub mod texture_brush;
 pub mod brush;
 pub mod util;
 pub mod path;

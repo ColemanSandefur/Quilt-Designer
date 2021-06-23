@@ -1,11 +1,12 @@
 pub mod square;
+pub mod child_shape;
 
 use square::Square;
 use crate::window::canvas::Canvas;
 use crate::util::click::Click;
 use crate::util::image::Image;
 use crate::util::rectangle::Rectangle;
-use crate::brush::{Brush, Texture};
+use crate::texture_brush::{TextureBrush, Texture};
 use crate::camera_transform::CameraTransform;
 
 use cairo::{Context};
@@ -58,11 +59,11 @@ impl Quilt {
         let brush = match Texture::new("./test_image.jpg") {
             Ok(texture) => {
                 println!("Texture found!");
-                Arc::new(Brush::new_texture(texture))
+                Arc::new(TextureBrush::new_texture(texture))
             },
             Err(err) => {
                 println!("{:?}", err);
-                Arc::new(Brush::new_color((1.0, 1.0, 0.0)))
+                Arc::new(TextureBrush::new_color((1.0, 1.0, 0.0)))
             }
         };
         
