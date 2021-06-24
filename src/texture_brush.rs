@@ -3,6 +3,7 @@ use crate::util::image::Image;
 
 use gdk_pixbuf::Pixbuf;
 use std::sync::{Mutex};
+use gdk::prelude::*;
 
 //
 // Used to paint areas with either a color or texture
@@ -25,15 +26,15 @@ impl Texture {
             None => return Err(glib::error::Error::new(glib::FileError::Failed, "Could not get file info"))
         };
 
-        let aspect_ratio = width / height;
+        let aspect_ratio = width as f64 / height as f64;
 
         // sets the shortest side to Texture::IMAGE_SIZE, but keeps the aspect ratio
         let (import_width, import_height) = match width < height {
             true => {
-                (Texture::IMAGE_SIZE, Texture::IMAGE_SIZE * aspect_ratio)
+                (Texture::IMAGE_SIZE, (Texture::IMAGE_SIZE as f64 * aspect_ratio) as i32)
             },
             false => {
-                (Texture::IMAGE_SIZE * aspect_ratio, Texture::IMAGE_SIZE)
+                ((Texture::IMAGE_SIZE as f64 * aspect_ratio) as i32, Texture::IMAGE_SIZE)
             }
         };
 
@@ -49,11 +50,13 @@ impl Texture {
 
         let mut image = Image::new(import_width, import_height);
 
-        let bytes = gdk_pixbuf::Pixbuf::read_pixel_bytes(&buf).unwrap();
+        image.with_surface(|surface| {
+            let cr = cairo::Context::new(&surface);
 
-        let b: &[u8] = &bytes;
-
-        image.set_data(b);
+            cr.set_source_pixbuf(&buf, 0.0, 0.0);
+            cr.paint();
+            cr.set_source_rgb(0.0, 0.0, 0.0);
+        });
 
         Ok(image)
     }

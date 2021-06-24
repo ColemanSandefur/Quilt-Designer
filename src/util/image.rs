@@ -11,7 +11,7 @@ pub struct Image {
 }
 
 impl Image {
-    const FORMAT_TYPE: Format = Format::ARgb32;
+    pub const FORMAT_TYPE: Format = Format::ARgb32;
 
     pub fn new (width: i32, height: i32) -> Self {
         let stride = Format::stride_for_width(Image::FORMAT_TYPE, width as u32).unwrap();
@@ -62,39 +62,6 @@ impl Image {
         );
 
         surface
-    }
-
-    pub fn set_data(&mut self, data: &[u8]) {
-        let mut image_data = self.data.take().expect("Empty image");
-
-        let min_len = std::cmp::min(image_data.len(), data.len());
-
-        if data.len() as f64 / image_data.len() as f64 == 0.75 {
-            let mut num_inserted = 0;
-
-            for index in (2..data.len()).step_by(3) {
-                num_inserted += 1;
-
-                image_data[index + num_inserted - 3] = data[index - 0]; // red
-                image_data[index + num_inserted - 2] = data[index - 1]; // green
-                image_data[index + num_inserted - 1] = data[index - 2]; // blue
-                image_data[index + num_inserted - 0] = 255;             // alpha
-            }
-        } else {
-            let mut num_inserted = 0;
-
-            for index in (3..min_len).step_by(4) {
-                num_inserted += 1;
-
-                image_data[index + num_inserted - 3] = data[index - 0]; // red
-                image_data[index + num_inserted - 2] = data[index - 1]; // green
-                image_data[index + num_inserted - 1] = data[index - 2]; // blue
-                image_data[index + num_inserted - 0] = data[index - 3]; // alpha
-            }
-        }
-
-
-        self.data = Some(image_data);
     }
 
     pub fn get_width(&self) -> i32 {

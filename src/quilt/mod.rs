@@ -6,7 +6,7 @@ use crate::window::canvas::Canvas;
 use crate::util::click::Click;
 use crate::util::image::Image;
 use crate::util::rectangle::Rectangle;
-use crate::texture_brush::{TextureBrush, Texture};
+use crate::texture_brush::{TextureBrush};
 use crate::camera_transform::CameraTransform;
 
 use cairo::{Context};
@@ -56,16 +56,7 @@ impl Quilt {
 
     pub fn new(width: usize, height: usize) -> Self {
 
-        let brush = match Texture::new("./test_image.jpg") {
-            Ok(texture) => {
-                println!("Texture found!");
-                Arc::new(TextureBrush::new_texture(texture))
-            },
-            Err(err) => {
-                println!("{:?}", err);
-                Arc::new(TextureBrush::new_color((1.0, 1.0, 0.0)))
-            }
-        };
+        let brush = Arc::new(TextureBrush::new_color((1.0, 1.0, 1.0)));
         
         let mut quilt: Vec<Vec<Square>> = Vec::with_capacity(height);
         for _ in 0..height {

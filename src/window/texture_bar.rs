@@ -40,7 +40,6 @@ impl TextureBar {
             .halign(gtk::Align::Center)
             .height_request(60)
             .width_request(60);
-        // let button_builder = button_builder.vexpand_set(false);
             
         let button = button_builder.build();
 
@@ -66,12 +65,13 @@ impl TextureBar {
         
         let image = gtk::Image::from_surface(Some(&util_image.to_surface().unwrap()));
         button.set_image(Some(&image));
+        button.set_relief(gtk::ReliefStyle::None);
 
         button
     }
+
     pub fn new(window: Arc<Mutex<Window>>) -> Arc<Mutex<Self>> {
         let scrolled_window_builder = gtk::ScrolledWindowBuilder::new();
-        // let scrolled_window_builder = scrolled_window_builder.vexpand_set(false);
         let scrolled_window = Arc::new(Mutex::new(scrolled_window_builder.build()));
 
         let mut color_button_builder = gtk::ColorButtonBuilder::new()
@@ -104,6 +104,7 @@ impl TextureBar {
 
         {
             flow_box.lock().unwrap().set_orientation(gtk::Orientation::Horizontal);
+            flow_box.lock().unwrap().set_selection_mode(gtk::SelectionMode::None);
             color_button.lock().unwrap().set_size_request(60, 60);
         }
 
@@ -115,15 +116,16 @@ impl TextureBar {
             color_buttons: Vec::with_capacity(20),
         }));
 
-        // Temporarily adding items to the brush vector
+        // load textures from ./images and add them to the sidebar
         {
             let mut s = s.lock().unwrap();
 
+            let paths = s.load_textures();
             let color_buttons = &mut s.color_buttons;
-            
-            if let Ok(color) = TextureBrush::try_new_texture("./test_image.jpg") {
-                let color = Arc::new(color);
-                for _ in 0..30 {
+
+            for path in paths {
+                if let Ok(color) = TextureBrush::try_new_texture(path.path().to_str().unwrap()) {
+                    let color = Arc::new(color);
                     color_buttons.push(color.clone());
                 }
             }
@@ -142,6 +144,7 @@ impl TextureBar {
 
         flow_box.add(color_button.lock().unwrap().deref());
 
+        // create buttons for all of the textures
         {
             let s = s.lock().unwrap();
 
@@ -157,6 +160,36 @@ impl TextureBar {
         scrolled_window.show_all();
         
         s
+    }
+
+    fn is_image(extension: &std::ffi::OsStr) -> bool {
+        let path = extension.to_str().unwrap().to_lowercase();
+
+        match path {
+            p if p.eq("png") => true,
+            p if p.eq("jpg") => true,
+            _ => false
+        }
+    }
+
+    fn load_textures(&mut self) -> std::vec::Vec<std::fs::DirEntry> {
+        let path = std::path::Path::new("./images");
+
+        let mut results = Vec::with_capacity(20);
+
+        if path.is_dir() {
+            for entry in std::fs::read_dir(path).unwrap() {
+                let entry = entry.unwrap();
+                let file_name = entry.file_name();
+                let extension = std::path::Path::new(&file_name).extension().unwrap();
+
+                if TextureBar::is_image(extension) {
+                    results.push(entry);
+                }
+            }
+        }
+
+        results
     }
 
     pub fn get_scrolled_window(&self) -> Arc<Mutex<gtk::ScrolledWindow>> {

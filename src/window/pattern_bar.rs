@@ -62,11 +62,14 @@ impl PatternBar {
             let cr = cairo::Context::new(surface);
             
             cr.scale(60.0 / Square::SQUARE_WIDTH, 60.0 / Square::SQUARE_WIDTH);
+            cr.set_source_rgb(0.25, 0.25, 0.25);
+            cr.paint();
             brush.draw(&cr);
         });
             
         let image = gtk::Image::from_surface(Some(&util_image.to_surface().unwrap()));
         button.set_image(Some(&image));
+        button.set_relief(gtk::ReliefStyle::None);
 
         button
     }
@@ -84,6 +87,7 @@ impl PatternBar {
 
         {
             flow_box.lock().unwrap().set_orientation(gtk::Orientation::Horizontal);
+            flow_box.lock().unwrap().set_selection_mode(gtk::SelectionMode::None);
         }
 
         let s = Arc::new(Mutex::new(PatternBar {
@@ -122,23 +126,43 @@ impl PatternBar {
     fn load_patterns(&mut self) {
         let patterns = &mut self.patterns;
 
+        let mid_point = Square::SQUARE_WIDTH / 2.0;
+        let width = Square::SQUARE_WIDTH;
+
+        // empty pattern
         patterns.push(BlockPattern::new_pattern(vec![]));
 
+        // 4 squares
         patterns.push(BlockPattern::new_pattern(vec![
             child_shape::prefab::create_rect(0.0, 0.0, 
-                Square::SQUARE_WIDTH/2.0, Square::SQUARE_WIDTH/2.0),
-            child_shape::prefab::create_rect(Square::SQUARE_WIDTH/2.0, 0.0, 
-                Square::SQUARE_WIDTH/2.0, Square::SQUARE_WIDTH/2.0),
-            child_shape::prefab::create_rect(Square::SQUARE_WIDTH/2.0, Square::SQUARE_WIDTH/2.0, 
-                Square::SQUARE_WIDTH/2.0, Square::SQUARE_WIDTH/2.0),
-            child_shape::prefab::create_rect(0.0, Square::SQUARE_WIDTH/2.0, 
-                Square::SQUARE_WIDTH/2.0, Square::SQUARE_WIDTH/2.0),
+                mid_point, mid_point),
+            child_shape::prefab::create_rect(mid_point, 0.0, 
+                mid_point, mid_point),
+            child_shape::prefab::create_rect(mid_point, mid_point, 
+                mid_point, mid_point),
+            child_shape::prefab::create_rect(0.0, mid_point, 
+                mid_point, mid_point),
+        ]));
+        
+        // 1 square in the corner
+        patterns.push(BlockPattern::new_pattern(vec![
+            child_shape::prefab::create_rect(0.0, 0.0, 
+                mid_point, mid_point),
+        ]));
+        
+        // half square triangle
+        patterns.push(BlockPattern::new_pattern(vec![
+            child_shape::prefab::create_triangle((0.0, 0.0), (0.0, width), (width, 0.0))
         ]));
 
+
+        // 4 triangles
         patterns.push(BlockPattern::new_pattern(vec![
-            child_shape::prefab::create_rect(0.0, 0.0, 
-                Square::SQUARE_WIDTH/2.0, Square::SQUARE_WIDTH/2.0),
-        ]));
+            child_shape::prefab::create_triangle((0.0, 0.0), (mid_point, mid_point), (width, 0.0)),
+            child_shape::prefab::create_triangle((width, 0.0), (mid_point, mid_point), (width, width)),
+            child_shape::prefab::create_triangle((width, width), (mid_point, mid_point), (0.0, width)),
+            child_shape::prefab::create_triangle((0.0, width), (mid_point, mid_point), (0.0, 0.0)),
+        ]))
     }
 }
 
