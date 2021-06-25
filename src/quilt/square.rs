@@ -41,6 +41,29 @@ impl BlockPattern {
         }
     }
 
+    pub fn from_yaml(yaml_array: &Vec<yaml_rust::Yaml>) -> Self {
+        let mut pattern = Vec::with_capacity(yaml_array.len());
+
+        for yaml in yaml_array {
+            pattern.push(ChildShape::from_yaml(yaml.as_vec().unwrap()));
+        }
+
+        Self {
+            pattern,
+            rotation: 0.0,
+        }
+    }
+
+    pub fn to_yaml(&self) -> yaml_rust::Yaml {
+        let mut yaml = Vec::with_capacity(self.pattern.len());
+
+        for shape in &self.pattern {
+            yaml.push(shape.to_yaml());
+        }
+
+        yaml_rust::Yaml::Array(yaml)
+    }
+
     pub fn apply_transformation(&self, cr: &Context) {
         cr.translate(Square::SQUARE_WIDTH / 2.0, Square::SQUARE_WIDTH / 2.0);
         cr.rotate(self.rotation);

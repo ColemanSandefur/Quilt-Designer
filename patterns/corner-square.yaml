@@ -1,0 +1,21 @@
+---
+- - name: move
+    point:
+      x: 0
+      y: 0
+  - name: line
+    end:
+      x: 10
+      y: 0
+  - name: line
+    end:
+      x: 10
+      y: 10
+  - name: line
+    end:
+      x: 0
+      y: 10
+  - name: line
+    end:
+      x: 0
+      y: 0

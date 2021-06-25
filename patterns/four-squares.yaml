@@ -1,0 +1,81 @@
+---
+- - name: move
+    point:
+      x: 0
+      y: 0
+  - name: line
+    end:
+      x: 10
+      y: 0
+  - name: line
+    end:
+      x: 10
+      y: 10
+  - name: line
+    end:
+      x: 0
+      y: 10
+  - name: line
+    end:
+      x: 0
+      y: 0
+- - name: move
+    point:
+      x: 10
+      y: 0
+  - name: line
+    end:
+      x: 20
+      y: 0
+  - name: line
+    end:
+      x: 20
+      y: 10
+  - name: line
+    end:
+      x: 10
+      y: 10
+  - name: line
+    end:
+      x: 10
+      y: 0
+- - name: move
+    point:
+      x: 10
+      y: 10
+  - name: line
+    end:
+      x: 20
+      y: 10
+  - name: line
+    end:
+      x: 20
+      y: 20
+  - name: line
+    end:
+      x: 10
+      y: 20
+  - name: line
+    end:
+      x: 10
+      y: 10
+- - name: move
+    point:
+      x: 0
+      y: 10
+  - name: line
+    end:
+      x: 10
+      y: 10
+  - name: line
+    end:
+      x: 10
+      y: 20
+  - name: line
+    end:
+      x: 0
+      y: 20
+  - name: line
+    end:
+      x: 0
+      y: 10

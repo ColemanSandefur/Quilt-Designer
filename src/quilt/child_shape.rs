@@ -40,6 +40,32 @@ impl ChildShape {
         }
     }
 
+    pub fn from_yaml(yaml_array: &Vec<yaml_rust::Yaml>) -> Self{
+        let brush = Arc::new(TextureBrush::new());
+        let mut paths: Vec<Arc<dyn Path>> = Vec::with_capacity(yaml_array.len());
+
+        for yaml in yaml_array {
+            if let Some(path) = crate::path::from_yaml(yaml) {
+                paths.push(path);
+            }
+        }
+
+        Self {
+            brush,
+            paths,
+        }
+    }
+
+    pub fn to_yaml(&self) -> yaml_rust::Yaml {
+        let mut yaml = Vec::with_capacity(self.paths.len());
+
+        for path in &self.paths {
+            yaml.push(path.to_yaml());
+        }
+
+        yaml_rust::Yaml::Array(yaml)
+    }
+
     pub fn draw(&self, cr: &Context) {
         cr.move_to(0.0, 0.0);
 

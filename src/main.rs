@@ -6,6 +6,7 @@ pub mod texture_brush;
 pub mod brush;
 pub mod util;
 pub mod path;
+pub mod parser;
 
 use std::env;
 use gio::prelude::*;

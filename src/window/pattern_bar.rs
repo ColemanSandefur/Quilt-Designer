@@ -2,12 +2,12 @@ use crate::window::Window;
 // use crate::brush::Brush;
 use crate::util::keys_pressed::{KeysPressed, KeyListener};
 use crate::quilt::square::{BlockPattern, Square};
-use crate::quilt::child_shape;
 use crate::util::image::Image;
 
 use std::sync::{Arc, Mutex};
 use gtk::prelude::*;
 use std::ops::Deref;
+use std::io::Read;
 
 //
 // Texture Bar will hold all the different types of brushes that you might have,
@@ -123,46 +123,41 @@ impl PatternBar {
         self.scrolled_window.clone()
     }
 
+    fn is_pattern(extension: &std::ffi::OsStr) -> bool {
+        let path = extension.to_str().unwrap().to_lowercase();
+
+        match path {
+            p if p.eq("yaml") => true,
+            _ => false
+        }
+    }
+
+    fn load_pattern_yaml(path: &str) -> BlockPattern {
+        let mut file = std::fs::File::open(path).unwrap();
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).unwrap();
+
+        let yaml = &yaml_rust::YamlLoader::load_from_str(&contents).unwrap()[0];
+
+        BlockPattern::from_yaml(yaml.as_vec().unwrap())
+    }
+
     fn load_patterns(&mut self) {
         let patterns = &mut self.patterns;
 
-        let mid_point = Square::SQUARE_WIDTH / 2.0;
-        let width = Square::SQUARE_WIDTH;
+        let path = std::path::Path::new("./patterns");
 
-        // empty pattern
-        patterns.push(BlockPattern::new_pattern(vec![]));
+        if path.is_dir() {
+            for entry in std::fs::read_dir(path).unwrap() {
+                let entry = entry.unwrap();
+                let file_name = entry.file_name();
+                let extension = std::path::Path::new(&file_name).extension().unwrap();
 
-        // 4 squares
-        patterns.push(BlockPattern::new_pattern(vec![
-            child_shape::prefab::create_rect(0.0, 0.0, 
-                mid_point, mid_point),
-            child_shape::prefab::create_rect(mid_point, 0.0, 
-                mid_point, mid_point),
-            child_shape::prefab::create_rect(mid_point, mid_point, 
-                mid_point, mid_point),
-            child_shape::prefab::create_rect(0.0, mid_point, 
-                mid_point, mid_point),
-        ]));
-        
-        // 1 square in the corner
-        patterns.push(BlockPattern::new_pattern(vec![
-            child_shape::prefab::create_rect(0.0, 0.0, 
-                mid_point, mid_point),
-        ]));
-        
-        // half square triangle
-        patterns.push(BlockPattern::new_pattern(vec![
-            child_shape::prefab::create_triangle((0.0, 0.0), (0.0, width), (width, 0.0))
-        ]));
-
-
-        // 4 triangles
-        patterns.push(BlockPattern::new_pattern(vec![
-            child_shape::prefab::create_triangle((0.0, 0.0), (mid_point, mid_point), (width, 0.0)),
-            child_shape::prefab::create_triangle((width, 0.0), (mid_point, mid_point), (width, width)),
-            child_shape::prefab::create_triangle((width, width), (mid_point, mid_point), (0.0, width)),
-            child_shape::prefab::create_triangle((0.0, width), (mid_point, mid_point), (0.0, 0.0)),
-        ]))
+                if PatternBar::is_pattern(extension) {
+                    patterns.push(PatternBar::load_pattern_yaml(&entry.path().to_str().unwrap()));
+                }
+            }
+        }
     }
 }
 

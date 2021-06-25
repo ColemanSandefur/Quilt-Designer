@@ -17,3 +17,5 @@ gdk-pixbuf = {version = "0.9", features = ["v2_32", "dox"]}
 gdk-pixbuf-sys = "0.10"
 gdk-sys = "0.10"
 futures = "0.3"
+yaml-rust = "0.4.5"
+linked-hash-map = "0.5.4"
