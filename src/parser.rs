@@ -54,3 +54,15 @@ impl Serializer {
         Yaml::Real(value.to_string())
     }
 }
+
+// save all the parts to completely re-create the file
+pub trait Savable {
+    fn to_save(&self) -> Yaml;
+    fn from_save(yaml: &Yaml) -> Box<Self> where Self: Sized;
+}
+
+// save what is needed to keep the general shape, used for saving BlockPatterns
+pub trait SavableBlueprint {
+    fn to_save_blueprint(&self) -> Yaml;
+    fn from_save_blueprint(yaml: &Yaml) -> Box<Self> where Self: Sized;
+}

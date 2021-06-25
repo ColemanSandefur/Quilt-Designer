@@ -3,6 +3,7 @@ use crate::quilt::child_shape::ChildShape;
 use crate::window::canvas::Canvas;
 use crate::util::click::Click;
 use crate::texture_brush::TextureBrush;
+use crate::parser::SavableBlueprint;
 
 use cairo::{Context};
 use gdk::EventButton;
@@ -41,29 +42,6 @@ impl BlockPattern {
         }
     }
 
-    pub fn from_yaml(yaml_array: &Vec<yaml_rust::Yaml>) -> Self {
-        let mut pattern = Vec::with_capacity(yaml_array.len());
-
-        for yaml in yaml_array {
-            pattern.push(ChildShape::from_yaml(yaml.as_vec().unwrap()));
-        }
-
-        Self {
-            pattern,
-            rotation: 0.0,
-        }
-    }
-
-    pub fn to_yaml(&self) -> yaml_rust::Yaml {
-        let mut yaml = Vec::with_capacity(self.pattern.len());
-
-        for shape in &self.pattern {
-            yaml.push(shape.to_yaml());
-        }
-
-        yaml_rust::Yaml::Array(yaml)
-    }
-
     pub fn apply_transformation(&self, cr: &Context) {
         cr.translate(Square::SQUARE_WIDTH / 2.0, Square::SQUARE_WIDTH / 2.0);
         cr.rotate(self.rotation);
@@ -97,6 +75,32 @@ impl Click for BlockPattern {
         }
 
         false
+    }
+}
+
+impl SavableBlueprint for BlockPattern {
+    fn from_save_blueprint(yaml_array: &yaml_rust::Yaml) -> Box<Self> {
+        let yaml_array = yaml_array.as_vec().unwrap();
+        let mut pattern = Vec::with_capacity(yaml_array.len());
+
+        for yaml in yaml_array {
+            pattern.push(*ChildShape::from_save_blueprint(yaml));
+        }
+
+        Box::new(Self {
+            pattern,
+            rotation: 0.0,
+        })
+    }
+
+    fn to_save_blueprint(&self) -> yaml_rust::Yaml {
+        let mut yaml = Vec::with_capacity(self.pattern.len());
+
+        for shape in &self.pattern {
+            yaml.push(shape.to_save_blueprint());
+        }
+
+        yaml_rust::Yaml::Array(yaml)
     }
 }
 

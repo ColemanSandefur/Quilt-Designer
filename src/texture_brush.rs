@@ -48,6 +48,7 @@ impl Texture {
             },
         };
 
+        // write the pixbuf to a thread-safe image structure
         let mut image = Image::new(import_width, import_height);
 
         image.with_surface(|surface| {

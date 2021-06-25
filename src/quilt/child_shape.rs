@@ -4,6 +4,7 @@ use crate::window::canvas::Canvas;
 use crate::util::click::Click;
 use crate::texture_brush::TextureBrush;
 use crate::path::{Path};
+use crate::parser::SavableBlueprint;
 
 use cairo::{Context};
 use gdk::EventButton;
@@ -38,32 +39,6 @@ impl ChildShape {
         for path in &self.paths {
             path.draw_path(cr);
         }
-    }
-
-    pub fn from_yaml(yaml_array: &Vec<yaml_rust::Yaml>) -> Self{
-        let brush = Arc::new(TextureBrush::new());
-        let mut paths: Vec<Arc<dyn Path>> = Vec::with_capacity(yaml_array.len());
-
-        for yaml in yaml_array {
-            if let Some(path) = crate::path::from_yaml(yaml) {
-                paths.push(path);
-            }
-        }
-
-        Self {
-            brush,
-            paths,
-        }
-    }
-
-    pub fn to_yaml(&self) -> yaml_rust::Yaml {
-        let mut yaml = Vec::with_capacity(self.paths.len());
-
-        for path in &self.paths {
-            yaml.push(path.to_yaml());
-        }
-
-        yaml_rust::Yaml::Array(yaml)
     }
 
     pub fn draw(&self, cr: &Context) {
@@ -133,5 +108,34 @@ impl Clone for ChildShape {
             // location: self.location.clone(),
             paths,
         }
+    }
+}
+
+impl SavableBlueprint for ChildShape {
+    fn from_save_blueprint(yaml_array: &yaml_rust::Yaml) -> Box<Self> {
+        let yaml_array = yaml_array.as_vec().unwrap();
+        let brush = Arc::new(TextureBrush::new());
+        let mut paths: Vec<Arc<dyn Path>> = Vec::with_capacity(yaml_array.len());
+
+        for yaml in yaml_array {
+            if let Some(path) = crate::path::from_yaml(yaml) {
+                paths.push(path);
+            }
+        }
+
+        Box::new(Self {
+            brush,
+            paths,
+        })
+    }
+
+    fn to_save_blueprint(&self) -> yaml_rust::Yaml {
+        let mut yaml = Vec::with_capacity(self.paths.len());
+
+        for path in &self.paths {
+            yaml.push(path.to_save_blueprint());
+        }
+
+        yaml_rust::Yaml::Array(yaml)
     }
 }

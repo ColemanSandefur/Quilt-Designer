@@ -3,6 +3,7 @@ use crate::window::Window;
 use crate::util::keys_pressed::{KeysPressed, KeyListener};
 use crate::quilt::square::{BlockPattern, Square};
 use crate::util::image::Image;
+use crate::parser::SavableBlueprint;
 
 use std::sync::{Arc, Mutex};
 use gtk::prelude::*;
@@ -139,7 +140,7 @@ impl PatternBar {
 
         let yaml = &yaml_rust::YamlLoader::load_from_str(&contents).unwrap()[0];
 
-        BlockPattern::from_yaml(yaml.as_vec().unwrap())
+        *BlockPattern::from_save_blueprint(yaml)
     }
 
     fn load_patterns(&mut self) {
