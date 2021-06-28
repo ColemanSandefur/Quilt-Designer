@@ -86,6 +86,13 @@ impl Window {
             s_clone.lock().unwrap().on_key_release(window, event)
         });
 
+        let s_clone = Arc::clone(&s);
+        window.add_events(EventMask::FOCUS_CHANGE_MASK);
+        window.connect_focus_out_event(move |window, event| {
+            s_clone.lock().unwrap().on_focus_out(window, event)
+        });
+
+
         window.set_default_size(600, 500);
 
         let s_clone = Arc::clone(&s);
@@ -170,6 +177,18 @@ impl Window {
             if let Some(canvas) = &self.canvas {
                 canvas.lock().unwrap().on_key_change(&keys_pressed_unlocked, Some((event, false)));
             }
+        }
+
+        Inhibit(false)
+    }
+
+    fn on_focus_out(&self, _application_window: &gtk::ApplicationWindow, _event: &gdk::EventFocus) -> Inhibit {
+        let mut keys_pressed_unlocked = self.keys_pressed.lock().unwrap();
+
+        keys_pressed_unlocked.release_all();
+
+        if let Some(canvas) = &self.canvas {
+            canvas.lock().unwrap().on_key_change(&keys_pressed_unlocked, None);
         }
 
         Inhibit(false)
