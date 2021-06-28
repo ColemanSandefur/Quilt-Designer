@@ -1,13 +1,13 @@
 
 
-pub struct UndoRedo<T: Clone> {
+pub struct UndoRedo<T> {
     undo: Vec<T>,
     redo: Vec<T>,
 }
 
 const MAX_SIZE: usize = 15;
 
-impl<T: Clone> UndoRedo<T> {
+impl<T> UndoRedo<T> {
 
     pub fn new() -> Self {
         Self {

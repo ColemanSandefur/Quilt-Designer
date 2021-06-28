@@ -38,6 +38,8 @@ pub struct Window {
 }
 
 impl Window {
+    
+
     pub fn new(application: &gtk::Application) -> Arc<Mutex<Self>> {
         // create variables before putting it into a window
         // just in case I want to use them later
@@ -118,7 +120,7 @@ impl Window {
         let left_bar = self.texture_bar.as_ref().unwrap().lock().unwrap().get_scrolled_window();
         let right_bar = self.pattern_bar.as_ref().unwrap().lock().unwrap().get_scrolled_window();
 
-        left_bar.lock().unwrap().set_size_request(120, 500);
+        left_bar.lock().unwrap().set_size_request(100, 500);
         drawing_area.lock().unwrap().set_size_request(400, 500);
 
         paned.pack1(left_bar.lock().unwrap().deref(), false, false);

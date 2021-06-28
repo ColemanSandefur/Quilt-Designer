@@ -1,7 +1,8 @@
 use crate::window::Window;
 // use crate::brush::Brush;
 use crate::util::keys_pressed::{KeysPressed, KeyListener};
-use crate::quilt::square::{BlockPattern, Square};
+use crate::quilt::square::Square;
+use crate::quilt::block_pattern::BlockPattern;
 use crate::util::image::Image;
 use crate::parser::SavableBlueprint;
 
@@ -30,9 +31,7 @@ pub struct PatternBar {
     window: Arc<Mutex<Window>>,
 
     // private fields
-
     patterns: Vec<BlockPattern>,
-    pattern_buttons: Vec<Arc::<gtk::Button>>,
 }
 
 impl PatternBar {
@@ -42,7 +41,6 @@ impl PatternBar {
             .halign(gtk::Align::Center)
             .height_request(60)
             .width_request(60);
-        // let button_builder = button_builder.vexpand_set(false);
             
         let button = button_builder.build();
 
@@ -53,7 +51,6 @@ impl PatternBar {
             let window_brush = window.get_brush();
             let mut window_brush = window_brush.lock().unwrap();
 
-            // *window_brush = brush_clone.clone();
             window_brush.set_block_pattern(brush_clone.clone());
         });
 
@@ -77,7 +74,6 @@ impl PatternBar {
 
     pub fn new(window: Arc<Mutex<Window>>) -> Arc<Mutex<Self>> {
         let scrolled_window_builder = gtk::ScrolledWindowBuilder::new();
-        // let scrolled_window_builder = scrolled_window_builder.vexpand_set(false);
         let scrolled_window = Arc::new(Mutex::new(scrolled_window_builder.build()));
 
         let flow_box_builder = gtk::FlowBoxBuilder::new()
@@ -96,7 +92,6 @@ impl PatternBar {
             flow_box: flow_box.clone(),
             window: window.clone(),
             patterns: Vec::with_capacity(20),
-            pattern_buttons: Vec::with_capacity(20),
         }));
 
         let flow_box = flow_box.lock().unwrap();

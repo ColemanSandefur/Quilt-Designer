@@ -1,5 +1,6 @@
 pub mod square;
 pub mod child_shape;
+pub mod block_pattern;
 
 use square::Square;
 use crate::window::canvas::Canvas;

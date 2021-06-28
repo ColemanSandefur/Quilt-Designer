@@ -30,7 +30,7 @@ pub struct TextureBar {
     // private fields
     color_button: Arc<Mutex<gtk::ColorButton>>,
 
-    color_buttons: Vec<Arc::<TextureBrush>>,
+    textures: Vec<Arc<TextureBrush>>,
 }
 
 impl TextureBar {
@@ -74,46 +74,41 @@ impl TextureBar {
         let scrolled_window_builder = gtk::ScrolledWindowBuilder::new();
         let scrolled_window = Arc::new(Mutex::new(scrolled_window_builder.build()));
 
-        let mut color_button_builder = gtk::ColorButtonBuilder::new()
+        let rgb_color;
+        let texture_brush = window.lock().unwrap().get_brush().lock().unwrap().get_texture();
+        if let Some(brush) = texture_brush {
+            if let Some(color) = brush.get_color() {
+                rgb_color = gdk::RGBA {red: color.0, green: color.1, blue: color.2, alpha: 1.0};
+            } else {
+                rgb_color = gdk::RGBA {red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0};
+            }
+        } else {
+            rgb_color = gdk::RGBA {red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0};
+        }
+        
+        let color_button = Arc::new(Mutex::new(gtk::ColorButtonBuilder::new()
+            .rgba(&rgb_color)
             .valign(gtk::Align::Center)
             .halign(gtk::Align::Center)
             .height_request(60)
-            .width_request(60);
+            .width_request(60)
+            .build()
+        ));
 
-        let texture_brush = window.lock().unwrap().get_brush().lock().unwrap().get_texture();
-
-        if let Some(brush) = texture_brush {
-            color_button_builder = match brush.get_color() {
-                Some(color) => {
-                    color_button_builder.rgba(&gdk::RGBA {red: color.0, green: color.1, blue: color.2, alpha: 1.0})
-                },
-                None => color_button_builder.rgba(&gdk::RGBA {red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0})
-            };
-        } else {
-            color_button_builder = color_button_builder.rgba(&gdk::RGBA {red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0})
-        }
-        
-
-        let color_button = Arc::new(Mutex::new(color_button_builder.build()));
-
-        let flow_box_builder = gtk::FlowBoxBuilder::new()
+        let flow_box = Arc::new(Mutex::new(gtk::FlowBoxBuilder::new()
             .valign(gtk::Align::Start)
-            .halign(gtk::Align::Fill);
-
-        let flow_box = Arc::new(Mutex::new(flow_box_builder.build()));
-
-        {
-            flow_box.lock().unwrap().set_orientation(gtk::Orientation::Horizontal);
-            flow_box.lock().unwrap().set_selection_mode(gtk::SelectionMode::None);
-            color_button.lock().unwrap().set_size_request(60, 60);
-        }
+            .halign(gtk::Align::Fill)
+            .orientation(gtk::Orientation::Horizontal)
+            .selection_mode(gtk::SelectionMode::None)
+            .build()
+        ));
 
         let s = Arc::new(Mutex::new(Self {
             scrolled_window: scrolled_window.clone(),
             flow_box: flow_box.clone(),
             color_button: color_button.clone(),
             window: window.clone(),
-            color_buttons: Vec::with_capacity(20),
+            textures: Vec::with_capacity(20),
         }));
 
         // load textures from ./images and add them to the sidebar
@@ -121,12 +116,12 @@ impl TextureBar {
             let mut s = s.lock().unwrap();
 
             let paths = s.load_textures();
-            let color_buttons = &mut s.color_buttons;
+            let textures = &mut s.textures;
 
             for path in paths {
                 if let Ok(color) = TextureBrush::try_new_texture(path.path().to_str().unwrap()) {
                     let color = Arc::new(color);
-                    color_buttons.push(color.clone());
+                    textures.push(color.clone());
                 }
             }
         }
@@ -148,7 +143,7 @@ impl TextureBar {
         {
             let s = s.lock().unwrap();
 
-            for brush in &s.color_buttons {
+            for brush in &s.textures {
                 flow_box.add(&TextureBar::create_button(window.clone(), brush.clone()));
             }
         }
