@@ -308,7 +308,7 @@ impl KeyListener for Canvas {
                 let row = peek_undo.row;
                 let column = peek_undo.column;
 
-                let undo = undo_redo.undo(quilt_struct.get_square(row, column).unwrap()).unwrap();
+                let undo = undo_redo.undo(quilt_struct.get_square(row, column).unwrap().save_state()).unwrap();
 
                 quilt_struct.set_square(undo.row, undo.column, camera_transform.get_scale(), undo);
             }
@@ -325,7 +325,7 @@ impl KeyListener for Canvas {
                 let row = peek_redo.row;
                 let column = peek_redo.column;
 
-                let redo = undo_redo.redo(quilt_struct.get_square(row, column).unwrap()).unwrap();
+                let redo = undo_redo.redo(quilt_struct.get_square(row, column).unwrap().save_state()).unwrap();
 
                 quilt_struct.set_square(redo.row, redo.column, camera_transform.get_scale(), redo);
             }

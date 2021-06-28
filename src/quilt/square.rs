@@ -195,6 +195,18 @@ impl Square {
             self.brush = brush.get_texture().unwrap().clone()
         }
     }
+
+    // use if you want to keep everything, else clone will just clone the Arc references
+    pub fn save_state(& self) -> Self {
+        let block_pattern_mutex = self.block_pattern.lock().unwrap();
+
+        Self {
+            row: self.row,
+            column: self.column,
+            brush: self.brush.clone(),
+            block_pattern: Arc::new(Mutex::new(block_pattern_mutex.clone()))
+        }
+    }
 }
 
 impl Click for Square {
@@ -209,7 +221,7 @@ impl Click for Square {
             return false;
         }
 
-        canvas.get_undo_redo().lock().unwrap().changed(self);
+        canvas.get_undo_redo().lock().unwrap().changed(self.save_state());
 
         {
             let brush = canvas.get_window().lock().unwrap().get_brush();

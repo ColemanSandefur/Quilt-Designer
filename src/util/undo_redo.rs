@@ -16,16 +16,16 @@ impl<T: Clone> UndoRedo<T> {
         }
     }
 
-    pub fn changed(&mut self, item: &T) {
-        UndoRedo::add_to_stack(&mut self.undo, item.clone());
+    pub fn changed(&mut self, item: T) {
+        UndoRedo::add_to_stack(&mut self.undo, item);
         self.redo.clear();
     }
 
-    pub fn undo(&mut self, item: &T) -> Option<T> {
+    pub fn undo(&mut self, item: T) -> Option<T> {
         let popped = self.undo.pop();
 
         if let Some(_) = &popped {
-            UndoRedo::add_to_stack(&mut self.redo, item.clone());
+            UndoRedo::add_to_stack(&mut self.redo, item);
         }
 
         popped
@@ -35,11 +35,11 @@ impl<T: Clone> UndoRedo<T> {
         self.undo.last()
     }
 
-    pub fn redo(&mut self, item: &T) -> Option<T> {
+    pub fn redo(&mut self, item: T) -> Option<T> {
         let popped = self.redo.pop();
 
         if let Some(_) = &popped {
-            UndoRedo::add_to_stack(&mut self.undo, item.clone());
+            UndoRedo::add_to_stack(&mut self.undo, item);
         }
 
         popped
