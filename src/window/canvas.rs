@@ -5,8 +5,9 @@ use crate::util::frame_timing::FrameTiming;
 use crate::util::click::Click;
 use crate::util::keys_pressed::{KeysPressed, KeyListener};
 use crate::util::rectangle::Rectangle;
-use crate::quilt::Quilt;
+use crate::quilt::{Quilt, square::Square};
 use crate::window::Window;
+use crate::util::undo_redo::UndoRedo;
 
 use cairo::Context;
 use gdk::{EventMask, ScrollDirection};
@@ -39,6 +40,7 @@ pub struct Canvas {
     frame_timing: Arc<Mutex<FrameTiming>>,
     saved_surface: Arc<Mutex<Option<cairo::ImageSurface>>>,
     needs_updated: Arc<Mutex<bool>>,
+    undo_redo: Arc<Mutex<UndoRedo<Square>>>,
 }
 
 impl Canvas {
@@ -60,6 +62,7 @@ impl Canvas {
             mouse_clicks: Arc::clone(&mouse_clicks),
             saved_surface: saved_surface.clone(),
             needs_updated: Arc::new(Mutex::new(true)),
+            undo_redo: Arc::new(Mutex::new(UndoRedo::new())),
         }));
 
         let drawing_area = drawing_area.lock().unwrap();
@@ -259,6 +262,10 @@ impl Canvas {
     pub fn get_drawing_area(&self) -> Arc<Mutex<gtk::DrawingArea>> {
         Arc::clone(&self.drawing_area)
     }
+
+    pub fn get_undo_redo(&self) -> Arc<Mutex<UndoRedo<Square>>>{
+        Arc::clone(&self.undo_redo)
+    }
 }
 
 impl KeyListener for Canvas {
@@ -287,6 +294,41 @@ impl KeyListener for Canvas {
             camera_transform.start_move_down();
         } else {
             camera_transform.stop_move_down();
+        }
+
+        if (keys_pressed.is_pressed(&gdk::keys::constants::Control_L) || keys_pressed.is_pressed(&gdk::keys::constants::Control_R)) &&
+            keys_pressed.is_pressed(&gdk::keys::constants::z) {
+
+            let mut quilt_struct = self.quilt.lock().unwrap();
+
+            let mut undo_redo = self.undo_redo.lock().unwrap();
+
+            if let Some(peek_undo) = undo_redo.peek_undo() {
+
+                let row = peek_undo.row;
+                let column = peek_undo.column;
+
+                let undo = undo_redo.undo(quilt_struct.get_square(row, column).unwrap()).unwrap();
+
+                quilt_struct.set_square(undo.row, undo.column, camera_transform.get_scale(), undo);
+            }
+        }
+
+        if (keys_pressed.is_pressed(&gdk::keys::constants::Control_L) || keys_pressed.is_pressed(&gdk::keys::constants::Control_R)) &&
+            keys_pressed.is_pressed(&gdk::keys::constants::y) {
+            let mut quilt_struct = self.quilt.lock().unwrap();
+
+            let mut undo_redo = self.undo_redo.lock().unwrap();
+
+            if let Some(peek_redo) = undo_redo.peek_redo() {
+
+                let row = peek_redo.row;
+                let column = peek_redo.column;
+
+                let redo = undo_redo.redo(quilt_struct.get_square(row, column).unwrap()).unwrap();
+
+                quilt_struct.set_square(redo.row, redo.column, camera_transform.get_scale(), redo);
+            }
         }
     }
 }

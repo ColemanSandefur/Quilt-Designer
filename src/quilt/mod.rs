@@ -8,6 +8,7 @@ use crate::util::image::Image;
 use crate::util::rectangle::Rectangle;
 use crate::texture_brush::{TextureBrush};
 use crate::camera_transform::CameraTransform;
+use crate::util::undo_redo::UndoRedo;
 
 use cairo::{Context};
 use gdk::EventButton;
@@ -40,6 +41,7 @@ pub struct Quilt {
     pub height: usize,
     quilt: Vec<Vec<Square>>,
     images: Arc<Mutex<Vec<(Image, f64)>>>, //pairs image with the scale it was rendered at
+    undo_redo: UndoRedo<Square>,
     
     
     //for multi threading
@@ -59,11 +61,11 @@ impl Quilt {
         let brush = Arc::new(TextureBrush::new_color((1.0, 1.0, 1.0)));
         
         let mut quilt: Vec<Vec<Square>> = Vec::with_capacity(height);
-        for _ in 0..height {
+        for r in 0..height {
             let mut row = Vec::new();
             
-            for _ in 0..width {
-                row.push(Square::with_brush(brush.clone()));
+            for c in 0..width {
+                row.push(Square::with_brush(r, c, brush.clone()));
             }
             
             quilt.push(row);
@@ -117,6 +119,7 @@ impl Quilt {
             height: height,
             quilt: quilt,
             images: images,
+            undo_redo: UndoRedo::new(),
 
             ready_tx: ready_tx,
             thread_streams: thread_streams,
@@ -125,7 +128,7 @@ impl Quilt {
         }
     }
 
-    fn queue_draw(&mut self, index: usize, scale: f64) {
+    pub fn queue_draw(&mut self, index: usize, scale: f64) {
         if let Some(status) = self.queued_squares.get(index) {
             (*status.lock().unwrap()).0 = false;
         }
@@ -251,6 +254,30 @@ impl Quilt {
             Square::SQUARE_WIDTH * self.width as f64, 
             Square::SQUARE_WIDTH * self.height as f64
         )
+    }
+
+    pub fn get_quilt(&self) -> &Vec<Vec<Square>> {
+        &self.quilt
+    }
+
+    pub fn set_square(&mut self, row: usize, column: usize, scale: f64, new_square: Square) {
+        if let Some(row) = self.quilt.get_mut(row) {
+            if let Some(square) = row.get_mut(column) {
+                *square = new_square;
+            }
+        }
+
+        self.queue_draw(row * self.width + column, scale)
+    }
+
+    pub fn get_square(&self, row: usize, column: usize) -> Option<&Square> {
+        if let Some(row) = self.quilt.get(row) {
+            if let Some(square) = row.get(column) {
+                return Some(square)
+            }
+        }
+
+        None
     }
 }
 

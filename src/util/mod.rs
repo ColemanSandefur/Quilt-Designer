@@ -3,3 +3,4 @@ pub mod keys_pressed;
 pub mod click;
 pub mod image;
 pub mod rectangle;
+pub mod undo_redo;

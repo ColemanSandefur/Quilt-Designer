@@ -110,6 +110,8 @@ impl SavableBlueprint for BlockPattern {
 
 #[derive(Clone)]
 pub struct Square {
+    pub row: usize,
+    pub column: usize,
     brush: Arc<TextureBrush>,
     block_pattern: Arc<Mutex<BlockPattern>>,
 }
@@ -118,20 +120,24 @@ impl Square {
     pub const SQUARE_WIDTH: f64 = 20.0;
     
     #[allow(dead_code)]
-    pub fn new() -> Self {
+    pub fn new(row: usize, column: usize) -> Self {
         let brush = Arc::new(TextureBrush::new());
         let block_pattern = BlockPattern::new();
 
         Self {
+            row,
+            column,
             brush: brush.clone(),
             block_pattern: Arc::new(Mutex::new(block_pattern)),
         }
     }
 
-    pub fn with_brush(brush: Arc<TextureBrush>) -> Self {
+    pub fn with_brush(row: usize, column: usize, brush: Arc<TextureBrush>) -> Self {
         let block_pattern = BlockPattern::new();
 
         Self {
+            row,
+            column,
             brush: brush.clone(),
             block_pattern: Arc::new(Mutex::new(block_pattern)),
         }
@@ -203,6 +209,8 @@ impl Click for Square {
             return false;
         }
 
+        canvas.get_undo_redo().lock().unwrap().changed(self);
+
         {
             let brush = canvas.get_window().lock().unwrap().get_brush();
             let brush = brush.lock().unwrap();
@@ -224,3 +232,8 @@ impl Click for Square {
     }
 }
 
+impl std::fmt::Display for Square {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "row: {}, column: {}, brush: {}", self.row, self.column, self.brush)
+    }
+}

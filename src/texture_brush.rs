@@ -79,6 +79,13 @@ impl Texture {
 
         Ok(s)
     }
+    
+}
+
+impl std::fmt::Display for Texture {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "width: {}, height: {}, scale: {}", self.image.get_width(), self.image.get_height(), self.scale)
+    }
 }
 
 #[allow(dead_code)]
@@ -150,5 +157,24 @@ impl TextureBrush {
 
     pub fn get_color(&self) -> Option<(f64, f64, f64)> {
         self.color
+    }
+}
+
+impl std::fmt::Display for TextureBrush {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // match self.color {
+        //     Some(color) => write!(f, "color: (R: {}, G: {}, B: {})", color.0, color.1, color.2)
+        //     None => 
+        // }
+
+        if let Some(color) = self.color {
+            return write!(f, "color: (R: {}, G: {}, B: {})", color.0, color.1, color.2)
+        }
+
+        if let Some(texture) = &self.texture {
+            return write!(f, "texture: {}", texture.lock().unwrap())
+        }
+
+        write!(f, "No color or texture")
     }
 }
