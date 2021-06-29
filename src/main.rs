@@ -7,12 +7,21 @@ pub mod brush;
 pub mod util;
 pub mod path;
 pub mod parser;
+pub mod menubar_manager;
 
 use std::env;
 use gio::prelude::*;
+use gtk::prelude::*;
+use menubar_manager::MenubarManager;
 
 fn build_ui(application: &gtk::Application) {
-    let _window = window::Window::new(application);
+    let mut menubar = MenubarManager::new();
+    application.set_menubar(Some(menubar.get_menubar()));
+
+    let window = window::Window::new(application);
+
+    menubar.set_window(Some(window.clone()));
+    menubar.load_menubar_actions(application);
 }
 
 fn main() {
