@@ -139,7 +139,7 @@ impl Window {
         {
             let mut keys_pressed_unlocked = self.keys_pressed.lock().unwrap();
 
-            keys_pressed_unlocked.set_pressed(event.get_keyval(), true);
+            keys_pressed_unlocked.set_pressed(event.keyval(), true);
 
 
             let pattern = {self.brush.lock().unwrap().get_block_pattern()};
@@ -174,7 +174,7 @@ impl Window {
         {
             let mut keys_pressed_unlocked = self.keys_pressed.lock().unwrap();
 
-            keys_pressed_unlocked.set_pressed(event.get_keyval(), false);
+            keys_pressed_unlocked.set_pressed(event.keyval(), false);
 
             if let Some(canvas) = &self.canvas {
                 canvas.lock().unwrap().on_key_change(&keys_pressed_unlocked, Some((event, false)));

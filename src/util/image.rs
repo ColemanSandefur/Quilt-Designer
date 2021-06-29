@@ -11,7 +11,7 @@ pub struct Image {
 }
 
 impl Image {
-    pub const FORMAT_TYPE: Format = Format::ARgb32;
+    pub const FORMAT_TYPE: Format = Format::Rgb24;
 
     pub fn new (width: i32, height: i32) -> Self {
         let stride = Format::stride_for_width(Image::FORMAT_TYPE, width as u32).unwrap();
@@ -20,6 +20,17 @@ impl Image {
             width,
             height,
             data: Some(vec![0; stride as usize * height as usize].into()), // rgba each has a byte allocated to it
+            stride: stride
+        }
+    }
+
+    pub fn new_with_data(width: i32, height: i32, data: Box<[u8]>) -> Self {
+        let stride = Format::stride_for_width(Image::FORMAT_TYPE, width as u32).unwrap();
+
+        Self {
+            width,
+            height,
+            data: Some(data),
             stride: stride
         }
     }
@@ -62,6 +73,46 @@ impl Image {
         );
 
         surface
+    }
+
+    pub fn to_pixbuf(self) -> gdk_pixbuf::Pixbuf {
+        let width = self.width;
+        let height = self.height;
+
+        let mut pixbuf_surface = cairo::ImageSurface::create(cairo::Format::ARgb32, self.width, self.height).unwrap();
+        let cr = cairo::Context::new(&pixbuf_surface).unwrap();
+
+        cr.set_source_surface(&self.to_surface().unwrap(), 0.0, 0.0).unwrap();
+        cr.paint().unwrap();
+        cr.set_source_rgb(0.0, 0.0, 0.0);
+
+        let stride = pixbuf_surface.stride();
+        let mut data = pixbuf_surface.data().unwrap();
+
+        // convert bytes from BGRA to RGBA
+        for index in (3..data.len()).step_by(4) {
+            let alpha = data[index - 0];
+            let blue = data[index - 3];
+            let red = data[index - 1];
+            let green = data[index - 2];
+
+            data[index - 0] = alpha; // alpha
+            data[index - 1] = blue;  // blue
+            data[index - 2] = green; // green
+            data[index - 3] = red;   // red
+        }
+
+        let pixbuf = gdk_pixbuf::Pixbuf::from_bytes(
+            &glib::Bytes::from(&*data),
+            gdk_pixbuf::Colorspace::Rgb,
+            true,
+            8,
+            width,
+            height,
+            stride
+        );
+
+        pixbuf
     }
 
     pub fn get_width(&self) -> i32 {

@@ -56,7 +56,7 @@ impl TextureBar {
         let mut util_image = Image::new(60, 60);
         
         util_image.with_surface(|surface| {
-            let cr = cairo::Context::new(surface);
+            let cr = cairo::Context::new(surface).unwrap();
             
             cr.scale(60.0 / Square::SQUARE_WIDTH, 60.0 / Square::SQUARE_WIDTH);
             cr.rectangle(0.0, 0.0, Square::SQUARE_WIDTH, Square::SQUARE_WIDTH);
@@ -130,7 +130,7 @@ impl TextureBar {
         color_button.lock().unwrap().connect_color_set(move |color_selector| {
             let s_clone = s_clone.lock().unwrap();
 
-            let new_color = color_selector.get_rgba();
+            let new_color = color_selector.rgba();
 
             s_clone.set_brush(Arc::new(TextureBrush::new_color((new_color.red, new_color.green, new_color.blue))));
         });
@@ -206,7 +206,7 @@ impl KeyListener for TextureBar {
 
         if let Some((key_event, is_pressed)) = &key_changed {
 
-            if *is_pressed && key_event.get_keyval() == gdk::keys::constants::space {
+            if *is_pressed && key_event.keyval() == gdk::keys::constants::space {
                 color_button.emit_clicked();
             }
 

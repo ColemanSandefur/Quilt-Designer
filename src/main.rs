@@ -9,7 +9,6 @@ pub mod path;
 pub mod parser;
 pub mod menubar_manager;
 
-use std::env;
 use gio::prelude::*;
 use gtk::prelude::*;
 use menubar_manager::MenubarManager;
@@ -26,10 +25,9 @@ fn build_ui(application: &gtk::Application) {
 
 fn main() {
     let application = gtk::Application::new(Some("org.gtkrsnotes.demo"),
-        gio::ApplicationFlags::FLAGS_NONE)
-        .expect("Application::new failed");
+        gio::ApplicationFlags::FLAGS_NONE);
 
     application.connect_activate(build_ui);
 
-    application.run(&env::args().collect::<Vec<_>>());
+    application.run();
 }

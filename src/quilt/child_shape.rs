@@ -46,22 +46,22 @@ impl ChildShape {
         self.create_bounds(cr);
         self.brush.apply(cr);
         
-        cr.save();
+        cr.save().unwrap();
         {
-            cr.save();
+            cr.save().unwrap();
             {
                 cr.scale(0.99, 0.99);
                 self.create_bounds(cr);
                 cr.close_path();
             }
-            cr.restore();
+            cr.restore().unwrap();
             
             cr.set_line_width(0.25);
             cr.set_source_rgb(0.0, 0.0, 0.0);
-            cr.stroke();
+            cr.stroke().unwrap();
         }
 
-        cr.restore();
+        cr.restore().unwrap();
     }
 
     fn change_brush(&mut self, canvas: &Canvas) {
@@ -76,15 +76,15 @@ impl ChildShape {
 
 impl Click for ChildShape {
     fn click(&mut self, canvas: &Canvas, cr: &Context, event: &EventButton) -> bool {
-        let (tmp_x, tmp_y) = event.get_position();
-        let (x, y) = cr.device_to_user(tmp_x, tmp_y);
+        let (tmp_x, tmp_y) = event.position();
+        let (x, y) = cr.device_to_user(tmp_x, tmp_y).unwrap();
 
-        cr.save();
+        cr.save().unwrap();
         self.create_bounds(cr);
-        let in_bounds = cr.in_fill(x, y);
-        cr.restore();
+        let in_bounds = cr.in_fill(x, y).unwrap();
+        cr.restore().unwrap();
 
-        if  event.get_button() != 1 || !in_bounds {
+        if  event.button() != 1 || !in_bounds {
             return false;
         }
 

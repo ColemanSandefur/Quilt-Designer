@@ -79,7 +79,7 @@ impl Quilt {
             let mut image = Image::new(Square::SQUARE_WIDTH as i32, Square::SQUARE_WIDTH as i32);
 
             image.with_surface(|surface| {
-                let cr = cairo::Context::new(&surface);
+                let cr = cairo::Context::new(&surface).unwrap();
 
                 let row = index as usize / width;
                 let column = index as usize % width;
@@ -192,7 +192,7 @@ impl Quilt {
 
                 let mut image = Image::new((Square::SQUARE_WIDTH * scale) as i32, (Square::SQUARE_WIDTH * scale) as i32);
                 image.with_surface(|surface| {
-                    let cr = cairo::Context::new(&surface);
+                    let cr = cairo::Context::new(&surface).unwrap();
 
                     cr.scale(scale, scale);
 
@@ -205,7 +205,7 @@ impl Quilt {
     }
 
     pub fn draw(&mut self, cr: &Context, camera_transform: Arc<Mutex<CameraTransform>>, rect: &Rectangle<f64>) {
-        cr.save();
+        cr.save().unwrap();
 
         cr.move_to(0.0, 0.0);
         cr.line_to(Square::SQUARE_WIDTH * self.width as f64, 0.0);
@@ -231,22 +231,22 @@ impl Quilt {
             let (image, scale) = &mut images[index];
 
             let scale = *scale;
-            cr.save();
+            cr.save().unwrap();
             cr.scale(1.0/scale, 1.0/scale);
 
             image.borrow_mut().with_surface(|surface| {
 
-                cr.set_source_surface(surface, Square::SQUARE_WIDTH * column as f64 * scale, Square::SQUARE_WIDTH * row as f64 * scale);
+                cr.set_source_surface(surface, Square::SQUARE_WIDTH * column as f64 * scale, Square::SQUARE_WIDTH * row as f64 * scale).unwrap();
 
-                cr.paint();
+                cr.paint().unwrap();
 
                 cr.set_source_rgb(0.0, 0.0, 0.0);
 
             });
-            cr.restore();
+            cr.restore().unwrap();
         }
 
-        cr.restore()
+        cr.restore().unwrap();
 
     }
 
@@ -284,7 +284,7 @@ impl Quilt {
 
 impl Click for Quilt {
     fn click(&mut self, window: &Canvas, cr: &Context, event: &EventButton) -> bool {
-        cr.save();
+        cr.save().unwrap();
 
         // a rather jank solution to click registration
         // the left side bar messes up my original way to convert click position into canvas space,
@@ -293,8 +293,8 @@ impl Click for Quilt {
 
         cr.identity_matrix(); // remove all transformations
         window.get_camera_transform().lock().unwrap().apply_transformation(cr); // re-apply the camera transformations
-        let (tmp_x, tmp_y) = event.get_position();
-        let (x, y) = cr.device_to_user(tmp_x, tmp_y); // calculate position
+        let (tmp_x, tmp_y) = event.position();
+        let (x, y) = cr.device_to_user(tmp_x, tmp_y).unwrap(); // calculate position
 
         let mut result: bool = false;
 
@@ -305,11 +305,11 @@ impl Click for Quilt {
 
         } else {
 
-            cr.save();
+            cr.save().unwrap();
 
             for row in 0..self.height {
 
-                cr.save();
+                cr.save().unwrap();
 
                 for col in 0..self.width {
                     result = result || match self.quilt[row][col].click(window, cr, event) {
@@ -324,17 +324,17 @@ impl Click for Quilt {
                     cr.translate(Square::SQUARE_WIDTH, 0.0);
                 }
 
-                cr.restore();
+                cr.restore().unwrap();
 
                 cr.translate(0.0, Square::SQUARE_WIDTH);
 
             }
 
-            cr.restore();
+            cr.restore().unwrap();
             
         }
         
-        cr.restore();
+        cr.restore().unwrap();
 
         result
     }

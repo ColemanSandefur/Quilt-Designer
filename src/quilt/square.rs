@@ -49,11 +49,11 @@ impl Square {
 
     pub fn draw(&self, cr: &Context) {
 
-        cr.save();
+        cr.save().unwrap();
 
         let line_width = 0.25;
         
-        cr.save();
+        cr.save().unwrap();
 
         // clip the region to just be the square (prevent 'over spray')
         cr.move_to(0.0, 0.0);
@@ -75,7 +75,7 @@ impl Square {
 
         self.block_pattern.lock().unwrap().draw(cr);
 
-        cr.restore();
+        cr.restore().unwrap();
 
         cr.set_line_width(line_width * 2.0);
         cr.set_source_rgb(0.0, 0.0, 0.0);
@@ -85,9 +85,9 @@ impl Square {
         cr.line_to(0.0, Square::SQUARE_WIDTH);
         cr.line_to(0.0, 0.0);
         cr.line_to(Square::SQUARE_WIDTH, 0.0);
-        cr.stroke();
+        cr.stroke().unwrap();
 
-        cr.restore();
+        cr.restore().unwrap();
     }
 
     // sets the square's brush to the same one that Window has
@@ -115,10 +115,10 @@ impl Square {
 
 impl Click for Square {
     fn click(&mut self, canvas: &Canvas, cr: &Context, event: &EventButton) -> bool {
-        let (tmp_x, tmp_y) = event.get_position();
-        let (x, y) = cr.device_to_user(tmp_x, tmp_y);
+        let (tmp_x, tmp_y) = event.position();
+        let (x, y) = cr.device_to_user(tmp_x, tmp_y).unwrap();
 
-        if  (event.get_button() != 1) ||
+        if  (event.button() != 1) ||
             (x < 0.0 || x >= Square::SQUARE_WIDTH) ||
             (y < 0.0 || y >= Square::SQUARE_WIDTH)
         {

@@ -91,10 +91,10 @@ impl Canvas {
 
     fn pre_draw(&self, drawing_area: &DrawingArea, cr: &Context) {
 
-        cr.save();
+        cr.save().unwrap();
 
-        let width = drawing_area.get_allocated_width() as f64;
-        let height = drawing_area.get_allocated_height() as f64;
+        let width = drawing_area.allocated_width() as f64;
+        let height = drawing_area.allocated_height() as f64;
 
         cr.move_to(0.0, 0.0);
         cr.line_to(width, 0.0);
@@ -112,7 +112,7 @@ impl Canvas {
 
     
     fn draw(&self, drawing_area: &DrawingArea, cr: &Context) -> Inhibit {
-        cr.save();
+        cr.save().unwrap();
 
         // before any rendering
         self.pre_draw(drawing_area, cr);
@@ -144,22 +144,22 @@ impl Canvas {
         let bounds = Rectangle {
             x: offset_x, 
             y: offset_y, 
-            width: drawing_area.get_allocated_width() as f64, 
-            height: drawing_area.get_allocated_height() as f64
+            width: drawing_area.allocated_width() as f64, 
+            height: drawing_area.allocated_height() as f64
         };
 
         if let Some(surface) = &saved_surface.as_ref() {
-            let new_context = cairo::Context::new(surface);
+            let new_context = cairo::Context::new(surface).unwrap();
             self.camera_transform.lock().unwrap().apply_zoom(&new_context);
             self.quilt.lock().unwrap().draw(&new_context, self.camera_transform.clone(), &bounds);
-            cr.set_source_surface(surface, 0.0, 0.0);
-            cr.paint();
+            cr.set_source_surface(surface, 0.0, 0.0).unwrap();
+            cr.paint().unwrap();
         } else {
             *self.needs_updated.lock().unwrap() = true;
         }
 
         self.post_draw(drawing_area, cr);
-        cr.restore();
+        cr.restore().unwrap();
 
         Inhibit(false)
     }
@@ -167,17 +167,17 @@ impl Canvas {
     fn post_draw(&self, drawing_area: &DrawingArea, cr: &Context) {
         let mut frame_timing = self.frame_timing.lock().unwrap();
 
-        cr.restore();
+        cr.restore().unwrap();
 
         // draw frame timing in top left corner
-        cr.save();
+        cr.save().unwrap();
 
         cr.set_source_rgb(1.0, 1.0, 1.0);
         cr.set_font_size(14.0);
         cr.move_to(4.0, 18.0);
-        cr.show_text(&format!("{}ms", frame_timing.delta_frame_time().num_milliseconds()));
+        cr.show_text(&format!("{}ms", frame_timing.delta_frame_time().num_milliseconds())).unwrap();
 
-        cr.restore();
+        cr.restore().unwrap();
 
         self.camera_transform.lock().unwrap().move_with_keys_pressed(&frame_timing.delta_frame_time());
 
@@ -215,11 +215,11 @@ impl Canvas {
         }
         
 
-        if event.get_direction() == ScrollDirection::Up {
+        if event.direction() == ScrollDirection::Up {
             camera_transform.set_scale(camera_transform.get_scale() + scale);
         }
 
-        if event.get_direction() == ScrollDirection::Down {
+        if event.direction() == ScrollDirection::Down {
             camera_transform.set_scale(camera_transform.get_scale() - scale);
         }
 

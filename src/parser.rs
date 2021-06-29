@@ -57,8 +57,8 @@ impl Serializer {
 
 // save all the parts to completely re-create the file
 pub trait Savable {
-    fn to_save(&self) -> Yaml;
-    fn from_save(yaml: &Yaml) -> Box<Self> where Self: Sized;
+    fn to_save(&self, save_path: &str) -> Yaml;
+    fn from_save(yaml: &Yaml, save_path: &str) -> Box<Self> where Self: Sized;
 }
 
 // save what is needed to keep the general shape, used for saving BlockPatterns

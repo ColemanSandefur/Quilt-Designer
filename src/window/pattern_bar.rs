@@ -57,11 +57,11 @@ impl PatternBar {
         let mut util_image = Image::new(60, 60);
         
         util_image.with_surface(|surface| {
-            let cr = cairo::Context::new(surface);
+            let cr = cairo::Context::new(surface).unwrap();
             
             cr.scale(60.0 / Square::SQUARE_WIDTH, 60.0 / Square::SQUARE_WIDTH);
             cr.set_source_rgb(0.25, 0.25, 0.25);
-            cr.paint();
+            cr.paint().unwrap();
             brush.draw(&cr);
         });
             

@@ -21,7 +21,7 @@ impl Texture {
 
     fn load_image(name: &str) -> Result<Image, glib::Error> {
 
-        let (_pixbuf_format, width, height) = match Pixbuf::get_file_info(name) {
+        let (_pixbuf_format, width, height) = match Pixbuf::file_info(name) {
             Some(data) => data,
             None => return Err(glib::error::Error::new(glib::FileError::Failed, "Could not get file info"))
         };
@@ -52,10 +52,10 @@ impl Texture {
         let mut image = Image::new(import_width, import_height);
 
         image.with_surface(|surface| {
-            let cr = cairo::Context::new(&surface);
+            let cr = cairo::Context::new(&surface).unwrap();
 
             cr.set_source_pixbuf(&buf, 0.0, 0.0);
-            cr.paint();
+            cr.paint().unwrap();
             cr.set_source_rgb(0.0, 0.0, 0.0);
         });
 
@@ -131,11 +131,11 @@ impl TextureBrush {
     }
 
     pub fn apply(&self, cr: &cairo::Context) {
-        cr.save();
+        cr.save().unwrap();
 
         if let Some(color) = self.color {
             cr.set_source_rgb(color.0, color.1, color.2);
-            cr.fill();
+            cr.fill().unwrap();
         }
 
         if let Some(texture) = &self.texture {
@@ -143,16 +143,16 @@ impl TextureBrush {
             let scale = texture.scale;
 
             texture.image.with_surface(|surface| {
-                cr.save();
+                cr.save().unwrap();
                 cr.clip();
                 cr.scale(scale, scale);
-                cr.set_source_surface(surface, 0.0, 0.0);
-                cr.paint();
-                cr.restore();
+                cr.set_source_surface(surface, 0.0, 0.0).unwrap();
+                cr.paint().unwrap();
+                cr.restore().unwrap();
             });
         }
 
-        cr.restore();
+        cr.restore().unwrap();
     }
 
     pub fn get_color(&self) -> Option<(f64, f64, f64)> {
