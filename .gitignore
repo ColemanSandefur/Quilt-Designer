@@ -1,3 +1,8 @@
+#folders
+.vscode
 /target
+saves
+
+#file types
 *.png
 *.jpg

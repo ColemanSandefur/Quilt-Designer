@@ -17,6 +17,10 @@ impl Parser {
         yaml.as_str().unwrap().parse().unwrap()
     }
 
+    pub fn to_i64(yaml: &Yaml) -> i64  {
+        yaml.as_i64().unwrap()
+    }
+
     pub fn to_str(yaml: &Yaml) -> &str {
         yaml.as_str().unwrap()
     }
@@ -52,6 +56,10 @@ impl Serializer {
 
     pub fn from_f64(value: f64) -> Yaml {
         Yaml::Real(value.to_string())
+    }
+
+    pub fn from_i64(value: i64) -> Yaml {
+        Yaml::Integer(value)
     }
 }
 

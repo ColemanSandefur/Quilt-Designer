@@ -82,6 +82,10 @@ impl Texture {
     
 }
 
+// will pass "./saves/{save_name}" to image
+// impl Savable for Texture {
+// }
+
 impl std::fmt::Display for Texture {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "width: {}, height: {}, scale: {}", self.image.get_width(), self.image.get_height(), self.scale)

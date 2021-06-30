@@ -1,6 +1,11 @@
 use cairo::{Format, ImageSurface};
 use std::cell::RefCell;
 use std::rc::Rc;
+use crate::parser::{Parser, Serializer, Savable};
+use std::path::Path;
+use yaml_rust::Yaml;
+use sha2::Digest;
+use crate::gtk::prelude::*;
 
 #[derive(Clone)]
 pub struct Image {
@@ -121,6 +126,111 @@ impl Image {
 
     pub fn get_height(&self) -> i32 {
         self.height
+    }
+}
+
+impl Savable for Image {
+    fn to_save(&self, save_path: &str) -> Yaml {
+
+        let pixbuf = gdk_pixbuf::Pixbuf::from(self.clone());
+
+        // hash pixbuf's contents to create a unique name
+        let mut hasher = sha2::Sha256::new();
+
+        let buffer = pixbuf.save_to_bufferv("png", &[]).unwrap();
+
+        hasher.update(&buffer);
+    
+        let result: Vec<u8> = hasher.finalize().to_vec();
+
+        // convert result to a string
+        let file_name: String = format!("{}.png", result.into_iter().map(|i| i.to_string()).collect::<String>());
+
+        let file_path = Path::new(save_path).join(file_name.clone());
+
+        if !file_path.exists() {
+            pixbuf.savev(file_path, "png", &[]).unwrap();
+        }
+
+        let serialized = Serializer::create_map(vec![
+            ("width", Serializer::from_i64(self.width as i64)),
+            ("height", Serializer::from_i64(self.height as i64)),
+            ("data_location", Serializer::from_str(file_name.as_str())),
+        ]);
+
+        Parser::print(&serialized);
+
+        serialized
+    }
+
+    fn from_save(yaml: &Yaml, save_path: &str) -> Box<Self> {
+
+        let map = Parser::to_map(yaml);
+
+        let width = Parser::to_i64(map.get(&Serializer::from_str("width")).unwrap()) as i32;
+        let height = Parser::to_i64(map.get(&Serializer::from_str("height")).unwrap()) as i32;
+        let file_name = String::from(Parser::to_str(map.get(&Serializer::from_str("data_location")).unwrap()));
+
+        // imported with the desire import dimensions helps improve performance
+        // you don't need to be rendering a 6000x6000 image at full res you can get away with a somewhat low res image
+        let buf = gdk_pixbuf::Pixbuf::from_file_at_size(Path::new(save_path).join(file_name), width, height).unwrap();
+
+        // write the pixbuf to a thread-safe image structure
+        let mut image = Image::new(width, height);
+
+        image.with_surface(|surface| {
+            let cr = cairo::Context::new(&surface).unwrap();
+
+            cr.set_source_pixbuf(&buf, 0.0, 0.0);
+            cr.paint().unwrap();
+            cr.set_source_rgb(0.0, 0.0, 0.0);
+        });
+
+        Box::new(image)
+    }
+}
+
+impl From<Image> for gdk_pixbuf::Pixbuf {
+    fn from(image: Image) -> gdk_pixbuf::Pixbuf {
+        let width = image.width;
+        let height = image.height;
+
+        let mut pixbuf_surface = cairo::ImageSurface::create(cairo::Format::ARgb32, image.width, image.height).unwrap();
+        {
+            let cr = cairo::Context::new(&pixbuf_surface).unwrap();
+    
+            cr.set_source_surface(&image.to_surface().unwrap(), 0.0, 0.0).unwrap();
+            cr.paint().unwrap();
+            cr.set_source_rgb(0.0, 0.0, 0.0);
+        }
+
+        let stride = pixbuf_surface.stride();
+        let mut data = pixbuf_surface.data().unwrap();
+
+        // convert bytes from BGRA to RGBA
+        for index in (3..data.len()).step_by(4) {
+            let alpha = data[index - 0];
+            let blue = data[index - 3];
+            let red = data[index - 1];
+            let green = data[index - 2];
+
+            data[index - 0] = alpha; // alpha
+            data[index - 1] = blue;  // blue
+            data[index - 2] = green; // green
+            data[index - 3] = red;   // red
+        }
+
+        let pixbuf = gdk_pixbuf::Pixbuf::from_bytes(
+            &glib::Bytes::from(&*data),
+            gdk_pixbuf::Colorspace::Rgb,
+            true,
+            8,
+            width,
+            height,
+            stride
+        );
+
+        pixbuf
     }
 }
 
