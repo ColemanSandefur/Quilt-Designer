@@ -3,6 +3,36 @@ use linked_hash_map::LinkedHashMap;
 
 pub struct Parser {}
 
+pub trait ParseData<T> {
+    fn parse(yaml: &Yaml) -> T;
+}
+
+impl ParseData<f64> for Parser {
+    fn parse(yaml: &Yaml) -> f64 {
+        if let Some(number) = yaml.as_i64() {
+            return number as f64;
+        }
+    
+        if let Some(number) = yaml.as_f64() {
+            return number;
+        }
+    
+        yaml.as_str().unwrap().parse().unwrap()
+    }
+}
+
+impl ParseData<i64> for Parser {
+    fn parse(yaml: &Yaml) -> i64 {
+        yaml.as_i64().unwrap()
+    }
+}
+
+impl ParseData<usize> for Parser {
+    fn parse(yaml: &Yaml) -> usize {
+        yaml.as_i64().unwrap() as usize
+    }
+}
+
 impl Parser {
 
     pub fn to_f64(yaml: &Yaml) -> f64 {
@@ -29,6 +59,10 @@ impl Parser {
         yaml.as_hash().unwrap()
     }
 
+    pub fn to_vec(yaml: &Yaml) -> &Vec<Yaml> {
+        yaml.as_vec().unwrap()
+    }
+
     pub fn print(yaml: &Yaml) {
         let mut output = String::new();
         let mut emitter = yaml_rust::YamlEmitter::new(&mut output);
@@ -37,29 +71,7 @@ impl Parser {
     }
 }
 
-pub trait ParseData<T> {
-    fn parse(yaml: &Yaml) -> T;
-}
 
-impl ParseData<f64> for Parser {
-    fn parse(yaml: &Yaml) -> f64 {
-        if let Some(number) = yaml.as_i64() {
-            return number as f64;
-        }
-    
-        if let Some(number) = yaml.as_f64() {
-            return number;
-        }
-    
-        yaml.as_str().unwrap().parse().unwrap()
-    }
-}
-
-impl ParseData<i64> for Parser {
-    fn parse(yaml: &Yaml) -> i64 {
-        yaml.as_i64().unwrap()
-    }
-}
 
 pub struct Serializer {}
 
@@ -106,6 +118,18 @@ impl SerializeData<i64> for Serializer {
 impl SerializeData<&str> for Serializer {
     fn serialize(value: &str) -> Yaml {
         Yaml::from_str(value)
+    }
+}
+
+impl SerializeData<Vec<Yaml>> for Serializer {
+    fn serialize(value: Vec<Yaml>) -> Yaml {
+        Yaml::Array(value)
+    }
+}
+
+impl SerializeData<usize> for Serializer {
+    fn serialize(value: usize) -> Yaml {
+        Serializer::serialize(value as i64)
     }
 }
 

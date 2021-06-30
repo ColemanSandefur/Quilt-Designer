@@ -1,11 +1,12 @@
 use crate::quilt::child_shape::ChildShape;
 use crate::window::canvas::Canvas;
 use crate::util::click::Click;
-use crate::parser::SavableBlueprint;
+use crate::parser::{SavableBlueprint, Savable, Parser, Serializer, ParseData, SerializeData};
 use crate::quilt::square::Square;
 
 use cairo::{Context};
 use gdk::EventButton;
+use yaml_rust::Yaml;
 
 //
 // Child shapes
@@ -99,5 +100,26 @@ impl SavableBlueprint for BlockPattern {
         }
 
         yaml_rust::Yaml::Array(yaml)
+    }
+}
+
+impl Savable for BlockPattern {
+    fn to_save(&self, save_path: &str) -> Yaml {
+        Serializer::create_map(vec!{
+            ("rotation", Serializer::serialize(self.rotation)),
+            ("pattern", Serializer::serialize(self.pattern.iter().map(|shape| shape.to_save(save_path)).collect::<Vec<Yaml>>()))
+        })
+    }
+
+    fn from_save(yaml: &Yaml, save_path: &str) -> Box<Self> {
+        let map = Parser::to_map(yaml);
+
+        let rotation = Parser::parse(map.get(&Serializer::serialize("rotation")).unwrap());
+        let pattern = Parser::to_vec(map.get(&Serializer::serialize("pattern")).unwrap()).iter().map(|yaml| *ChildShape::from_save(yaml, save_path)).collect();
+
+        Box::new(Self {
+            rotation,
+            pattern,
+        })
     }
 }

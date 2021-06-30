@@ -3,10 +3,12 @@ use crate::quilt::block_pattern::BlockPattern;
 use crate::window::canvas::Canvas;
 use crate::util::click::Click;
 use crate::texture_brush::TextureBrush;
+use crate::parser::{Parser, Serializer, ParseData, SerializeData, Savable};
 
 use cairo::{Context};
 use gdk::EventButton;
 use std::sync::{Arc, Mutex};
+use yaml_rust::Yaml;
 
 //
 // Square
@@ -151,5 +153,32 @@ impl Click for Square {
 impl std::fmt::Display for Square {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "row: {}, column: {}, brush: {}", self.row, self.column, self.brush)
+    }
+}
+
+impl Savable for Square {
+    fn to_save(&self, save_path: &str) -> Yaml {
+        Serializer::create_map(vec!{
+            ("row", Serializer::serialize(self.row as i64)),
+            ("column", Serializer::serialize(self.column as i64)),
+            ("brush", self.brush.to_save(save_path)),
+            ("block_pattern", self.block_pattern.lock().unwrap().to_save(save_path)),
+        })
+    }
+
+    fn from_save(yaml: &Yaml, save_path: &str) -> Box<Self> {
+        let map = Parser::to_map(yaml);
+
+        let row: i64 = Parser::parse(map.get(&Serializer::serialize("row")).unwrap());
+        let column: i64 = Parser::parse(map.get(&Serializer::serialize("column")).unwrap());
+        let brush = *TextureBrush::from_save(map.get(&Serializer::serialize("brush")).unwrap(), save_path);
+        let block_pattern = *BlockPattern::from_save(map.get(&Serializer::serialize("block_pattern")).unwrap(), save_path);
+
+        Box::new(Self {
+            row: row as usize,
+            column: column as usize,
+            brush: Arc::new(brush),
+            block_pattern: Arc::new(Mutex::new(block_pattern))
+        })
     }
 }

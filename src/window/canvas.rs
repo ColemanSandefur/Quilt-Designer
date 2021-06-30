@@ -8,6 +8,7 @@ use crate::util::rectangle::Rectangle;
 use crate::quilt::{Quilt, square::Square};
 use crate::window::Window;
 use crate::util::undo_redo::UndoRedo;
+use crate::parser::Savable;
 
 use cairo::Context;
 use gdk::{EventMask, ScrollDirection};
@@ -16,6 +17,7 @@ use std::sync::{Arc, Mutex};
 use std::collections::VecDeque;
 use gtk::DrawingArea;
 use gtk::prelude::*;
+use std::io::{Read, Write};
 
 //
 // Main drawing window
@@ -329,6 +331,33 @@ impl KeyListener for Canvas {
 
                 quilt_struct.set_square(redo.row, redo.column, camera_transform.get_scale(), redo);
             }
+        }
+
+        if keys_pressed.is_pressed(&gdk::keys::constants::p) {
+            let yaml = self.quilt.lock().unwrap().to_save("./saves/test");
+            let mut output = String::new();
+            let mut emitter = yaml_rust::YamlEmitter::new(&mut output);
+            emitter.dump(&yaml).unwrap();
+
+            let path = std::path::Path::new("./saves/test").join("save.yaml");
+
+            let mut file = std::fs::File::create(path).unwrap();
+
+            write!(file, "{}", output).unwrap();
+        }
+
+        if keys_pressed.is_pressed(&gdk::keys::constants::o) {
+            let path = std::path::Path::new("./saves/test").join("save.yaml");
+            let mut file = std::fs::File::open(path).expect("Could not open file");
+            let mut contents = String::new();
+            file.read_to_string(&mut contents).expect("Could not read from file");
+
+            let yaml = &yaml_rust::YamlLoader::load_from_str(&contents).unwrap()[0];
+            let quilt = *Quilt::from_save(&yaml, "./saves/test");
+
+            *self.quilt.lock().unwrap() = quilt;
+
+            self.quilt.lock().unwrap().queue_complete_redraw(camera_transform.get_scale());
         }
     }
 }

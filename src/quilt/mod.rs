@@ -10,12 +10,14 @@ use crate::util::rectangle::Rectangle;
 use crate::texture_brush::{TextureBrush};
 use crate::camera_transform::CameraTransform;
 use crate::util::undo_redo::UndoRedo;
+use crate::parser::{Parser, Serializer, ParseData, SerializeData, Savable};
 
 use cairo::{Context};
 use gdk::EventButton;
 use std::borrow::BorrowMut;
 use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
+use yaml_rust::Yaml;
 
 //
 // The main thing that I will be drawing is the quilt
@@ -337,5 +339,43 @@ impl Click for Quilt {
         cr.restore().unwrap();
 
         result
+    }
+}
+
+impl Savable for Quilt {
+    fn to_save(&self, save_path: &str) -> Yaml {
+        let mut quilt: Vec<Yaml> = Vec::with_capacity(self.width * self.height);
+
+        for row in &self.quilt {
+            for square in row {
+                quilt.push(square.to_save(save_path))
+            }
+        }
+
+        Serializer::create_map(vec!{
+            ("width", Serializer::serialize(self.width)),
+            ("height", Serializer::serialize(self.height)),
+            ("quilt", Serializer::serialize(quilt))
+        })
+    }
+
+    fn from_save(yaml: &Yaml, save_path: &str) -> Box<Self> {
+        let map = Parser::to_map(yaml);
+
+        let width: usize = Parser::parse(map.get(&Serializer::serialize("width")).unwrap());
+        let height: usize = Parser::parse(map.get(&Serializer::serialize("height")).unwrap());
+        let all_squares = Parser::to_vec(map.get(&Serializer::serialize("quilt")).unwrap());
+
+        let mut index = 0;
+        let mut s = Self::new(width, height);
+
+        for row in 0..height {
+            for column in 0..width {
+                s.set_square(row, column, 1.0, *Square::from_save(&all_squares[index], save_path));
+                index += 1;
+            }
+        };
+
+        Box::new(s)
     }
 }

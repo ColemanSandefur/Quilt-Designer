@@ -99,7 +99,7 @@ impl Savable for Texture {
         let map = Parser::to_map(yaml);
 
         let scale = Parser::parse(map.get(&Serializer::from_str("scale")).unwrap());
-        let image = Image::from_save(map.get(&Serializer::from_str("scale")).unwrap(), save_path);
+        let image = Image::from_save(map.get(&Serializer::from_str("image")).unwrap(), save_path);
 
         Box::new(Self {
             scale,
@@ -225,6 +225,7 @@ impl Savable for TextureBrush {
     }
 
     fn from_save(yaml: &Yaml, save_path: &str) -> Box<Self> {
+        Parser::print(yaml);
         let map = Parser::to_map(yaml);
 
         if let Some(color_yaml) = map.get(&Serializer::from_str("color")) {
