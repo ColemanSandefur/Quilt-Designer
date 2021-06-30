@@ -37,6 +37,30 @@ impl Parser {
     }
 }
 
+pub trait ParseData<T> {
+    fn parse(yaml: &Yaml) -> T;
+}
+
+impl ParseData<f64> for Parser {
+    fn parse(yaml: &Yaml) -> f64 {
+        if let Some(number) = yaml.as_i64() {
+            return number as f64;
+        }
+    
+        if let Some(number) = yaml.as_f64() {
+            return number;
+        }
+    
+        yaml.as_str().unwrap().parse().unwrap()
+    }
+}
+
+impl ParseData<i64> for Parser {
+    fn parse(yaml: &Yaml) -> i64 {
+        yaml.as_i64().unwrap()
+    }
+}
+
 pub struct Serializer {}
 
 impl Serializer {
@@ -60,6 +84,28 @@ impl Serializer {
 
     pub fn from_i64(value: i64) -> Yaml {
         Yaml::Integer(value)
+    }
+}
+
+pub trait SerializeData<T> {
+    fn serialize(value: T) -> Yaml;
+}
+
+impl SerializeData<f64> for Serializer {
+    fn serialize(value: f64) -> Yaml {
+        Yaml::Real(value.to_string())
+    }
+}
+
+impl SerializeData<i64> for Serializer {
+    fn serialize(value: i64) -> Yaml {
+        Yaml::Integer(value)
+    }
+}
+
+impl SerializeData<&str> for Serializer {
+    fn serialize(value: &str) -> Yaml {
+        Yaml::from_str(value)
     }
 }
 

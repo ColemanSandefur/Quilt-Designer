@@ -1,6 +1,8 @@
 use crate::quilt::square::Square;
 use crate::util::image::Image;
+use crate::parser::{Parser, Serializer, Savable, SerializeData, ParseData};
 
+use yaml_rust::Yaml;
 use gdk_pixbuf::Pixbuf;
 use std::sync::{Mutex};
 use gdk::prelude::*;
@@ -83,8 +85,28 @@ impl Texture {
 }
 
 // will pass "./saves/{save_name}" to image
-// impl Savable for Texture {
-// }
+impl Savable for Texture {
+    fn to_save(&self, save_path: &str) -> Yaml {
+        let yaml = Serializer::create_map(vec![
+            ("scale", Serializer::serialize(self.scale)),
+            ("image", self.image.to_save(save_path))
+        ]);
+
+        yaml
+    }
+
+    fn from_save(yaml: &Yaml, save_path: &str) -> Box<Self> {
+        let map = Parser::to_map(yaml);
+
+        let scale = Parser::parse(map.get(&Serializer::from_str("scale")).unwrap());
+        let image = Image::from_save(map.get(&Serializer::from_str("scale")).unwrap(), save_path);
+
+        Box::new(Self {
+            scale,
+            image: *image
+        })
+    }
+}
 
 impl std::fmt::Display for Texture {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -180,5 +202,50 @@ impl std::fmt::Display for TextureBrush {
         }
 
         write!(f, "No color or texture")
+    }
+}
+
+impl Savable for TextureBrush {
+    fn to_save(&self, save_path: &str) -> Yaml {
+        if let Some(color) = self.color {
+            return Serializer::create_map(vec!{
+                ("color", Serializer::create_map(vec!{
+                    ("r", Serializer::serialize(color.0)),
+                    ("g", Serializer::serialize(color.1)),
+                    ("b", Serializer::serialize(color.2))
+                }))
+            });
+        } else {
+            let texture = self.texture.as_ref().unwrap().lock().unwrap();
+
+            return Serializer::create_map(vec!{
+                ("texture", texture.to_save(save_path))
+            });
+        }
+    }
+
+    fn from_save(yaml: &Yaml, save_path: &str) -> Box<Self> {
+        let map = Parser::to_map(yaml);
+
+        if let Some(color_yaml) = map.get(&Serializer::from_str("color")) {
+            let colors = Parser::to_map(color_yaml);
+            let color: (f64, f64, f64) = (
+                Parser::parse(colors.get(&Serializer::serialize("r")).unwrap()),
+                Parser::parse(colors.get(&Serializer::serialize("g")).unwrap()),
+                Parser::parse(colors.get(&Serializer::serialize("b")).unwrap()),
+            );
+
+            return Box::new(Self {
+                color: Some(color),
+                texture: None,
+            })
+        } else {
+            let texture = Texture::from_save(map.get(&Serializer::from_str("texture")).unwrap(), save_path);
+
+            return Box::new(Self {
+                color: None,
+                texture: Some(Mutex::new(*texture)),
+            })
+        }
     }
 }

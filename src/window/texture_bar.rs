@@ -132,7 +132,9 @@ impl TextureBar {
 
             let new_color = color_selector.rgba();
 
-            s_clone.set_brush(Arc::new(TextureBrush::new_color((new_color.red, new_color.green, new_color.blue))));
+            let brush = Arc::new(TextureBrush::new_color((new_color.red, new_color.green, new_color.blue)));
+
+            s_clone.set_brush(brush);
         });
 
         let flow_box = flow_box.lock().unwrap();

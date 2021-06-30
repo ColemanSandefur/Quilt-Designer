@@ -158,8 +158,6 @@ impl Savable for Image {
             ("data_location", Serializer::from_str(file_name.as_str())),
         ]);
 
-        Parser::print(&serialized);
-
         serialized
     }
 
