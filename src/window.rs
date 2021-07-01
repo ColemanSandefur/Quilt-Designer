@@ -203,4 +203,15 @@ impl Window {
     pub fn get_keys_pressed(&self) -> Arc<Mutex<KeysPressed>> {
         Arc::clone(&self.keys_pressed)
     }
+
+    pub fn get_canvas(&self) -> Option<Arc<Mutex<Canvas>>> {
+        match &self.canvas {
+            Some(canvas) => Some(canvas.clone()),
+            None => None
+        }
+    }
+
+    pub fn get_window(&self) -> Arc<Mutex<gtk::ApplicationWindow>> {
+        self.window.clone()
+    }
 }

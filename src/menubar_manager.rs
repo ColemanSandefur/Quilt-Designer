@@ -3,6 +3,7 @@ use gtk::Application;
 use std::sync::{Arc, Mutex};
 use gio::prelude::*;
 use crate::window::Window;
+use gtk::prelude::*;
 
 pub struct MenubarManager {
     menubar: Menu,
@@ -41,15 +42,82 @@ impl MenubarManager {
         let sub_menu = Menu::new();
 
         sub_menu.append(Some("Save"), Some("app.save"));
+        sub_menu.append(Some("Open"), Some("app.open"));
     
         MenuItem::new_submenu(Some("file"), &sub_menu)
     }
 
     pub fn load_menubar_actions(&self, application: &Application) {
-        // let menubar_clone = self.menubar.clone();
+
+        let window_clone = self.window.as_ref().unwrap().clone();
         self.connect_activate("save", None, application, move |_action, _variant| {
-            // menubar_clone
-            println!("Save clicked");
+            let app_window = window_clone.lock().unwrap().get_window();
+
+            let file_chooser = gtk::FileChooserDialog::with_buttons(
+                Some("Save your quilt"),
+                Some(&*app_window.lock().unwrap()),
+                gtk::FileChooserAction::Save,
+                &[("Cancel", gtk::ResponseType::Cancel), ("Save", gtk::ResponseType::Accept)]
+            );
+
+            file_chooser.set_select_multiple(false);
+            let filter = gtk::FileFilter::new();
+            filter.add_pattern("*.quilt");
+            file_chooser.set_filter(&filter);
+            file_chooser.set_do_overwrite_confirmation(true);
+
+            // sets the chosen file's extension to .quilt
+            // currently silently overwrites if filename + extension exists
+            file_chooser.connect_file_activated(|file_chooser| {
+                if let Some(mut filename) = file_chooser.filename() {
+                    filename.set_extension("quilt");
+
+                    file_chooser.select_filename(&filename);
+                }
+            });
+
+            let result = file_chooser.run();
+
+            file_chooser.emit_close();
+
+            let mut file_path = match result {
+                gtk::ResponseType::Accept => file_chooser.file().unwrap().path().unwrap(),
+                _ => return
+            };
+
+            file_path.set_extension("quilt");
+
+            let canvas = window_clone.lock().unwrap().get_canvas().unwrap();
+            canvas.lock().unwrap().save(&file_path);
+        });
+
+        let window_clone = self.window.as_ref().unwrap().clone();
+        self.connect_activate("open", None, application, move |_action, _variant| {
+            let app_window = window_clone.lock().unwrap().get_window();
+
+            let file_chooser = gtk::FileChooserDialog::with_buttons(
+                Some("Choose a file to open"),
+                Some(&*app_window.lock().unwrap()),
+                gtk::FileChooserAction::Open,
+                &[("Cancel", gtk::ResponseType::Cancel), ("Open", gtk::ResponseType::Accept)]
+            );
+
+            file_chooser.set_select_multiple(false);
+            let filter = gtk::FileFilter::new();
+            filter.add_pattern("*.quilt");
+            file_chooser.set_filter(&filter);
+            let result = file_chooser.run();
+
+            file_chooser.emit_close();
+
+            let file_path = match result {
+                gtk::ResponseType::Accept => file_chooser.file().unwrap().path().unwrap(),
+                _ => return
+            };
+            
+            let canvas = window_clone.lock().unwrap().get_canvas().unwrap();
+
+            canvas.lock().unwrap().load(&file_path);
         });
     }
 

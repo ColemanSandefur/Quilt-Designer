@@ -153,8 +153,6 @@ impl Savable for Image {
             
             let options = zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Stored);
             writer.start_file(file_name.clone(), options).unwrap();
-
-            println!("Writing {} bytes", buffer.len());
     
             writer.write(&buffer).unwrap();
         }

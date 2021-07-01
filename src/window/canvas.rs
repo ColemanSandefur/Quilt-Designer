@@ -268,114 +268,126 @@ impl Canvas {
     pub fn get_undo_redo(&self) -> Arc<Mutex<UndoRedo<Square>>>{
         Arc::clone(&self.undo_redo)
     }
+
+    pub fn save(&self, path: &std::path::PathBuf) {
+        let file = std::fs::File::create(path).unwrap();
+        let zip = zip::ZipWriter::new(file);
+
+        let mut save_data = SaveData{
+            writer: Some(Arc::new(Mutex::new(zip))),
+            reader: None,
+            files_written: vec!{}
+        };
+        
+        println!("Started saving");
+
+        let yaml = self.quilt.lock().unwrap().to_save(&mut save_data);
+
+        let mut output = String::new();
+        let mut emitter = yaml_rust::YamlEmitter::new(&mut output);
+        emitter.dump(&yaml).unwrap();
+
+        let mut zip = save_data.writer.as_ref().unwrap().lock().unwrap();
+        
+        zip.start_file("save.yaml", Default::default()).unwrap();
+        write!(zip, "{}", output).unwrap();
+
+        zip.finish().unwrap();
+
+        println!("Finished saving");
+    }
+
+    pub fn load(&self, path: &std::path::PathBuf) {
+        let file = match std::fs::File::open(path) {
+            Ok(file) => file,
+            Err(err) => {println!("Couldn't find/open file: {}", err); return}
+        };
+
+        let mut archive = zip::ZipArchive::new(file).unwrap();
+
+        let mut contents = String::new();
+        archive.by_name("save.yaml").unwrap().read_to_string(&mut contents).unwrap();
+        let yaml = &yaml_rust::YamlLoader::load_from_str(&contents).unwrap()[0];
+
+        let mut save_data = SaveData{
+            reader: Some(Arc::new(Mutex::new(archive))),
+            writer: None,
+            files_written: vec!{}
+        };
+
+        let quilt = *Quilt::from_save(&yaml, &mut save_data);
+
+        *self.quilt.lock().unwrap() = quilt;
+
+        let camera_transform = self.camera_transform.lock().unwrap();
+        self.quilt.lock().unwrap().queue_complete_redraw(camera_transform.get_scale());
+    }
 }
 
 impl KeyListener for Canvas {
     fn on_key_change(&self, keys_pressed: &KeysPressed, _key_changed: Option<(&gdk::EventKey, bool)>) {
-        let mut camera_transform = self.camera_transform.lock().unwrap();
-
-        if keys_pressed.is_pressed(&gdk::keys::constants::a) {
-            camera_transform.start_move_left();
-        } else {
-            camera_transform.stop_move_left();
-        }
-
-        if keys_pressed.is_pressed(&gdk::keys::constants::d) {
-            camera_transform.start_move_right();
-        } else {
-            camera_transform.stop_move_right();
-        }
-
-        if keys_pressed.is_pressed(&gdk::keys::constants::w) {
-            camera_transform.start_move_up();
-        } else {
-            camera_transform.stop_move_up();
-        }
-
-        if keys_pressed.is_pressed(&gdk::keys::constants::s) {
-            camera_transform.start_move_down();
-        } else {
-            camera_transform.stop_move_down();
-        }
-
-        if (keys_pressed.is_pressed(&gdk::keys::constants::Control_L) || keys_pressed.is_pressed(&gdk::keys::constants::Control_R)) &&
-            keys_pressed.is_pressed(&gdk::keys::constants::z) {
-
-            let mut quilt_struct = self.quilt.lock().unwrap();
-
-            let mut undo_redo = self.undo_redo.lock().unwrap();
-
-            if let Some(peek_undo) = undo_redo.peek_undo() {
-
-                let row = peek_undo.row;
-                let column = peek_undo.column;
-
-                let undo = undo_redo.undo(quilt_struct.get_square(row, column).unwrap().save_state()).unwrap();
-
-                quilt_struct.set_square(undo.row, undo.column, camera_transform.get_scale(), undo);
-            }
-        }
-
-        if (keys_pressed.is_pressed(&gdk::keys::constants::Control_L) || keys_pressed.is_pressed(&gdk::keys::constants::Control_R)) &&
-            keys_pressed.is_pressed(&gdk::keys::constants::y) {
-            let mut quilt_struct = self.quilt.lock().unwrap();
-
-            let mut undo_redo = self.undo_redo.lock().unwrap();
-
-            if let Some(peek_redo) = undo_redo.peek_redo() {
-
-                let row = peek_redo.row;
-                let column = peek_redo.column;
-
-                let redo = undo_redo.redo(quilt_struct.get_square(row, column).unwrap().save_state()).unwrap();
-
-                quilt_struct.set_square(redo.row, redo.column, camera_transform.get_scale(), redo);
-            }
-        }
-
-        if keys_pressed.is_pressed(&gdk::keys::constants::p) {
-            let file = std::fs::File::create("./saves/save.quilt").unwrap();
-            let zip = zip::ZipWriter::new(file);
-
-            let mut save_data = SaveData{
-                writer: Some(Arc::new(Mutex::new(zip))),
-                reader: None,
-                files_written: vec!{}
-            };
+        // scope the mutex lock so that it will be dropped when it goes out of scope
+        {
+            let mut camera_transform = self.camera_transform.lock().unwrap();
             
-            let yaml = self.quilt.lock().unwrap().to_save(&mut save_data);
-
-            let mut output = String::new();
-            let mut emitter = yaml_rust::YamlEmitter::new(&mut output);
-            emitter.dump(&yaml).unwrap();
-
-            let mut zip = save_data.writer.as_ref().unwrap().lock().unwrap();
+            if keys_pressed.is_pressed(&gdk::keys::constants::a) {
+                camera_transform.start_move_left();
+            } else {
+                camera_transform.stop_move_left();
+            }
             
-            zip.start_file("save.yaml", Default::default()).unwrap();
-            write!(zip, "{}", output).unwrap();
-
-            zip.finish().unwrap();
-        }
-
-        if keys_pressed.is_pressed(&gdk::keys::constants::o) {
-            let file = std::fs::File::open("./saves/save.quilt").unwrap();
-            let mut archive = zip::ZipArchive::new(file).unwrap();
-
-            let mut contents = String::new();
-            archive.by_name("save.yaml").unwrap().read_to_string(&mut contents).unwrap();
-            let yaml = &yaml_rust::YamlLoader::load_from_str(&contents).unwrap()[0];
-
-            let mut save_data = SaveData{
-                reader: Some(Arc::new(Mutex::new(archive))),
-                writer: None,
-                files_written: vec!{}
-            };
-
-            let quilt = *Quilt::from_save(&yaml, &mut save_data);
-
-            *self.quilt.lock().unwrap() = quilt;
-
-            self.quilt.lock().unwrap().queue_complete_redraw(camera_transform.get_scale());
+            if keys_pressed.is_pressed(&gdk::keys::constants::d) {
+                camera_transform.start_move_right();
+            } else {
+                camera_transform.stop_move_right();
+            }
+            
+            if keys_pressed.is_pressed(&gdk::keys::constants::w) {
+                camera_transform.start_move_up();
+            } else {
+                camera_transform.stop_move_up();
+            }
+            
+            if keys_pressed.is_pressed(&gdk::keys::constants::s) {
+                camera_transform.start_move_down();
+            } else {
+                camera_transform.stop_move_down();
+            }
+            
+            if (keys_pressed.is_pressed(&gdk::keys::constants::Control_L) || keys_pressed.is_pressed(&gdk::keys::constants::Control_R)) &&
+                keys_pressed.is_pressed(&gdk::keys::constants::z) {
+            
+                let mut quilt_struct = self.quilt.lock().unwrap();
+            
+                let mut undo_redo = self.undo_redo.lock().unwrap();
+            
+                if let Some(peek_undo) = undo_redo.peek_undo() {
+            
+                    let row = peek_undo.row;
+                    let column = peek_undo.column;
+            
+                    let undo = undo_redo.undo(quilt_struct.get_square(row, column).unwrap().save_state()).unwrap();
+            
+                    quilt_struct.set_square(undo.row, undo.column, camera_transform.get_scale(), undo);
+                }
+            }
+            
+            if (keys_pressed.is_pressed(&gdk::keys::constants::Control_L) || keys_pressed.is_pressed(&gdk::keys::constants::Control_R)) &&
+                keys_pressed.is_pressed(&gdk::keys::constants::y) {
+                let mut quilt_struct = self.quilt.lock().unwrap();
+            
+                let mut undo_redo = self.undo_redo.lock().unwrap();
+            
+                if let Some(peek_redo) = undo_redo.peek_redo() {
+            
+                    let row = peek_redo.row;
+                    let column = peek_redo.column;
+            
+                    let redo = undo_redo.redo(quilt_struct.get_square(row, column).unwrap().save_state()).unwrap();
+            
+                    quilt_struct.set_square(redo.row, redo.column, camera_transform.get_scale(), redo);
+                }
+            }
         }
     }
 }
