@@ -1,7 +1,7 @@
 use cairo::{Context};
 use std::sync::{Arc};
 use yaml_rust::Yaml;
-use crate::parser::{Parser, Serializer, Savable, SavableBlueprint};
+use crate::parser::{Parser, Serializer, Savable, SavableBlueprint, SaveData};
 
 pub trait Path: std::marker::Sync + std::marker::Send + Savable + SavableBlueprint {
     fn draw_path(&self, cr: &Context);
@@ -36,7 +36,7 @@ impl Path for Line {
 }
 
 impl Savable for Line {
-    fn to_save(&self, _save_path: &str) -> Yaml {
+    fn to_save(&self, _save_path: &mut SaveData) -> Yaml {
         Serializer::create_map(vec![
             ("name", Serializer::from_str("line")),
             ("end", Serializer::create_map(vec![
@@ -46,7 +46,7 @@ impl Savable for Line {
         ])
     }
 
-    fn from_save(yaml: &Yaml, _save_path: &str) -> Box<Self> {
+    fn from_save(yaml: &Yaml, _save_path: &mut SaveData) -> Box<Self> {
         let map = Parser::to_map(yaml);
 
         let end_map = Parser::to_map(map.get(&Yaml::from_str("end")).unwrap());
@@ -115,7 +115,7 @@ impl Path for Move {
 }
 
 impl Savable for Move {
-    fn to_save(&self, _save_path: &str) -> Yaml {
+    fn to_save(&self, _save_path: &mut SaveData) -> Yaml {
         Serializer::create_map(vec![
             ("name", Serializer::from_str("move")),
             ("point", Serializer::create_map(vec![
@@ -125,7 +125,7 @@ impl Savable for Move {
         ])
     }
 
-    fn from_save(yaml: &Yaml, _save_path: &str) -> Box<Self> {
+    fn from_save(yaml: &Yaml, _save_path: &mut SaveData) -> Box<Self> {
         let map = Parser::to_map(yaml);
 
         let point_map = Parser::to_map(map.get(&Yaml::from_str("point")).unwrap());
@@ -200,7 +200,7 @@ impl Path for ArcPath {
 }
 
 impl Savable for ArcPath {
-    fn to_save(&self, _save_path: &str) -> Yaml {
+    fn to_save(&self, _save_path: &mut SaveData) -> Yaml {
         Serializer::create_map(vec![
             ("name", Serializer::from_str("arc")),
             ("center", Serializer::create_map(vec![
@@ -213,7 +213,7 @@ impl Savable for ArcPath {
         ])
     }
 
-    fn from_save(yaml: &Yaml, _save_path: &str) -> Box<Self> {
+    fn from_save(yaml: &Yaml, _save_path: &mut SaveData) -> Box<Self> {
         let map = Parser::to_map(yaml);
 
         let center = Parser::to_map(map.get(&Yaml::from_str("center")).unwrap());

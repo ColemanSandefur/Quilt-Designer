@@ -2,7 +2,7 @@ use crate::window::canvas::Canvas;
 use crate::util::click::Click;
 use crate::texture_brush::TextureBrush;
 use crate::path::{Path};
-use crate::parser::{Parser, Serializer, SerializeData, SavableBlueprint, Savable};
+use crate::parser::{Parser, Serializer, SerializeData, SavableBlueprint, Savable, SaveData};
 use crate::path::{Line, Move};
 
 use cairo::{Context};
@@ -140,14 +140,14 @@ impl SavableBlueprint for ChildShape {
 }
 
 impl Savable for ChildShape {
-    fn to_save(&self, save_path: &str) -> Yaml {
+    fn to_save(&self, save_path: &mut SaveData) -> Yaml {
         Serializer::create_map(vec!{
             ("brush", self.brush.to_save(save_path)),
             ("paths", Serializer::serialize(self.paths.iter().map(|path| path.to_save(save_path)).collect::<Vec<Yaml>>()))
         })
     }
 
-    fn from_save(yaml: &Yaml, save_path: &str) -> Box<Self> where Self: Sized {
+    fn from_save(yaml: &Yaml, save_path: &mut SaveData) -> Box<Self> where Self: Sized {
         let map = Parser::to_map(yaml);
 
         let brush = *TextureBrush::from_save(map.get(&Serializer::serialize("brush")).unwrap(), save_path);

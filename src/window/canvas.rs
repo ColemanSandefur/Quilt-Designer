@@ -8,7 +8,7 @@ use crate::util::rectangle::Rectangle;
 use crate::quilt::{Quilt, square::Square};
 use crate::window::Window;
 use crate::util::undo_redo::UndoRedo;
-use crate::parser::Savable;
+use crate::parser::{Savable, SaveData};
 
 use cairo::Context;
 use gdk::{EventMask, ScrollDirection};
@@ -334,26 +334,44 @@ impl KeyListener for Canvas {
         }
 
         if keys_pressed.is_pressed(&gdk::keys::constants::p) {
-            let yaml = self.quilt.lock().unwrap().to_save("./saves/test");
+            let file = std::fs::File::create("./saves/save.quilt").unwrap();
+            let zip = zip::ZipWriter::new(file);
+
+            let mut save_data = SaveData{
+                writer: Some(Arc::new(Mutex::new(zip))),
+                reader: None,
+                files_written: vec!{}
+            };
+            
+            let yaml = self.quilt.lock().unwrap().to_save(&mut save_data);
+
             let mut output = String::new();
             let mut emitter = yaml_rust::YamlEmitter::new(&mut output);
             emitter.dump(&yaml).unwrap();
 
-            let path = std::path::Path::new("./saves/test").join("save.yaml");
+            let mut zip = save_data.writer.as_ref().unwrap().lock().unwrap();
+            
+            zip.start_file("save.yaml", Default::default()).unwrap();
+            write!(zip, "{}", output).unwrap();
 
-            let mut file = std::fs::File::create(path).unwrap();
-
-            write!(file, "{}", output).unwrap();
+            zip.finish().unwrap();
         }
 
         if keys_pressed.is_pressed(&gdk::keys::constants::o) {
-            let path = std::path::Path::new("./saves/test").join("save.yaml");
-            let mut file = std::fs::File::open(path).expect("Could not open file");
-            let mut contents = String::new();
-            file.read_to_string(&mut contents).expect("Could not read from file");
+            let file = std::fs::File::open("./saves/save.quilt").unwrap();
+            let mut archive = zip::ZipArchive::new(file).unwrap();
 
+            let mut contents = String::new();
+            archive.by_name("save.yaml").unwrap().read_to_string(&mut contents).unwrap();
             let yaml = &yaml_rust::YamlLoader::load_from_str(&contents).unwrap()[0];
-            let quilt = *Quilt::from_save(&yaml, "./saves/test");
+
+            let mut save_data = SaveData{
+                reader: Some(Arc::new(Mutex::new(archive))),
+                writer: None,
+                files_written: vec!{}
+            };
+
+            let quilt = *Quilt::from_save(&yaml, &mut save_data);
 
             *self.quilt.lock().unwrap() = quilt;
 

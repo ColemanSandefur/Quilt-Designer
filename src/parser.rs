@@ -1,5 +1,6 @@
 use yaml_rust::Yaml;
 use linked_hash_map::LinkedHashMap;
+use std::sync::{Arc, Mutex};
 
 pub struct Parser {}
 
@@ -133,10 +134,16 @@ impl SerializeData<usize> for Serializer {
     }
 }
 
+pub struct SaveData {
+    pub writer: Option<Arc<Mutex<zip::ZipWriter<std::fs::File>>>>,
+    pub reader: Option<Arc<Mutex<zip::ZipArchive<std::fs::File>>>>,
+    pub files_written: Vec<String>,
+}
+
 // save all the parts to completely re-create the file
 pub trait Savable {
-    fn to_save(&self, save_path: &str) -> Yaml;
-    fn from_save(yaml: &Yaml, save_path: &str) -> Box<Self> where Self: Sized;
+    fn to_save(&self, save_path: &mut SaveData) -> Yaml;
+    fn from_save(yaml: &Yaml, save_path: &mut SaveData) -> Box<Self> where Self: Sized;
 }
 
 // save what is needed to keep the general shape, used for saving BlockPatterns

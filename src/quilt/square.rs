@@ -3,7 +3,7 @@ use crate::quilt::block_pattern::BlockPattern;
 use crate::window::canvas::Canvas;
 use crate::util::click::Click;
 use crate::texture_brush::TextureBrush;
-use crate::parser::{Parser, Serializer, ParseData, SerializeData, Savable};
+use crate::parser::{Parser, Serializer, ParseData, SerializeData, Savable, SaveData};
 
 use cairo::{Context};
 use gdk::EventButton;
@@ -157,7 +157,7 @@ impl std::fmt::Display for Square {
 }
 
 impl Savable for Square {
-    fn to_save(&self, save_path: &str) -> Yaml {
+    fn to_save(&self, save_path: &mut SaveData) -> Yaml {
         Serializer::create_map(vec!{
             ("row", Serializer::serialize(self.row as i64)),
             ("column", Serializer::serialize(self.column as i64)),
@@ -166,7 +166,7 @@ impl Savable for Square {
         })
     }
 
-    fn from_save(yaml: &Yaml, save_path: &str) -> Box<Self> {
+    fn from_save(yaml: &Yaml, save_path: &mut SaveData) -> Box<Self> {
         let map = Parser::to_map(yaml);
 
         let row: i64 = Parser::parse(map.get(&Serializer::serialize("row")).unwrap());

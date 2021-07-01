@@ -1,6 +1,6 @@
 use crate::quilt::square::Square;
 use crate::util::image::Image;
-use crate::parser::{Parser, Serializer, Savable, SerializeData, ParseData};
+use crate::parser::{Parser, Serializer, Savable, SerializeData, ParseData, SaveData};
 
 use yaml_rust::Yaml;
 use gdk_pixbuf::Pixbuf;
@@ -86,7 +86,7 @@ impl Texture {
 
 // will pass "./saves/{save_name}" to image
 impl Savable for Texture {
-    fn to_save(&self, save_path: &str) -> Yaml {
+    fn to_save(&self, save_path: &mut SaveData) -> Yaml {
         let yaml = Serializer::create_map(vec![
             ("scale", Serializer::serialize(self.scale)),
             ("image", self.image.to_save(save_path))
@@ -95,7 +95,7 @@ impl Savable for Texture {
         yaml
     }
 
-    fn from_save(yaml: &Yaml, save_path: &str) -> Box<Self> {
+    fn from_save(yaml: &Yaml, save_path: &mut SaveData) -> Box<Self> {
         let map = Parser::to_map(yaml);
 
         let scale = Parser::parse(map.get(&Serializer::from_str("scale")).unwrap());
@@ -206,7 +206,7 @@ impl std::fmt::Display for TextureBrush {
 }
 
 impl Savable for TextureBrush {
-    fn to_save(&self, save_path: &str) -> Yaml {
+    fn to_save(&self, save_path: &mut SaveData) -> Yaml {
         if let Some(color) = self.color {
             return Serializer::create_map(vec!{
                 ("color", Serializer::create_map(vec!{
@@ -224,8 +224,7 @@ impl Savable for TextureBrush {
         }
     }
 
-    fn from_save(yaml: &Yaml, save_path: &str) -> Box<Self> {
-        Parser::print(yaml);
+    fn from_save(yaml: &Yaml, save_path: &mut SaveData) -> Box<Self> {
         let map = Parser::to_map(yaml);
 
         if let Some(color_yaml) = map.get(&Serializer::from_str("color")) {

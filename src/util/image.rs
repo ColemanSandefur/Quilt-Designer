@@ -1,11 +1,11 @@
 use cairo::{Format, ImageSurface};
 use std::cell::RefCell;
 use std::rc::Rc;
-use crate::parser::{Parser, Serializer, Savable};
-use std::path::Path;
+use crate::parser::{Parser, Serializer, Savable, SaveData};
 use yaml_rust::Yaml;
 use sha2::Digest;
 use crate::gtk::prelude::*;
+use std::io::{Read, Write};
 
 #[derive(Clone)]
 pub struct Image {
@@ -130,26 +130,33 @@ impl Image {
 }
 
 impl Savable for Image {
-    fn to_save(&self, save_path: &str) -> Yaml {
-
+    fn to_save(&self, save_path: &mut SaveData) -> Yaml {
+        
         let pixbuf = gdk_pixbuf::Pixbuf::from(self.clone());
-
+        
         // hash pixbuf's contents to create a unique name
         let mut hasher = sha2::Sha256::new();
-
+        
         let buffer = pixbuf.save_to_bufferv("png", &[]).unwrap();
-
+        
         hasher.update(&buffer);
-    
+        
         let result: Vec<u8> = hasher.finalize().to_vec();
-
+        
         // convert result to a string
         let file_name: String = format!("{}.png", result.into_iter().map(|i| i.to_string()).collect::<String>());
 
-        let file_path = Path::new(save_path).join(file_name.clone());
+        // bad way of preventing a file from being written multiple times
+        if !save_path.files_written.contains(&file_name) {
+            save_path.files_written.push(file_name.clone());
+            let mut writer = save_path.writer.as_ref().unwrap().lock().unwrap();
+            
+            let options = zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Stored);
+            writer.start_file(file_name.clone(), options).unwrap();
 
-        if !file_path.exists() {
-            pixbuf.savev(file_path, "png", &[]).unwrap();
+            println!("Writing {} bytes", buffer.len());
+    
+            writer.write(&buffer).unwrap();
         }
 
         let serialized = Serializer::create_map(vec![
@@ -161,17 +168,22 @@ impl Savable for Image {
         serialized
     }
 
-    fn from_save(yaml: &Yaml, save_path: &str) -> Box<Self> {
-
+    fn from_save(yaml: &Yaml, save_path: &mut SaveData) -> Box<Self> {
+        
         let map = Parser::to_map(yaml);
-
+        
         let width = Parser::to_i64(map.get(&Serializer::from_str("width")).unwrap()) as i32;
         let height = Parser::to_i64(map.get(&Serializer::from_str("height")).unwrap()) as i32;
         let file_name = String::from(Parser::to_str(map.get(&Serializer::from_str("data_location")).unwrap()));
+        
+        let mut vec = Vec::new();
+        {
+            let mut reader = save_path.reader.as_ref().unwrap().lock().unwrap();
+            let mut file = reader.by_name(&file_name).unwrap();
+            file.read_to_end(&mut vec).unwrap();
+        }
 
-        // imported with the desire import dimensions helps improve performance
-        // you don't need to be rendering a 6000x6000 image at full res you can get away with a somewhat low res image
-        let buf = gdk_pixbuf::Pixbuf::from_file_at_size(Path::new(save_path).join(file_name), width, height).unwrap();
+        let buf = gdk_pixbuf::Pixbuf::from_read(std::io::Cursor::new(vec)).unwrap();
 
         // write the pixbuf to a thread-safe image structure
         let mut image = Image::new(width, height);

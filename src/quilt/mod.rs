@@ -10,7 +10,7 @@ use crate::util::rectangle::Rectangle;
 use crate::texture_brush::{TextureBrush};
 use crate::camera_transform::CameraTransform;
 use crate::util::undo_redo::UndoRedo;
-use crate::parser::{Parser, Serializer, ParseData, SerializeData, Savable};
+use crate::parser::{Parser, Serializer, ParseData, SerializeData, Savable, SaveData};
 
 use cairo::{Context};
 use gdk::EventButton;
@@ -343,7 +343,7 @@ impl Click for Quilt {
 }
 
 impl Savable for Quilt {
-    fn to_save(&self, save_path: &str) -> Yaml {
+    fn to_save(&self, save_path: &mut SaveData) -> Yaml {
         let mut quilt: Vec<Yaml> = Vec::with_capacity(self.width * self.height);
 
         for row in &self.quilt {
@@ -359,7 +359,7 @@ impl Savable for Quilt {
         })
     }
 
-    fn from_save(yaml: &Yaml, save_path: &str) -> Box<Self> {
+    fn from_save(yaml: &Yaml, save_path: &mut SaveData) -> Box<Self> {
         let map = Parser::to_map(yaml);
 
         let width: usize = Parser::parse(map.get(&Serializer::serialize("width")).unwrap());
