@@ -1,5 +1,5 @@
 use crate::window::Window;
-use crate::texture_brush::TextureBrush;
+use crate::draw::texture_brush::TextureBrush;
 use crate::util::keys_pressed::{KeysPressed, KeyListener};
 use crate::util::image::Image;
 use crate::quilt::square::Square;

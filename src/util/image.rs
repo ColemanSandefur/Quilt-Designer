@@ -1,11 +1,12 @@
+use crate::util::parser::*;
+
 use cairo::{Format, ImageSurface};
-use std::cell::RefCell;
-use std::rc::Rc;
-use crate::parser::{Parser, Serializer, Savable, SaveData};
-use yaml_rust::Yaml;
+use gtk::prelude::*;
 use sha2::Digest;
-use crate::gtk::prelude::*;
+use std::cell::RefCell;
 use std::io::{Read, Write};
+use std::rc::Rc;
+use yaml_rust::Yaml;
 
 #[derive(Clone)]
 pub struct Image {

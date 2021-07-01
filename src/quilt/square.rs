@@ -1,9 +1,8 @@
-
+use crate::draw::texture_brush::TextureBrush;
 use crate::quilt::block_pattern::BlockPattern;
-use crate::window::canvas::Canvas;
 use crate::util::click::Click;
-use crate::texture_brush::TextureBrush;
-use crate::parser::{Parser, Serializer, ParseData, SerializeData, Savable, SaveData};
+use crate::util::parser::*;
+use crate::window::canvas::Canvas;
 
 use cairo::{Context};
 use gdk::EventButton;

@@ -1,11 +1,11 @@
 use crate::quilt::square::Square;
 use crate::util::image::Image;
-use crate::parser::{Parser, Serializer, Savable, SerializeData, ParseData, SaveData};
+use crate::util::parser::*;
 
-use yaml_rust::Yaml;
+use gdk::prelude::*;
 use gdk_pixbuf::Pixbuf;
 use std::sync::{Mutex};
-use gdk::prelude::*;
+use yaml_rust::Yaml;
 
 //
 // Used to paint areas with either a color or texture

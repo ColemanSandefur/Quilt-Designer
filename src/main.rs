@@ -2,12 +2,9 @@ extern crate gtk;
 pub mod quilt;
 pub mod window;
 pub mod camera_transform;
-pub mod texture_brush;
-pub mod brush;
 pub mod util;
-pub mod path;
-pub mod parser;
 pub mod menubar_manager;
+pub mod draw;
 
 use gio::prelude::*;
 use gtk::prelude::*;

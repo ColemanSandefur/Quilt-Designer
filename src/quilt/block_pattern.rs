@@ -1,8 +1,8 @@
 use crate::quilt::child_shape::ChildShape;
-use crate::window::canvas::Canvas;
-use crate::util::click::Click;
-use crate::parser::{SavableBlueprint, Savable, Parser, Serializer, ParseData, SerializeData, SaveData};
 use crate::quilt::square::Square;
+use crate::util::click::Click;
+use crate::util::parser::{SavableBlueprint, Savable, Parser, Serializer, ParseData, SerializeData, SaveData};
+use crate::window::canvas::Canvas;
 
 use cairo::{Context};
 use gdk::EventButton;

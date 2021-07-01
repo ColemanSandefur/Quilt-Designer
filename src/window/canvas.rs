@@ -1,5 +1,3 @@
-// #[cfg(feature = "dox")]
-
 use crate::camera_transform::CameraTransform;
 use crate::util::frame_timing::FrameTiming;
 use crate::util::click::Click;
@@ -8,7 +6,7 @@ use crate::util::rectangle::Rectangle;
 use crate::quilt::{Quilt, square::Square};
 use crate::window::Window;
 use crate::util::undo_redo::UndoRedo;
-use crate::parser::{Savable, SaveData};
+use crate::util::parser::{Savable, SaveData};
 
 use cairo::Context;
 use gdk::{EventMask, ScrollDirection};

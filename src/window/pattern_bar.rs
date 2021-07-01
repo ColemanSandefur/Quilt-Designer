@@ -1,10 +1,9 @@
 use crate::window::Window;
-// use crate::brush::Brush;
 use crate::util::keys_pressed::{KeysPressed, KeyListener};
 use crate::quilt::square::Square;
 use crate::quilt::block_pattern::BlockPattern;
 use crate::util::image::Image;
-use crate::parser::SavableBlueprint;
+use crate::util::parser::SavableBlueprint;
 
 use std::sync::{Arc, Mutex};
 use gtk::prelude::*;

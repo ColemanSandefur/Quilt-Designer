@@ -1,16 +1,16 @@
-pub mod square;
-pub mod child_shape;
 pub mod block_pattern;
+pub mod child_shape;
+pub mod square;
 
+use crate::camera_transform::CameraTransform;
+use crate::draw::texture_brush::{TextureBrush};
 use square::Square;
-use crate::window::canvas::Canvas;
 use crate::util::click::Click;
 use crate::util::image::Image;
+use crate::util::parser::*;
 use crate::util::rectangle::Rectangle;
-use crate::texture_brush::{TextureBrush};
-use crate::camera_transform::CameraTransform;
 use crate::util::undo_redo::UndoRedo;
-use crate::parser::{Parser, Serializer, ParseData, SerializeData, Savable, SaveData};
+use crate::window::canvas::Canvas;
 
 use cairo::{Context};
 use gdk::EventButton;

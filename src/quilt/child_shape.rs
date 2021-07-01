@@ -1,9 +1,9 @@
-use crate::window::canvas::Canvas;
+use crate::draw::texture_brush::TextureBrush;
+use crate::draw::path::{Path};
+use crate::draw::path::{Line, Move};
 use crate::util::click::Click;
-use crate::texture_brush::TextureBrush;
-use crate::path::{Path};
-use crate::parser::{Parser, Serializer, SerializeData, SavableBlueprint, Savable, SaveData};
-use crate::path::{Line, Move};
+use crate::util::parser::{Parser, Serializer, SerializeData, SavableBlueprint, Savable, SaveData};
+use crate::window::canvas::Canvas;
 
 use cairo::{Context};
 use gdk::EventButton;
@@ -117,7 +117,7 @@ impl SavableBlueprint for ChildShape {
         let mut paths: Vec<Arc<dyn Path>> = Vec::with_capacity(yaml_array.len());
 
         for yaml in yaml_array {
-            if let Some(path) = crate::path::from_yaml(yaml) {
+            if let Some(path) = crate::draw::path::from_yaml(yaml) {
                 paths.push(path);
             }
         }
@@ -151,7 +151,7 @@ impl Savable for ChildShape {
         let map = Parser::to_map(yaml);
 
         let brush = *TextureBrush::from_save(map.get(&Serializer::serialize("brush")).unwrap(), save_path);
-        let paths = Parser::to_vec(map.get(&Serializer::serialize("paths")).unwrap()).iter().map(|yaml| crate::path::from_yaml(yaml).unwrap()).collect::<Vec<Arc<dyn Path>>>();
+        let paths = Parser::to_vec(map.get(&Serializer::serialize("paths")).unwrap()).iter().map(|yaml| crate::draw::path::from_yaml(yaml).unwrap()).collect::<Vec<Arc<dyn Path>>>();
 
         Box::new(Self {
             brush: Arc::new(brush),

@@ -1,7 +1,8 @@
+use crate::util::parser::*;
+
 use cairo::{Context};
 use std::sync::{Arc};
 use yaml_rust::Yaml;
-use crate::parser::{Parser, Serializer, Savable, SavableBlueprint, SaveData};
 
 pub trait Path: std::marker::Sync + std::marker::Send + Savable + SavableBlueprint {
     fn draw_path(&self, cr: &Context);

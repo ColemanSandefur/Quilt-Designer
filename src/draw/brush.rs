@@ -1,5 +1,5 @@
+use crate::draw::texture_brush::TextureBrush;
 use crate::quilt::block_pattern::BlockPattern;
-use crate::texture_brush::TextureBrush;
 
 use std::sync::{Arc};
 

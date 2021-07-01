@@ -2,8 +2,8 @@ pub mod texture_bar;
 pub mod canvas;
 pub mod pattern_bar;
 
-use crate::texture_brush::TextureBrush;
-use crate::brush::Brush;
+use crate::draw::texture_brush::TextureBrush;
+use crate::draw::brush::Brush;
 use crate::util::keys_pressed::{KeysPressed, KeyListener};
 use canvas::Canvas;
 use texture_bar::TextureBar;
