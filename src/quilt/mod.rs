@@ -209,11 +209,16 @@ impl Quilt {
     pub fn draw(&mut self, cr: &Context, camera_transform: Arc<Mutex<CameraTransform>>, rect: &Rectangle<f64>) {
         cr.save().unwrap();
 
-        cr.move_to(0.0, 0.0);
-        cr.line_to(Square::SQUARE_WIDTH * self.width as f64, 0.0);
-        cr.line_to(Square::SQUARE_WIDTH * self.width as f64, Square::SQUARE_WIDTH * self.height as f64);
-        cr.line_to(0.0, Square::SQUARE_WIDTH * self.height as f64);
-        cr.line_to(0.0, 0.0);
+        let x = -rect.x / camera_transform.lock().unwrap().get_scale() + 0.0;
+        let y = -rect.y / camera_transform.lock().unwrap().get_scale() + 0.0;
+        let width = (rect.width - rect.x) / camera_transform.lock().unwrap().get_scale() - 0.0;
+        let height = (rect.height - rect.y) / camera_transform.lock().unwrap().get_scale() - 0.0;
+
+        cr.move_to(x, y);
+        cr.line_to(width, y);
+        cr.line_to(width, height);
+        cr.line_to(x, height);
+        cr.line_to(x, y);
 
         cr.clip();
 

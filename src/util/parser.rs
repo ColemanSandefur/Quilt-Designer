@@ -72,8 +72,6 @@ impl Parser {
     }
 }
 
-
-
 pub struct Serializer {}
 
 impl Serializer {

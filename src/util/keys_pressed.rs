@@ -27,6 +27,18 @@ impl KeysPressed {
             *val = false;
         }
     }
+
+    pub fn is_ctrl_pressed(&self) -> bool {
+        self.is_pressed(&gdk::keys::constants::Control_L) || self.is_pressed(&gdk::keys::constants::Control_R)
+    }
+
+    pub fn is_shift_pressed(&self) -> bool {
+        self.is_pressed(&gdk::keys::constants::Shift_L) || self.is_pressed(&gdk::keys::constants::Shift_R)
+    }
+
+    pub fn is_alt_pressed(&self) -> bool {
+        self.is_pressed(&gdk::keys::constants::Alt_L) || self.is_pressed(&gdk::keys::constants::Alt_R)
+    }
 }
 
 pub trait KeyListener { 

@@ -84,7 +84,6 @@ impl Texture {
     
 }
 
-// will pass "./saves/{save_name}" to image
 impl Savable for Texture {
     fn to_save(&self, save_path: &mut SaveData) -> Yaml {
         let yaml = Serializer::create_map(vec![

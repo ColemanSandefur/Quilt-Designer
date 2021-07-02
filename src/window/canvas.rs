@@ -205,9 +205,9 @@ impl Canvas {
             let keys_pressed = self.window.lock().unwrap().get_keys_pressed();
             let keys_pressed = keys_pressed.lock().unwrap();
 
-            if keys_pressed.is_pressed(&gdk::keys::constants::Shift_L) {
+            if keys_pressed.is_shift_pressed() {
                 scale = 1.0;
-            } else if keys_pressed.is_pressed(&gdk::keys::constants::Control_L) {
+            } else if keys_pressed.is_ctrl_pressed() {
                 scale = 0.1;
             } else {
                 scale = 0.5;
@@ -352,8 +352,7 @@ impl KeyListener for Canvas {
                 camera_transform.stop_move_down();
             }
             
-            if (keys_pressed.is_pressed(&gdk::keys::constants::Control_L) || keys_pressed.is_pressed(&gdk::keys::constants::Control_R)) &&
-                keys_pressed.is_pressed(&gdk::keys::constants::z) {
+            if keys_pressed.is_ctrl_pressed() && keys_pressed.is_pressed(&gdk::keys::constants::z) {
             
                 let mut quilt_struct = self.quilt.lock().unwrap();
             
@@ -370,8 +369,7 @@ impl KeyListener for Canvas {
                 }
             }
             
-            if (keys_pressed.is_pressed(&gdk::keys::constants::Control_L) || keys_pressed.is_pressed(&gdk::keys::constants::Control_R)) &&
-                keys_pressed.is_pressed(&gdk::keys::constants::y) {
+            if keys_pressed.is_ctrl_pressed() && keys_pressed.is_pressed(&gdk::keys::constants::y) {
                 let mut quilt_struct = self.quilt.lock().unwrap();
             
                 let mut undo_redo = self.undo_redo.lock().unwrap();
