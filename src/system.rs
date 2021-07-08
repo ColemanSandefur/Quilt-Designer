@@ -85,7 +85,7 @@ pub fn init(title: &str) -> System {
 }
 
 impl System {
-    pub fn main_loop<F: FnMut(&mut bool, &mut Ui) + 'static, T: FnMut(&mut glium::Frame, &mut Renderer) + 'static>(self, mut run_ui: F, mut render: T) {
+    pub fn main_loop<F: FnMut(&mut bool, &mut glium::Frame, &mut Renderer, &mut Ui) + 'static, T: FnMut(&mut glium::Frame, &mut Renderer) + 'static>(self, mut run_ui: F, mut render: T) {
         let System {
             event_loop,
             display,
@@ -112,15 +112,15 @@ impl System {
             }
             Event::RedrawRequested(_) => {
                 let mut ui = imgui.frame();
+                let mut target = display.draw();
 
                 let mut run = true;
-                run_ui(&mut run, &mut ui);
+                run_ui(&mut run, &mut target, &mut renderer, &mut ui);
                 if !run {
                     *control_flow = ControlFlow::Exit;
                 }
 
                 let gl_window = display.gl_window();
-                let mut target = display.draw();
                 // target.clear_color_srgb(1.0, 1.0, 1.0, 1.0);
                 render(&mut target, &mut renderer);
                 platform.prepare_render(&ui, gl_window.window());
@@ -135,9 +135,29 @@ impl System {
                 ..
             } => *control_flow = ControlFlow::Exit,
             event => {
+                if let Event::WindowEvent {event, ..} = &event {
+                    if let WindowEvent::KeyboardInput {input, ..} = event {
+
+                        if let Some(keycode) = input.virtual_keycode {
+                            process_input(&mut renderer, &keycode);
+                        }
+                    }
+                }
                 let gl_window = display.gl_window();
                 platform.handle_event(imgui.io_mut(), gl_window.window(), &event);
             }
         })
+    }
+}
+
+fn process_input(renderer: &mut Renderer, keycode: &glutin::event::VirtualKeyCode) {
+    match keycode {
+        glutin::event::VirtualKeyCode::A => {
+            renderer.world_transform.translate(0.01, 0.0, 0.0);
+        },
+        glutin::event::VirtualKeyCode::D => {
+            renderer.world_transform.translate(-0.01, 0.0, 0.0);
+        },
+        _ => ()
     }
 }

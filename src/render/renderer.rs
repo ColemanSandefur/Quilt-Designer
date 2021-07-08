@@ -5,9 +5,9 @@ use glium::Surface;
 
 #[allow(dead_code)]
 pub struct Renderer {
-    shaders: MaterialManager,
-    objects: Vec<Box<dyn ShapeObject>>,
-    world_transform: Matrix,
+    pub shaders: MaterialManager,
+    pub objects: Vec<Box<dyn ShapeObject>>,
+    pub world_transform: Matrix,
 }
 
 impl Renderer {
