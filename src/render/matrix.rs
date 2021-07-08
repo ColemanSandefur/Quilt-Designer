@@ -39,6 +39,12 @@ impl Matrix {
         self.matrix[2][2] *= z;
     }
 
+    pub fn add_scale(&mut self, x: f32, y: f32, z: f32) {
+        self.matrix[0][0] += x;
+        self.matrix[1][1] += y;
+        self.matrix[2][2] += z;
+    }
+
     pub fn set_scale(&mut self, x: f32, y: f32, z: f32) {
         self.matrix[0][0] = x;
         self.matrix[1][1] = y;

@@ -1,7 +1,10 @@
 use crate::util::frame_timing::FrameTiming;
+use crate::util::keyboard_tracker::KeyboardTracker;
 use crate::render::material::material_manager::MaterialManager;
 use crate::render::matrix::{Matrix, WorldTransform};
 use crate::render::object::{ShapeObject, DefaultShapeObject};
+use crate::render::ui_manager::UiManager;
+
 use glium::Surface;
 
 #[allow(dead_code)]
@@ -10,6 +13,7 @@ pub struct Renderer {
     pub objects: Vec<Box<dyn ShapeObject>>,
     pub world_transform: Matrix,
     pub frame_timing: FrameTiming,
+    pub keyboard_tracker: KeyboardTracker,
 }
 
 impl Renderer {
@@ -36,10 +40,11 @@ impl Renderer {
             objects,
             world_transform,
             frame_timing: FrameTiming::new(),
+            keyboard_tracker: KeyboardTracker::new(),
         }
     }
 
-    pub fn draw(&mut self, target: &mut glium::Frame) {
+    pub fn draw(&mut self, target: &mut glium::Frame, ui: &mut imgui::Ui) {
         target.clear_color(0.0, 0.0, 0.0, 1.0);
 
         let projection = {
@@ -71,6 +76,46 @@ impl Renderer {
             shape.draw(target, &global_transform, &Default::default());
         }
 
+        UiManager::draw(self, target, ui);
+        self.handle_keys();
+
         self.frame_timing.update_frame_time();
+    }
+
+    fn handle_keys(&mut self) {
+        use glium::glutin::event::VirtualKeyCode;
+
+        let keyboard_tracker = &mut self.keyboard_tracker;
+
+        let delta_time = self.frame_timing.delta_frame_time().num_microseconds().unwrap() as f32 / 1_000.0;
+        let movement_speed = 0.001;
+
+        if keyboard_tracker.is_key_pressed(&VirtualKeyCode::A) {
+            self.world_transform.translate(delta_time * movement_speed, 0.0, 0.0);
+        }
+        if keyboard_tracker.is_key_pressed(&VirtualKeyCode::D) {
+            self.world_transform.translate(delta_time * -movement_speed, 0.0, 0.0);
+        }
+        if keyboard_tracker.is_key_pressed(&VirtualKeyCode::W) {
+            self.world_transform.translate(0.0, delta_time * movement_speed, 0.0);
+        }
+        if keyboard_tracker.is_key_pressed(&VirtualKeyCode::S) {
+            self.world_transform.translate(0.0, delta_time * -movement_speed, 0.0);
+        }
+
+        let zoom_speed = 0.005;
+        let zoom_threshold = -0.7;
+
+        if keyboard_tracker.is_key_pressed(&VirtualKeyCode::Q) {
+            self.world_transform.add_scale(0.0, 0.0, delta_time * zoom_speed);
+        }
+        if keyboard_tracker.is_key_pressed(&VirtualKeyCode::E) {
+            self.world_transform.add_scale(0.0, 0.0, delta_time * -zoom_speed);
+
+            let translation = self.world_transform.get_scale();
+            if translation.2 <= zoom_threshold {
+                self.world_transform.set_scale(translation.0, translation.1, zoom_threshold);
+            }
+        }
     }
 }
