@@ -1,3 +1,4 @@
+use crate::util::frame_timing::FrameTiming;
 use crate::render::material::material_manager::MaterialManager;
 use crate::render::matrix::{Matrix, WorldTransform};
 use crate::render::object::{ShapeObject, DefaultShapeObject};
@@ -8,6 +9,7 @@ pub struct Renderer {
     pub shaders: MaterialManager,
     pub objects: Vec<Box<dyn ShapeObject>>,
     pub world_transform: Matrix,
+    pub frame_timing: FrameTiming,
 }
 
 impl Renderer {
@@ -33,6 +35,7 @@ impl Renderer {
             shaders,
             objects,
             world_transform,
+            frame_timing: FrameTiming::new(),
         }
     }
 
@@ -62,10 +65,12 @@ impl Renderer {
             world: self.world_transform,
         };
 
-        self.objects[0].get_model_transform_mut().translate(0.0, 0.0, 0.01);
+        // self.objects[0].get_model_transform_mut().translate(0.0, 0.0, 0.01);
 
         for shape in &mut self.objects {
             shape.draw(target, &global_transform, &Default::default());
         }
+
+        self.frame_timing.update_frame_time();
     }
 }

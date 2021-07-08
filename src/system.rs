@@ -1,4 +1,5 @@
 use crate::render::renderer::Renderer;
+use crate::util::keyboard_tracker::KeyboardTracker;
 
 use glium::glutin;
 use glium::glutin::event::{Event, WindowEvent};
@@ -18,6 +19,7 @@ pub struct System {
     pub platform: WinitPlatform,
     pub glium_renderer: GliumRenderer,
     pub renderer: Renderer,
+    pub keyboard_tracker: KeyboardTracker,
     pub font_size: f32,
 }
 
@@ -81,11 +83,15 @@ pub fn init(title: &str) -> System {
         glium_renderer,
         renderer,
         font_size,
+        keyboard_tracker: KeyboardTracker::new(),
     }
 }
 
 impl System {
-    pub fn main_loop<F: FnMut(&mut bool, &mut glium::Frame, &mut Renderer, &mut Ui) + 'static, T: FnMut(&mut glium::Frame, &mut Renderer) + 'static>(self, mut run_ui: F, mut render: T) {
+    pub fn main_loop<
+        F: FnMut(&mut bool, &mut glium::Frame, &mut KeyboardTracker, &mut Renderer, &mut Ui) + 'static, 
+        T: FnMut(&mut glium::Frame, &mut Renderer) + 'static>
+        (self, mut run_ui: F, mut render: T) {
         let System {
             event_loop,
             display,
@@ -93,6 +99,7 @@ impl System {
             mut platform,
             mut glium_renderer,
             mut renderer,
+            mut keyboard_tracker,
             ..
         } = self;
         let mut last_frame = Instant::now();
@@ -115,7 +122,7 @@ impl System {
                 let mut target = display.draw();
 
                 let mut run = true;
-                run_ui(&mut run, &mut target, &mut renderer, &mut ui);
+                run_ui(&mut run, &mut target,&mut keyboard_tracker, &mut renderer, &mut ui);
                 if !run {
                     *control_flow = ControlFlow::Exit;
                 }
@@ -137,9 +144,14 @@ impl System {
             event => {
                 if let Event::WindowEvent {event, ..} = &event {
                     if let WindowEvent::KeyboardInput {input, ..} = event {
-
                         if let Some(keycode) = input.virtual_keycode {
-                            process_input(&mut renderer, &keycode);
+                            keyboard_tracker.set_pressed(keycode, input.state == glutin::event::ElementState::Pressed);
+                        }
+                    }
+
+                    if let WindowEvent::Focused(is_focused) = event {
+                        if !is_focused {
+                            keyboard_tracker.release_all();
                         }
                     }
                 }
@@ -147,17 +159,5 @@ impl System {
                 platform.handle_event(imgui.io_mut(), gl_window.window(), &event);
             }
         })
-    }
-}
-
-fn process_input(renderer: &mut Renderer, keycode: &glutin::event::VirtualKeyCode) {
-    match keycode {
-        glutin::event::VirtualKeyCode::A => {
-            renderer.world_transform.translate(0.01, 0.0, 0.0);
-        },
-        glutin::event::VirtualKeyCode::D => {
-            renderer.world_transform.translate(-0.01, 0.0, 0.0);
-        },
-        _ => ()
     }
 }
