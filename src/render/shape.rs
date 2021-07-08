@@ -8,7 +8,6 @@ pub struct Vertex {
     pub position: [f32; 2]
 }
 
-#[allow(dead_code)]
 impl Vertex {
     pub fn to_point(&self) -> Point {
         point(self.position[0], self.position[1])
@@ -30,7 +29,6 @@ pub struct Square {
 
 
 impl Square {
-    #[allow(dead_code)]
     pub fn new(facade: &dyn glium::backend::Facade, pos1: (f32, f32), pos2: (f32, f32), pos3: (f32, f32), pos4: (f32, f32)) -> Self {
         let vertex_buffer = glium::VertexBuffer::new(facade, &[
             Vertex { position: [pos1.0, pos1.1] },

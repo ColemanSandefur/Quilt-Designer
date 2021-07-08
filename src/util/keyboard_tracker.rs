@@ -8,7 +8,6 @@ pub struct KeyboardTracker {
     keys: HashMap<VirtualKeyCode, bool>,
 }
 
-#[allow(dead_code)]
 impl KeyboardTracker {
     pub fn new() -> Self {
         Self {

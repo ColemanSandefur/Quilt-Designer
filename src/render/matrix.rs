@@ -3,7 +3,6 @@ pub struct Matrix {
     matrix: [[f32; 4]; 4]
 }
 
-#[allow(dead_code)]
 impl Matrix {
     pub fn new() -> Self {
 

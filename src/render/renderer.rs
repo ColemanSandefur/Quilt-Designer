@@ -1,8 +1,8 @@
+use crate::quilt::Quilt;
 use crate::util::frame_timing::FrameTiming;
 use crate::util::keyboard_tracker::KeyboardTracker;
 use crate::render::material::material_manager::MaterialManager;
 use crate::render::matrix::{Matrix, WorldTransform};
-use crate::render::object::{ShapeObject, DefaultShapeObject};
 use crate::render::ui_manager::UiManager;
 
 use glium::Surface;
@@ -10,23 +10,15 @@ use glium::Surface;
 #[allow(dead_code)]
 pub struct Renderer {
     pub shaders: MaterialManager,
-    pub objects: Vec<Box<dyn ShapeObject>>,
     pub world_transform: Matrix,
     pub frame_timing: FrameTiming,
     pub keyboard_tracker: KeyboardTracker,
+    pub quilt: Quilt,
 }
 
 impl Renderer {
     pub fn new(display: &dyn glium::backend::Facade) -> Self {
         let shaders = MaterialManager::load_all(display);
-
-        let mut objects: Vec<Box<dyn ShapeObject>> = vec!{
-            Box::new(DefaultShapeObject::new(display, &shaders)),
-            Box::new(DefaultShapeObject::new(display, &shaders)),
-        };
-
-        objects[1].get_model_transform_mut().translate(-1.0, 0.5, 0.0);
-        objects[1].get_model_transform_mut().set_scale(0.5, 0.5, 1.0);
 
         let world_transform = Matrix::new_with_data([
             [1.0, 0.0, 0.0, 0.0],
@@ -35,12 +27,14 @@ impl Renderer {
             [0.0, 0.0, 1.0, 1.0],
         ]);
 
+        let quilt = Quilt::new(display, &shaders, 6, 8);
+
         Self {
             shaders,
-            objects,
             world_transform,
             frame_timing: FrameTiming::new(),
             keyboard_tracker: KeyboardTracker::new(),
+            quilt,
         }
     }
 
@@ -70,11 +64,7 @@ impl Renderer {
             world: self.world_transform,
         };
 
-        // self.objects[0].get_model_transform_mut().translate(0.0, 0.0, 0.01);
-
-        for shape in &mut self.objects {
-            shape.draw(target, &global_transform, &Default::default());
-        }
+        self.quilt.draw(target, &global_transform, &Default::default());
 
         UiManager::draw(self, target, ui);
         self.handle_keys();
