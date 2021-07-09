@@ -1,11 +1,11 @@
 #version 140
 
 in vec2 position;
+in vec4 color;
+in mat4 model;
+
 out vec4 input_color;
 
-uniform vec4 color;
-
-uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 

@@ -1,3 +1,5 @@
+use crate::render::matrix::Matrix;
+
 use glium::Surface;
 use lyon::math::{point, Point};
 use lyon::path::Path;
@@ -5,7 +7,19 @@ use lyon::tessellation::*;
 
 #[derive(Copy, Clone)]
 pub struct Vertex {
-    pub position: [f32; 2]
+    pub position: [f32; 2],
+    pub color: [f32; 4],
+    pub model: [[f32;4]; 4],
+}
+
+impl Default for Vertex {
+    fn default() -> Self {
+        Self {
+            position: [0.0; 2],
+            color: [1.0; 4],
+            model: Matrix::new().get_matrix(),
+        }
+    }
 }
 
 impl Vertex {
@@ -14,29 +28,31 @@ impl Vertex {
     }
 }
 
-implement_vertex!(Vertex, position);
+implement_vertex!(Vertex, position, color, model);
 
 
 pub trait Shape {
-    fn get_vertex_buffer(&self) -> &glium::VertexBuffer<Vertex>;
-    fn get_index_buffer(&self) -> &glium::IndexBuffer<u32>;
+    fn get_vertices(&mut self) -> Vec<Vertex>;
+    fn get_indices(&mut self) -> Vec<u32>;
+    fn set_color(&mut self, color: [f32; 4]);
+    fn set_model_matrix(&mut self, matrix: Matrix);
 }
 
 pub struct Square {
-    vertex_buffer: glium::VertexBuffer<Vertex>,
-    index_buffer: glium::IndexBuffer<u32>,
+    vertex_buffer: Vec<Vertex>,
+    index_buffer: Vec<u32>,
 }
 
-
 impl Square {
-    pub fn new(facade: &dyn glium::backend::Facade, pos1: (f32, f32), pos2: (f32, f32), pos3: (f32, f32), pos4: (f32, f32)) -> Self {
-        let vertex_buffer = glium::VertexBuffer::new(facade, &[
-            Vertex { position: [pos1.0, pos1.1] },
-            Vertex { position: [pos2.0, pos2.1] },
-            Vertex { position: [pos3.0, pos3.1] },
-            Vertex { position: [pos4.0, pos4.1] },
-        ]).unwrap();
-        let index_buffer = glium::IndexBuffer::new(facade, glium::index::PrimitiveType::TrianglesList, &[0u32, 1, 2, 1, 2, 3]).unwrap();
+    pub fn new(pos1: (f32, f32), pos2: (f32, f32), pos3: (f32, f32), pos4: (f32, f32)) -> Self {
+        let vertex_buffer = vec!{
+            Vertex { position: [pos1.0, pos1.1], .. Default::default() },
+            Vertex { position: [pos2.0, pos2.1], .. Default::default() },
+            Vertex { position: [pos3.0, pos3.1], .. Default::default() },
+            Vertex { position: [pos4.0, pos4.1], .. Default::default() },
+        };
+
+        let index_buffer = vec!{0u32, 1, 2, 1, 2, 3};
 
         Self {
             vertex_buffer,
@@ -44,14 +60,15 @@ impl Square {
         }
     }
 
-    pub fn with_width_height(facade: &dyn glium::backend::Facade, x: f32, y: f32, width: f32, height: f32) -> Self {
-        let vertex_buffer = glium::VertexBuffer::new(facade, &[
-            Vertex { position: [ x, y ] },
-            Vertex { position: [ x + width, y ] },
-            Vertex { position: [ x, y + height ] },
-            Vertex { position: [ x + width, y + height ] },
-        ]).unwrap();
-        let index_buffer = glium::IndexBuffer::new(facade, glium::index::PrimitiveType::TrianglesList, &[0u32, 1, 2, 1, 2, 3]).unwrap();
+    pub fn with_width_height(x: f32, y: f32, width: f32, height: f32) -> Self {
+        let vertex_buffer = vec!{
+            Vertex { position: [ x, y ], .. Default::default() },
+            Vertex { position: [ x + width, y ], .. Default::default() },
+            Vertex { position: [ x, y + height ], .. Default::default() },
+            Vertex { position: [ x + width, y + height ], .. Default::default() },
+        };
+
+        let index_buffer = vec!{0u32, 1, 2, 1, 2, 3};
 
         Self {
             vertex_buffer,
@@ -61,22 +78,34 @@ impl Square {
 }
 
 impl Shape for Square {
-    fn get_vertex_buffer(&self) -> &glium::VertexBuffer<Vertex> {
-        &self.vertex_buffer
+    fn get_vertices(&mut self) -> Vec<Vertex> {
+        self.vertex_buffer.clone()
     }
 
-    fn get_index_buffer(&self) -> &glium::IndexBuffer<u32> {
-        &self.index_buffer
+    fn get_indices(&mut self) -> Vec<u32> {
+        self.index_buffer.clone()
+    }
+
+    fn set_color(&mut self, color: [f32; 4]) {
+        for vertex in &mut self.vertex_buffer {
+            vertex.color = color;
+        }
+    }
+
+    fn set_model_matrix(&mut self, matrix: Matrix) {
+        for vertex in &mut self.vertex_buffer {
+            vertex.model = matrix.get_matrix();
+        }
     }
 }
 
 pub struct PathShape {
-    vertex_buffer: glium::VertexBuffer<Vertex>,
-    index_buffer: glium::IndexBuffer<u32>,
+    vertex_buffer: Vec<Vertex>,
+    index_buffer: Vec<u32>,
 }
 
 impl PathShape {
-    pub fn new(facade: &dyn glium::backend::Facade, path: Path) -> Self {
+    pub fn new(path: Path) -> Self {
         let mut geometry: VertexBuffers<Vertex, u32> = VertexBuffers::new();
 
         let mut tessellator = FillTessellator::new();
@@ -88,14 +117,15 @@ impl PathShape {
                 &mut BuffersBuilder::new(&mut geometry, |vertex: FillVertex| {
                     Vertex {
                         position: vertex.position().to_array(),
+                        .. Default::default()
                     }
                 }),
             ).unwrap();
         }
 
-        let vertex_buffer = glium::VertexBuffer::new(facade, &geometry.vertices.to_vec()).unwrap();
+        let vertex_buffer = geometry.vertices.to_vec();
 
-        let index_buffer = glium::IndexBuffer::new(facade, glium::index::PrimitiveType::TriangleStrip, &geometry.indices.to_vec()).unwrap();
+        let index_buffer = geometry.indices.to_vec();
 
         Self {
             vertex_buffer,
@@ -103,7 +133,7 @@ impl PathShape {
         }
     }
 
-    pub fn from_vertices(facade: &dyn glium::backend::Facade, vertices: &Vec<Vertex>) -> Self {
+    pub fn from_vertices(vertices: &Vec<Vertex>) -> Self {
 
         let mut builder = Path::builder();
         builder.begin(vertices[0].to_point());
@@ -125,14 +155,15 @@ impl PathShape {
                 &mut BuffersBuilder::new(&mut geometry, |vertex: FillVertex| {
                     Vertex {
                         position: vertex.position().to_array(),
+                        .. Default::default()
                     }
                 }),
             ).unwrap();
         }
 
-        let vertex_buffer = glium::VertexBuffer::new(facade, &geometry.vertices.to_vec()).unwrap();
+        let vertex_buffer = geometry.vertices.to_vec();
 
-        let index_buffer = glium::IndexBuffer::new(facade, glium::index::PrimitiveType::TriangleStrip, &geometry.indices.to_vec()).unwrap();
+        let index_buffer = geometry.indices.to_vec();
 
         Self {
             vertex_buffer,
@@ -142,15 +173,27 @@ impl PathShape {
 }
 
 impl Shape for PathShape {
-    fn get_vertex_buffer(&self) -> &glium::VertexBuffer<Vertex> {
-        &self.vertex_buffer
+    fn get_vertices(&mut self) -> Vec<Vertex> {
+        self.vertex_buffer.clone()
     }
 
-    fn get_index_buffer(&self) -> &glium::IndexBuffer<u32> {
-        &self.index_buffer
+    fn get_indices(&mut self) -> Vec<u32> {
+        self.index_buffer.clone()
+    }
+
+    fn set_color(&mut self, color: [f32; 4]) {
+        for vertex in &mut self.vertex_buffer {
+            vertex.color = color;
+        }
+    }
+
+    fn set_model_matrix(&mut self, matrix: Matrix) {
+        for vertex in &mut self.vertex_buffer {
+            vertex.model = matrix.get_matrix();
+        }
     }
 }
 
-pub fn draw<'a, U: glium::uniforms::Uniforms>(shape: &Box<dyn Shape>, frame: &mut glium::Frame, program: &glium::Program, uniforms: &U, draw_parameters: &glium::DrawParameters<'_>) {
-    frame.draw(shape.get_vertex_buffer(), shape.get_index_buffer(), program, uniforms, draw_parameters).unwrap();
+pub fn draw<'a, U: glium::uniforms::Uniforms>(shape: &(&glium::VertexBuffer<Vertex>, &glium::IndexBuffer<u32>), frame: &mut glium::Frame, program: &glium::Program, uniforms: &U, draw_parameters: &glium::DrawParameters<'_>) {
+    frame.draw(shape.0, shape.1, program, uniforms, draw_parameters).unwrap();
 }

@@ -61,7 +61,7 @@ impl MaterialManager {
 
         materials.insert(
             MaterialType::SolidColorMaterial,
-            Box::new(SolidColorMaterial::new(Self::load_from_file(std::path::Path::new("./shaders/solid_color"), display), [1.0, 1.0, 1.0, 1.0]))
+            Box::new(SolidColorMaterial::new(Self::load_from_file(std::path::Path::new("./shaders/solid_color"), display)))
         );
 
         let click_material = ClickMaterial::new(Self::load_from_file(std::path::Path::new("./shaders/solid_color"), display), [1.0, 1.0, 1.0, 1.0]);

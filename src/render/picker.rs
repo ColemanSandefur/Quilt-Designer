@@ -18,7 +18,7 @@ impl Picker {
         self.picking_pixel_buffer.read().map(|d| d[0]).unwrap_or(0);
     }
 
-    pub fn draw(&mut self, renderer: &mut Renderer, target: &mut glium::Frame, global_transform: &crate::render::matrix::WorldTransform) {
-        renderer.quilt.draw_click(target, global_transform, &Default::default());
+    pub fn draw(&mut self, _renderer: &mut Renderer, _target: &mut glium::Frame, _global_transform: &crate::render::matrix::WorldTransform) {
+        // renderer.quilt.draw_click(target, global_transform, &Default::default());
     }
 }
