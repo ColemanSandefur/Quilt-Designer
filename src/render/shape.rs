@@ -95,7 +95,7 @@ impl PathShape {
 
         let vertex_buffer = glium::VertexBuffer::new(facade, &geometry.vertices.to_vec()).unwrap();
 
-        let index_buffer = glium::IndexBuffer::new(facade, glium::index::PrimitiveType::TrianglesList, &geometry.indices.to_vec()).unwrap();
+        let index_buffer = glium::IndexBuffer::new(facade, glium::index::PrimitiveType::TriangleStrip, &geometry.indices.to_vec()).unwrap();
 
         Self {
             vertex_buffer,
@@ -132,7 +132,7 @@ impl PathShape {
 
         let vertex_buffer = glium::VertexBuffer::new(facade, &geometry.vertices.to_vec()).unwrap();
 
-        let index_buffer = glium::IndexBuffer::new(facade, glium::index::PrimitiveType::TrianglesList, &geometry.indices.to_vec()).unwrap();
+        let index_buffer = glium::IndexBuffer::new(facade, glium::index::PrimitiveType::TriangleStrip, &geometry.indices.to_vec()).unwrap();
 
         Self {
             vertex_buffer,

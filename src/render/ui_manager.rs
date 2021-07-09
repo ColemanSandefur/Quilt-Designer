@@ -4,7 +4,7 @@ pub struct UiManager {}
 
 impl UiManager {
 
-    pub fn draw(_renderer: &mut Renderer, frame: &mut glium::Frame, ui: &mut imgui::Ui) {
+    pub fn draw(renderer: &mut Renderer, frame: &mut glium::Frame, ui: &mut imgui::Ui) {
         use imgui::*;
         use glium::Surface;
 
@@ -18,15 +18,8 @@ impl UiManager {
             .movable(false)
             .collapsible(false)
             .build(ui, || {
-                ui.text(im_str!("Hello world!"));
-                ui.text(im_str!("こんにちは世界！"));
-                ui.text(im_str!("This...is...imgui-rs!"));
-                ui.separator();
-                let mouse_pos = ui.io().mouse_pos;
-                ui.text(format!(
-                    "Mouse Position: ({:.1},{:.1})",
-                    mouse_pos[0], mouse_pos[1]
-                ));
+                ui.text(im_str!("{}ms", renderer.frame_timing.delta_frame_time().num_milliseconds()));
+                ui.text(im_str!("{:.0} fps", 1.0 / (renderer.frame_timing.delta_frame_time().num_microseconds().unwrap() as f64 / 1_000_000.0)));
             });
         
         Window::new(im_str!("Block Designs"))

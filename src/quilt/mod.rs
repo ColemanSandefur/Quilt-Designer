@@ -13,7 +13,7 @@ pub struct Quilt {
 }
 
 impl Quilt {
-    pub fn new(display: &dyn glium::backend::Facade, shaders: &MaterialManager, width: usize, height: usize) -> Self {
+    pub fn new(display: &dyn glium::backend::Facade, shaders: &mut MaterialManager, width: usize, height: usize) -> Self {
 
         let mut squares = Vec::with_capacity(height);
 
@@ -44,6 +44,14 @@ impl Quilt {
         for row in &mut self.squares {
             for square in row {
                 square.draw(frame, world_transform, draw_parameters);
+            }
+        }
+    }
+
+    pub fn draw_click(&mut self, frame: &mut glium::Frame, world_transform: &WorldTransform, draw_parameters: &glium::DrawParameters<'_>) {
+        for row in &mut self.squares {
+            for square in row {
+                square.draw_click(frame, world_transform, draw_parameters);
             }
         }
     }

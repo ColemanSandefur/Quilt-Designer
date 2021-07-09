@@ -4,6 +4,7 @@ use crate::util::keyboard_tracker::KeyboardTracker;
 use crate::render::material::material_manager::MaterialManager;
 use crate::render::matrix::{Matrix, WorldTransform};
 use crate::render::ui_manager::UiManager;
+use crate::render::picker::Picker;
 
 use glium::Surface;
 
@@ -14,11 +15,12 @@ pub struct Renderer {
     pub frame_timing: FrameTiming,
     pub keyboard_tracker: KeyboardTracker,
     pub quilt: Quilt,
+    pub picker: Picker,
 }
 
 impl Renderer {
     pub fn new(display: &dyn glium::backend::Facade) -> Self {
-        let shaders = MaterialManager::load_all(display);
+        let mut shaders = MaterialManager::load_all(display);
 
         let world_transform = Matrix::new_with_data([
             [1.0, 0.0, 0.0, 0.0],
@@ -27,7 +29,7 @@ impl Renderer {
             [0.0, 0.0, 1.0, 1.0],
         ]);
 
-        let quilt = Quilt::new(display, &shaders, 6, 8);
+        let quilt = Quilt::new(display, &mut shaders, 6, 8);
 
         Self {
             shaders,
@@ -35,10 +37,13 @@ impl Renderer {
             frame_timing: FrameTiming::new(),
             keyboard_tracker: KeyboardTracker::new(),
             quilt,
+            picker: Picker::new(display)
+            // picking_pixel_buffer: glium::texture::pixel_buffer::PixelBuffer::new_empty(display, 1),
         }
     }
 
     pub fn draw(&mut self, target: &mut glium::Frame, ui: &mut imgui::Ui) {
+
         target.clear_color(0.0, 0.0, 0.0, 1.0);
 
         let projection = {
@@ -78,7 +83,7 @@ impl Renderer {
         let keyboard_tracker = &mut self.keyboard_tracker;
 
         let delta_time = self.frame_timing.delta_frame_time().num_microseconds().unwrap() as f32 / 1_000.0;
-        let movement_speed = 0.001;
+        let movement_speed = 0.003;
 
         if keyboard_tracker.is_key_pressed(&VirtualKeyCode::A) {
             self.world_transform.translate(delta_time * movement_speed, 0.0, 0.0);
@@ -87,10 +92,10 @@ impl Renderer {
             self.world_transform.translate(delta_time * -movement_speed, 0.0, 0.0);
         }
         if keyboard_tracker.is_key_pressed(&VirtualKeyCode::W) {
-            self.world_transform.translate(0.0, delta_time * movement_speed, 0.0);
+            self.world_transform.translate(0.0, delta_time * -movement_speed, 0.0);
         }
         if keyboard_tracker.is_key_pressed(&VirtualKeyCode::S) {
-            self.world_transform.translate(0.0, delta_time * -movement_speed, 0.0);
+            self.world_transform.translate(0.0, delta_time * movement_speed, 0.0);
         }
 
         let zoom_speed = 0.005;

@@ -2,36 +2,76 @@ use crate::render::material::*;
 
 use std::collections::HashMap;
 use std::rc::Rc;
+use rand::Rng;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum MaterialType {
-    SolidColorMaterial
+    SolidColorMaterial,
+    ClickMaterial,
 }
 
 pub struct MaterialManager {
     materials: HashMap<MaterialType, Box<dyn Material>>,
+    click_material: ClickMaterial,
+    click_vec: Vec<[f32; 4]>,
 }
 
 impl MaterialManager {
+    pub fn get_click_material(&mut self) -> ClickMaterial {
+        let mut rng = rand::thread_rng();
+
+        let mut color = [
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            1.0
+        ];
+
+        while self.click_vec.contains(&color) {
+            color = [
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                1.0
+            ];
+        }
+
+        self.click_vec.push(color.clone());
+
+        let mut material = self.click_material.clone();
+
+        material.color = color.clone();
+
+        material
+    }
+
     pub fn get_material(&self, m: MaterialType) -> Option<Box<dyn Material>> {
+        
+
         match self.materials.get(&m) {
             Some(v) => {
-                Some((*v).clone())
+                Some((*v).clone_material())
             },
             None => None
         }
     }
 
-    pub fn load_all(shader: &dyn glium::backend::Facade) -> Self {
+    pub fn load_all(display: &dyn glium::backend::Facade) -> Self {
         let mut materials: HashMap<MaterialType, Box<dyn Material>> = HashMap::new();
 
         materials.insert(
             MaterialType::SolidColorMaterial,
-            Box::new(SolidColorMaterial::new(Self::load_from_file(std::path::Path::new("./shaders/solid_color"), shader), [1.0, 1.0, 1.0, 1.0]))
+            Box::new(SolidColorMaterial::new(Self::load_from_file(std::path::Path::new("./shaders/solid_color"), display), [1.0, 1.0, 1.0, 1.0]))
         );
 
+        let click_material = ClickMaterial::new(Self::load_from_file(std::path::Path::new("./shaders/solid_color"), display), [1.0, 1.0, 1.0, 1.0]);
+
+        let click_vec = Vec::new();
+
         Self {
-            materials
+            materials,
+            click_material,
+            click_vec,
         }
     }
 
