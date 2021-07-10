@@ -36,6 +36,8 @@ pub trait Shape {
     fn get_indices(&mut self) -> Vec<u32>;
     fn set_color(&mut self, color: [f32; 4]);
     fn set_model_matrix(&mut self, matrix: Matrix);
+    fn get_num_vertices(&mut self) -> usize;
+    fn get_num_indices(&mut self) -> usize;
 }
 
 pub struct Square {
@@ -96,6 +98,14 @@ impl Shape for Square {
         for vertex in &mut self.vertex_buffer {
             vertex.model = matrix.get_matrix();
         }
+    }
+
+    fn get_num_vertices(&mut self) -> usize {
+        self.vertex_buffer.len()
+    }
+    
+    fn get_num_indices(&mut self) -> usize {
+        self.index_buffer.len()
     }
 }
 
@@ -191,6 +201,14 @@ impl Shape for PathShape {
         for vertex in &mut self.vertex_buffer {
             vertex.model = matrix.get_matrix();
         }
+    }
+
+    fn get_num_vertices(&mut self) -> usize {
+        self.vertex_buffer.len()
+    }
+
+    fn get_num_indices(&mut self) -> usize {
+        self.index_buffer.len()
     }
 }
 

@@ -29,7 +29,7 @@ impl Renderer {
             [0.0, 0.0, 1.0, 1.0],
         ]);
 
-        let quilt = Quilt::new(display, &mut shaders, 6*10, 8*10);
+        let quilt = Quilt::new(display, &mut shaders, 6 * 2, 8 * 2);
 
         Self {
             shaders,
