@@ -27,7 +27,7 @@ impl Square {
 
     pub fn new(shaders: &mut MaterialManager) -> Self {
 
-        let mut half_circle = Path::svg_builder().flattened(0.0001);
+        let mut half_circle = Path::svg_builder().flattened(0.001);
         half_circle.move_to(point(0.5, 0.25));
         half_circle.relative_arc_to(
             vector(0.25, 0.25),
@@ -65,9 +65,6 @@ impl Square {
         shapes.get_mut(2).unwrap().shape.set_color([0.8, 0.2, 0.2, 1.0]);
         shapes.get_mut(3).unwrap().shape.set_color([0.1, 0.8, 0.8, 1.0]);
 
-        // let mut vertex_buffer = glium::VertexBuffer::empty_dynamic(display, 1024).unwrap();
-        // let mut index_buffer = glium::IndexBuffer::empty_dynamic(display, glium::index::PrimitiveType::TrianglesList, 1024 * 4).unwrap();
-
         let mut vert_vec = Vec::with_capacity(Self::MAX_VERTICES);
         let mut index_vec = Vec::with_capacity(Self::MAX_INDICES);
 
@@ -91,7 +88,7 @@ impl Square {
             vertex_count: 0,
         };
 
-        s.update_vertex_index_counts();
+        s.update_buffer();
 
         s
     }
@@ -136,20 +133,20 @@ impl Square {
         self.update_buffer();
     }
 
-    pub fn add_to_vb(&mut self, vertex_buffer: &mut glium::buffer::WriteMapping<[crate::render::shape::Vertex]>, index: &mut usize) {
+    pub fn add_to_vb_vec(&self, vertex_buffer: &mut Vec<crate::render::shape::Vertex>) {
         for i in 0..self.vertex_buffer.len() {
-            let vb = self.vertex_buffer[i];
-            vertex_buffer.set(*index + i, vb);
+            vertex_buffer.push(self.vertex_buffer[i]);
         }
-
-        *index = *index + self.vertex_buffer.len();
     }
 
-    pub fn add_to_ib(&mut self, index_buffer: &mut glium::buffer::WriteMapping<[u32]>, index: &mut usize) {
+    pub fn add_to_ib_vec(&self, index_buffer: &mut Vec<u32>, vb_index: usize) {
         for i in 0..self.index_buffer.len() {
-            index_buffer.set(*index + i, self.index_buffer[i]);
+            index_buffer.push(vb_index as u32 + self.index_buffer[i]);
         }
+    }
 
-        *index = *index + self.vertex_buffer.len();
+    pub fn can_fit_in_buffers(&self, vb_capacity: usize, ib_capacity: usize, vb_index: usize, ib_index: usize) -> bool {
+
+        vb_index + self.vertex_buffer.len() < vb_capacity - 1 && ib_index + self.index_buffer.len() < ib_capacity - 1
     }
 }

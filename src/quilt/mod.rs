@@ -5,30 +5,47 @@ use crate::render::matrix::{WorldTransform};
 use crate::render::shape::Vertex;
 use crate::render::material::{Material};
 use crate::render::matrix::Matrix;
-use crate::util::frame_timing::FrameTiming;
 use square::Square;
 
 use glium::{VertexBuffer, IndexBuffer};
+
+#[derive(Default, Debug)]
+pub struct DrawStats {
+    pub draws: usize,
+    pub vertices: usize,
+    pub indices: usize,
+}
+
+impl DrawStats {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    pub fn reset(&mut self) {
+        self.draws = 0;
+        self.vertices = 0;
+        self.indices = 0;
+    }
+}
 
 #[allow(dead_code)]
 pub struct Quilt {
     width: usize,
     height: usize,
     squares: Vec<Vec<Square>>,
-    vert_vec: Vec<Vec<Vertex>>,
-    index_vec: Vec<Vec<u32>>,
-    vertex_buffers: Vec<VertexBuffer<Vertex>>,
-    index_buffers: Vec<IndexBuffer<u32>>,
+    vert_vec: Vec<Vertex>,
+    index_vec: Vec<u32>,
+    vertex_buffers: VertexBuffer<Vertex>,
+    index_buffers: IndexBuffer<u32>,
     pub shader: Box<dyn Material>,
-    frame_timing: FrameTiming,
     needs_updated: bool,
+    pub draw_stats: DrawStats,
 }
 
 impl Quilt {
 
-    pub const MAX_BUF_SQUARES: usize = 1000; // max squares per buffer
-    pub const NUM_BUFFERS: usize = 1;
-    pub const MAX_SQUARES: usize = Self::MAX_BUF_SQUARES * Self::NUM_BUFFERS;
+    pub const MAX_VERTICES: usize = 30000;
+    pub const MAX_INDICES: usize = Self::MAX_VERTICES * 4;
 
     pub fn new(display: &dyn glium::backend::Facade, shaders: &mut MaterialManager, width: usize, height: usize) -> Self {
 
@@ -55,29 +72,13 @@ impl Quilt {
 
         println!("Finished loading squares");
 
-        let mut vertex_buffers: Vec<VertexBuffer<Vertex>> = Vec::with_capacity(Self::NUM_BUFFERS);
-
-        for _i in 0..Self::NUM_BUFFERS {
-            vertex_buffers.push(VertexBuffer::empty_dynamic(display, Self::MAX_BUF_SQUARES * Square::MAX_VERTICES).unwrap())
-        }
-
-        let mut index_buffers: Vec<IndexBuffer<u32>> = Vec::with_capacity(Self::NUM_BUFFERS);
-
-        for _i in 0..Self::NUM_BUFFERS {
-            index_buffers.push(IndexBuffer::empty_dynamic(display, glium::index::PrimitiveType::TrianglesList, Self::MAX_BUF_SQUARES * Square::MAX_INDICES).unwrap());
-        }
+        let vertex_buffers= VertexBuffer::empty_dynamic(display, Self::MAX_VERTICES).unwrap();
+        let index_buffers = IndexBuffer::empty_dynamic(display, glium::index::PrimitiveType::TrianglesList, Self::MAX_INDICES).unwrap();
 
         println!("Loaded buffers");
 
-        let mut vert_vec = Vec::with_capacity(Self::NUM_BUFFERS);
-        let mut index_vec = Vec::with_capacity(Self::NUM_BUFFERS);
-
-        let num_squares = width * height;
-
-        for _ in 0..Self::NUM_BUFFERS {
-            vert_vec.push(Vec::with_capacity((num_squares/Self::NUM_BUFFERS + 1) * Square::MAX_VERTICES));
-            index_vec.push(Vec::with_capacity((num_squares/Self::NUM_BUFFERS + 1) * Square::MAX_INDICES));
-        }
+        let vert_vec = Vec::with_capacity(Self::MAX_VERTICES);
+        let index_vec = Vec::with_capacity(Self::MAX_INDICES);
 
         println!("Allocated vecs");
 
@@ -88,79 +89,49 @@ impl Quilt {
             vertex_buffers,
             index_buffers,
             shader: shaders.get_material(MaterialType::SolidColorMaterial).unwrap(),
-            frame_timing: FrameTiming::new(),
             needs_updated: true,
             vert_vec,
-            index_vec,    
+            index_vec,  
+            draw_stats: DrawStats::new(),  
+        }
+    }
+    
+    pub fn draw(&mut self, frame: &mut glium::Frame, world_transform: &WorldTransform, draw_parameters: &glium::DrawParameters<'_>) {
+        self.draw_stats.reset();
+
+        self.vert_vec.clear();
+        self.index_vec.clear();
+        
+        for row in 0..self.squares.len() {
+            for column in 0..self.squares[row].len() {
+                
+                if !self.squares[row][column].can_fit_in_buffers(Self::MAX_VERTICES, Self::MAX_INDICES, self.vert_vec.len(), self.index_vec.len()) {
+                    self.empty(frame, world_transform, draw_parameters);
+                }
+
+                self.squares[row][column].add_to_ib_vec(&mut self.index_vec, self.vert_vec.len());
+                self.squares[row][column].add_to_vb_vec(&mut self.vert_vec);
+            }
+        }
+        
+        if self.vert_vec.len() > 0{
+            self.empty(frame, world_transform, draw_parameters);
         }
     }
 
-    pub fn draw(&mut self, frame: &mut glium::Frame, world_transform: &WorldTransform, draw_parameters: &glium::DrawParameters<'_>) {
-        self.frame_timing.update_frame_time();
+    fn empty(&mut self, frame: &mut glium::Frame, world_transform: &WorldTransform, draw_parameters: &glium::DrawParameters<'_>) {
+        self.draw_stats.indices += self.index_vec.len();
+        self.draw_stats.vertices += self.vert_vec.len();
+        self.draw_stats.draws += 1;
 
-        
-        if self.needs_updated {
+        self.vertex_buffers.slice(0..self.vert_vec.len()).expect("Invalid vertex range").write(&self.vert_vec);
+        self.index_buffers.slice(0..self.index_vec.len()).expect("Invalid index range").write(&self.index_vec); 
 
-            let vert_vec = &mut self.vert_vec;
-            let index_vec = &mut self.index_vec;
+        self.shader.draw(&(&self.vertex_buffers, &self.index_buffers), frame, world_transform, &Matrix::new(), draw_parameters);
 
-            let mut vec_index = 0;
-
-            for i in 0..Self::NUM_BUFFERS {
-                vert_vec[i].clear();
-                index_vec[i].clear();
-            }
-
-            println!("It took {}ms to allocate", self.frame_timing.delta_frame_time().num_nanoseconds().unwrap() as f32 / 1_000_000.0);
-            self.frame_timing.update_frame_time();
-
-            
-            for row in &mut self.squares {
-                for square in row {
-
-                    let mut index: Vec<u32> = square.index_buffer.clone();
-
-                    for value in &mut index {
-                        *value = *value + vert_vec[vec_index].len() as u32
-                    }
-
-                    let mut vert = square.vertex_buffer.clone();
-
-                    index_vec[vec_index].append(&mut index);
-                    vert_vec[vec_index].append(&mut vert);
-
-                    vec_index = (vec_index + 1) % Self::NUM_BUFFERS;
-
-                    // println!("num vertices: {}", square.vertex_count);
-                    // println!("num indices: {}", square.index_count);
-                }
-            }
-        
-            for i in 0..Self::NUM_BUFFERS {
-                let mut write = self.vertex_buffers[i].map_write();
-                for j in 0..vert_vec[i].len() {
-                    write.set(j, vert_vec[i][j]);
-                }
-                
-                let mut write = self.index_buffers[i].map_write();
-                for j in 0..index_vec[i].len() {
-                    write.set(j, index_vec[i][j]);
-                }
-                
-            }
-
-        }
-
-        self.needs_updated = true;
-
-        println!("It took {}ms to update", self.frame_timing.delta_frame_time().num_nanoseconds().unwrap() as f32 / 1_000_000.0);
-        self.frame_timing.update_frame_time();
-
-        for i in 0..Self::NUM_BUFFERS {
-            self.shader.draw(&(&self.vertex_buffers[i], &self.index_buffers[i]), frame, world_transform, &Matrix::new(), draw_parameters);
-        }
-
-        println!("It took {}ms to draw", self.frame_timing.delta_frame_time().num_nanoseconds().unwrap() as f32 / 1_000_000.0);
-
+        self.vertex_buffers.invalidate();
+        self.index_buffers.invalidate();
+        self.vert_vec.clear();
+        self.index_vec.clear();
     }
 }

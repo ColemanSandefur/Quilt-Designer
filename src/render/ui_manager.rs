@@ -20,6 +20,9 @@ impl UiManager {
             .build(ui, || {
                 ui.text(im_str!("{}ms", renderer.frame_timing.delta_frame_time().num_milliseconds()));
                 ui.text(im_str!("{:.0} fps", 1.0 / (renderer.frame_timing.delta_frame_time().num_microseconds().unwrap() as f64 / 1_000_000.0)));
+                ui.text(im_str!("drew {} times", renderer.quilt.draw_stats.draws));
+                ui.text(im_str!("drew {} vertices", renderer.quilt.draw_stats.vertices));
+                ui.text(im_str!("drew {} indices", renderer.quilt.draw_stats.indices));
             });
         
         Window::new(im_str!("Block Designs"))

@@ -29,8 +29,7 @@ pub fn init(title: &str) -> System {
     let event_loop = EventLoop::new();
     let context = glutin::ContextBuilder::new()
         .with_depth_buffer(24)
-        .with_multisampling(16)
-        .with_vsync(true);
+        .with_multisampling(16);
     let builder = WindowBuilder::new()
         .with_title(title.to_owned())
         .with_inner_size(glutin::dpi::LogicalSize::new(1024f64, 768f64));
