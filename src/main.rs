@@ -6,9 +6,7 @@ pub mod system;
 pub mod util;
 
 fn main() {
-    let mut system = system::init("title");
-
-    system.renderer.world_transform.set_scale(1.0, 1.0, 8.0);
+    let system = system::init("title");
 
     system.main_loop(move |_, frame, renderer, ui| {
         // println!("{}ms", renderer.frame_timing.delta_frame_time().num_milliseconds());

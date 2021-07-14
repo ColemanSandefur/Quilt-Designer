@@ -29,7 +29,8 @@ pub fn init(title: &str) -> System {
     let event_loop = EventLoop::new();
     let context = glutin::ContextBuilder::new()
         .with_depth_buffer(24)
-        .with_multisampling(16);
+        .with_multisampling(16)
+        .with_vsync(true);
     let builder = WindowBuilder::new()
         .with_title(title.to_owned())
         .with_inner_size(glutin::dpi::LogicalSize::new(1024f64, 768f64));
@@ -139,6 +140,16 @@ impl System {
                         if let Some(keycode) = input.virtual_keycode {
                             renderer.keyboard_tracker.set_pressed(keycode, input.state == glutin::event::ElementState::Pressed);
                         }
+                    }
+
+                    if let WindowEvent::MouseInput{button, state, ..} = &event {
+                        if *button == glutin::event::MouseButton::Left && *state == glium::glutin::event::ElementState::Pressed {
+                            renderer.clicked();
+                        }
+                    }
+
+                    if let WindowEvent::CursorMoved{position, ..} = &event {
+                        renderer.cursor_moved(position);
                     }
 
                     if let WindowEvent::Focused(is_focused) = event {

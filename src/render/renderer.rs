@@ -16,20 +16,28 @@ pub struct Renderer {
     pub keyboard_tracker: KeyboardTracker,
     pub quilt: Quilt,
     pub picker: Picker,
+    pub cursor_pos: Option<(i32, i32)>,
 }
 
 impl Renderer {
     pub fn new(display: &dyn glium::backend::Facade) -> Self {
         let mut shaders = MaterialManager::load_all(display);
 
-        let world_transform = Matrix::new_with_data([
+        let mut world_transform = Matrix::new_with_data([
             [1.0, 0.0, 0.0, 0.0],
             [0.0, 1.0, 0.0, 0.0],
             [0.0, 0.0, 1.0, 0.0],
             [0.0, 0.0, 1.0, 1.0],
         ]);
 
-        let quilt = Quilt::new(display, &mut shaders, 6 * 4, 8 * 4);
+        
+        let mut picker = Picker::new(display, &shaders);
+        let quilt = Quilt::new(display, &mut shaders, 6 * 4, 8 * 4, &mut picker);
+
+        //garbage way to fit quilt to screen
+        let dimensions = quilt.get_dimensions();
+        world_transform.set_scale(1.0, 1.0, std::cmp::max(dimensions.0, dimensions.1) as f32 * 1.0);
+
 
         Self {
             shaders,
@@ -37,14 +45,15 @@ impl Renderer {
             frame_timing: FrameTiming::new(),
             keyboard_tracker: KeyboardTracker::new(),
             quilt,
-            picker: Picker::new(display)
+            picker,
+            cursor_pos: None,
             // picking_pixel_buffer: glium::texture::pixel_buffer::PixelBuffer::new_empty(display, 1),
         }
     }
 
     pub fn draw(&mut self, target: &mut glium::Frame, ui: &mut imgui::Ui) {
 
-        target.clear_color(0.0, 0.0, 0.0, 1.0);
+        target.clear_color(0.02, 0.02, 0.02, 1.0);
 
         let projection = {
             let (width, height) = target.get_dimensions();
@@ -69,7 +78,7 @@ impl Renderer {
             world: self.world_transform,
         };
 
-        self.quilt.draw(target, &global_transform, &Default::default());
+        self.quilt.draw(target, &global_transform, &Default::default(), &mut self.picker);
 
         UiManager::draw(self, target, ui);
         self.handle_keys();
@@ -112,5 +121,22 @@ impl Renderer {
                 self.world_transform.set_scale(translation.0, translation.1, zoom_threshold);
             }
         }
+    }
+
+    pub fn clicked(&mut self) {
+        if let Some(cursor) = self.cursor_pos {
+            self.picker.click(cursor);
+
+            let entry = self.picker.get_clicked();
+
+            
+            if let Some(entry) = entry {
+                self.quilt.click(&entry);
+            }
+        }
+    }
+
+    pub fn cursor_moved(&mut self, position: &glium::glutin::dpi::PhysicalPosition<f64>) {
+        self.cursor_pos = Some(position.cast::<i32>().into());
     }
 }

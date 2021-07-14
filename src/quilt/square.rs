@@ -3,6 +3,7 @@ use crate::render::material::{material_manager::{MaterialManager, MaterialType}}
 use crate::render::matrix::{Matrix};
 use crate::render::material::Material;
 use crate::render::shape::Vertex;
+use crate::render::picker::{Picker};
 
 use lyon::path::{ArcFlags, Path};
 use lyon::path::builder::SvgPathBuilder;
@@ -25,7 +26,7 @@ impl Square {
     pub const MAX_VERTICES: usize = 256;
     pub const MAX_INDICES: usize = Self::MAX_VERTICES * 4;
 
-    pub fn new(shaders: &mut MaterialManager) -> Self {
+    pub fn new(row: usize, column: usize, shaders: &mut MaterialManager, picker: &mut Picker) -> Self {
 
         let mut half_circle = Path::svg_builder().flattened(0.001);
         half_circle.move_to(point(0.5, 0.25));
@@ -43,27 +44,30 @@ impl Square {
 
         let mut shapes: Vec<Box<ShapeDataStruct>> = vec!{
             Box::new(ShapeDataStruct::new(
-                Box::new(crate::render::shape::Square::with_width_height(0.0, 0.0, 1.0, 1.0)),
+                Box::new(crate::render::shape::Square::with_width_height(0.0, 0.0, 1.0, 1.0, 0)),
             )),
             Box::new(ShapeDataStruct::new(
-                Box::new(crate::render::shape::Square::with_width_height(0.25, 0.25, 0.5, 0.5)),
+                Box::new(crate::render::shape::Square::with_width_height(0.05, 0.05, 0.9, 0.9, picker.get_new_id(row, column))),
             )),
             Box::new(ShapeDataStruct::new(
-                Box::new(crate::render::shape::Square::with_width_height(0.3, 0.3, 0.4, 0.4)),
+                Box::new(crate::render::shape::Square::with_width_height(0.25, 0.25, 0.5, 0.5, picker.get_new_id(row, column))),
             )),
             Box::new(ShapeDataStruct::new(
-                Box::new(crate::render::shape::Square::with_width_height(0.35, 0.35, 0.3, 0.3)),
+                Box::new(crate::render::shape::Square::with_width_height(0.3, 0.3, 0.4, 0.4, picker.get_new_id(row, column))),
+            )),
+            Box::new(ShapeDataStruct::new(
+                Box::new(crate::render::shape::Square::with_width_height(0.35, 0.35, 0.3, 0.3, picker.get_new_id(row, column))),
             )),
             Box::new(ShapeDataStruct::new(
                 Box::new(
-                    crate::render::shape::PathShape::new(half_circle),
+                    crate::render::shape::PathShape::new(half_circle, picker.get_new_id(row, column)),
                 ),
             )),
         };
-
-        shapes.get_mut(1).unwrap().shape.set_color([0.3, 0.3, 0.8, 1.0]);
-        shapes.get_mut(2).unwrap().shape.set_color([0.8, 0.2, 0.2, 1.0]);
-        shapes.get_mut(3).unwrap().shape.set_color([0.1, 0.8, 0.8, 1.0]);
+        shapes.get_mut(0).unwrap().shape.set_color([0.0, 0.0, 0.0, 1.0]);
+        shapes.get_mut(2).unwrap().shape.set_color([0.3, 0.3, 0.8, 1.0]);
+        shapes.get_mut(3).unwrap().shape.set_color([0.8, 0.2, 0.2, 1.0]);
+        shapes.get_mut(4).unwrap().shape.set_color([0.1, 0.8, 0.8, 1.0]);
 
         let mut vert_vec = Vec::with_capacity(Self::MAX_VERTICES);
         let mut index_vec = Vec::with_capacity(Self::MAX_INDICES);
@@ -148,5 +152,24 @@ impl Square {
     pub fn can_fit_in_buffers(&self, vb_capacity: usize, ib_capacity: usize, vb_index: usize, ib_index: usize) -> bool {
 
         vb_index + self.vertex_buffer.len() < vb_capacity - 1 && ib_index + self.index_buffer.len() < ib_capacity - 1
+    }
+
+    //returns wether or not it clicked
+    pub fn click(&mut self, id: u32) -> bool {
+        let mut was_clicked = false;
+
+        for shape in &mut self.shapes {
+            if shape.shape.was_clicked(id) {
+                shape.shape.set_color([1.0, 0.0, 0.0, 1.0]);
+                was_clicked = true;
+            }
+        }
+
+
+        if was_clicked {
+            self.update_buffer();
+        }
+
+        was_clicked
     }
 }

@@ -12,6 +12,7 @@ pub trait Material {
     fn as_any_mut(&mut self) -> Box<&mut dyn std::any::Any>;
     fn to_any(self) -> Box<dyn std::any::Any>;
     fn draw(&self, shape: &(&glium::VertexBuffer<Vertex>, &glium::IndexBuffer<u32>), surface: &mut glium::Frame, world_transform: &WorldTransform, model_transform: &Matrix, draw_parameters: &glium::DrawParameters<'_>);
+    fn draw_frame_buffer(&self, shape: &(&glium::VertexBuffer<Vertex>, &glium::IndexBuffer<u32>), surface: &mut glium::framebuffer::SimpleFrameBuffer, world_transform: &WorldTransform, model_transform: &Matrix, draw_parameters: &glium::DrawParameters<'_>);
     fn get_shader_type(&self) -> MaterialType;
 }
 
@@ -53,6 +54,12 @@ impl Material for SolidColorMaterial {
         let uniforms = world_transform.to_uniform();
         
         crate::render::shape::draw(shape, surface, &self.shader, &uniforms, draw_parameters);
+    }
+
+    fn draw_frame_buffer(&self, shape: &(&glium::VertexBuffer<Vertex>, &glium::IndexBuffer<u32>), surface: &mut glium::framebuffer::SimpleFrameBuffer, world_transform: &WorldTransform, _model_transform: &Matrix, draw_parameters: &glium::DrawParameters<'_>) {
+        let uniforms = world_transform.to_uniform();
+        
+        crate::render::shape::draw_frame_buffer(shape, surface, &self.shader, &uniforms, draw_parameters);
     }
 
     fn get_shader_type(&self) -> MaterialType {
@@ -99,28 +106,16 @@ impl Material for ClickMaterial {
     fn to_any(self) -> Box<dyn std::any::Any> {
         Box::new(self)
     }
-    fn draw(&self, shape: &(&glium::VertexBuffer<Vertex>, &glium::IndexBuffer<u32>), surface: &mut glium::Frame, world_transform: &WorldTransform, model_transform: &Matrix, draw_parameters: &glium::DrawParameters<'_>) {
-        let uniforms = world_transform.to_uniform()
-            .add("model", model_transform.get_matrix())
-            .add("color", self.color);
+    fn draw(&self, shape: &(&glium::VertexBuffer<Vertex>, &glium::IndexBuffer<u32>), surface: &mut glium::Frame, world_transform: &WorldTransform, _model_transform: &Matrix, draw_parameters: &glium::DrawParameters<'_>) {
+        let uniforms = world_transform.to_uniform();
         
         crate::render::shape::draw(shape, surface, &self.shader, &uniforms, draw_parameters);
+    }
 
-        let mut new_color = self.color;
-        new_color[0] -= 0.1;
-        new_color[1] -= 0.1;
-        new_color[2] -= 0.1;
-
-        let uniforms = world_transform.to_uniform()
-            .add("model", model_transform.get_matrix())
-            .add("color", new_color);
-
-        crate::render::shape::draw(shape, surface, &self.shader, &uniforms, &glium::DrawParameters {
-            polygon_mode: glium::PolygonMode::Line,
-            line_width: Some(3.0),
-            multisampling: true,
-            .. Default::default()
-        })
+    fn draw_frame_buffer(&self, shape: &(&glium::VertexBuffer<Vertex>, &glium::IndexBuffer<u32>), surface: &mut glium::framebuffer::SimpleFrameBuffer, world_transform: &WorldTransform, _model_transform: &Matrix, draw_parameters: &glium::DrawParameters<'_>) {
+        let uniforms = world_transform.to_uniform();
+        
+        crate::render::shape::draw_frame_buffer(shape, surface, &self.shader, &uniforms, draw_parameters);
     }
 
     fn get_shader_type(&self) -> MaterialType {

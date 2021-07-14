@@ -10,6 +10,7 @@ pub struct Vertex {
     pub position: [f32; 2],
     pub color: [f32; 4],
     pub model: [[f32;4]; 4],
+    pub id: u32,
 }
 
 impl Default for Vertex {
@@ -18,6 +19,7 @@ impl Default for Vertex {
             position: [0.0; 2],
             color: [1.0; 4],
             model: Matrix::new().get_matrix(),
+            id: 0,
         }
     }
 }
@@ -28,7 +30,7 @@ impl Vertex {
     }
 }
 
-implement_vertex!(Vertex, position, color, model);
+implement_vertex!(Vertex, position, color, model, id);
 
 
 pub trait Shape {
@@ -38,6 +40,11 @@ pub trait Shape {
     fn set_model_matrix(&mut self, matrix: Matrix);
     fn get_num_vertices(&mut self) -> usize;
     fn get_num_indices(&mut self) -> usize;
+    fn get_id(&self) -> u32;
+    fn set_id(&mut self, id: u32);
+    fn was_clicked(&self, id: u32) -> bool {
+        self.get_id() == id
+    }
 }
 
 pub struct Square {
@@ -46,12 +53,13 @@ pub struct Square {
 }
 
 impl Square {
-    pub fn new(pos1: (f32, f32), pos2: (f32, f32), pos3: (f32, f32), pos4: (f32, f32)) -> Self {
+    pub fn new(pos1: (f32, f32), pos2: (f32, f32), pos3: (f32, f32), pos4: (f32, f32), id: u32) -> Self {
+
         let vertex_buffer = vec!{
-            Vertex { position: [pos1.0, pos1.1], .. Default::default() },
-            Vertex { position: [pos2.0, pos2.1], .. Default::default() },
-            Vertex { position: [pos3.0, pos3.1], .. Default::default() },
-            Vertex { position: [pos4.0, pos4.1], .. Default::default() },
+            Vertex { position: [pos1.0, pos1.1], id, .. Default::default() },
+            Vertex { position: [pos2.0, pos2.1], id, .. Default::default() },
+            Vertex { position: [pos3.0, pos3.1], id, .. Default::default() },
+            Vertex { position: [pos4.0, pos4.1], id, .. Default::default() },
         };
 
         let index_buffer = vec!{0u32, 1, 2, 1, 2, 3};
@@ -62,12 +70,12 @@ impl Square {
         }
     }
 
-    pub fn with_width_height(x: f32, y: f32, width: f32, height: f32) -> Self {
+    pub fn with_width_height(x: f32, y: f32, width: f32, height: f32, id: u32) -> Self {
         let vertex_buffer = vec!{
-            Vertex { position: [ x, y ], .. Default::default() },
-            Vertex { position: [ x + width, y ], .. Default::default() },
-            Vertex { position: [ x, y + height ], .. Default::default() },
-            Vertex { position: [ x + width, y + height ], .. Default::default() },
+            Vertex { position: [ x, y ], id, .. Default::default() },
+            Vertex { position: [ x + width, y ], id, .. Default::default() },
+            Vertex { position: [ x, y + height ], id, .. Default::default() },
+            Vertex { position: [ x + width, y + height ], id, .. Default::default() },
         };
 
         let index_buffer = vec!{0u32, 1, 2, 1, 2, 3};
@@ -107,6 +115,19 @@ impl Shape for Square {
     fn get_num_indices(&mut self) -> usize {
         self.index_buffer.len()
     }
+
+    fn get_id(&self) -> u32 {
+        match self.vertex_buffer.get(0) {
+            Some(vertex) => vertex.id,
+            None => 0,
+        }
+    }
+
+    fn set_id(&mut self, id: u32) {
+        for vertex in &mut self.vertex_buffer {
+            vertex.id = id;
+        }
+    }
 }
 
 pub struct PathShape {
@@ -115,7 +136,7 @@ pub struct PathShape {
 }
 
 impl PathShape {
-    pub fn new(path: Path) -> Self {
+    pub fn new(path: Path, id: u32) -> Self {
         let mut geometry: VertexBuffers<Vertex, u32> = VertexBuffers::new();
 
         let mut tessellator = FillTessellator::new();
@@ -127,6 +148,7 @@ impl PathShape {
                 &mut BuffersBuilder::new(&mut geometry, |vertex: FillVertex| {
                     Vertex {
                         position: vertex.position().to_array(),
+                        id,
                         .. Default::default()
                     }
                 }),
@@ -143,7 +165,7 @@ impl PathShape {
         }
     }
 
-    pub fn from_vertices(vertices: &Vec<Vertex>) -> Self {
+    pub fn from_vertices(vertices: &Vec<Vertex>, id: u32) -> Self {
 
         let mut builder = Path::builder();
         builder.begin(vertices[0].to_point());
@@ -165,6 +187,7 @@ impl PathShape {
                 &mut BuffersBuilder::new(&mut geometry, |vertex: FillVertex| {
                     Vertex {
                         position: vertex.position().to_array(),
+                        id,
                         .. Default::default()
                     }
                 }),
@@ -210,8 +233,25 @@ impl Shape for PathShape {
     fn get_num_indices(&mut self) -> usize {
         self.index_buffer.len()
     }
+
+    fn get_id(&self) -> u32 {
+        match self.vertex_buffer.get(0) {
+            Some(vertex) => vertex.id,
+            None => 0,
+        }
+    }
+
+    fn set_id(&mut self, id: u32) {
+        for vertex in &mut self.vertex_buffer {
+            vertex.id = id;
+        }
+    }
 }
 
 pub fn draw<'a, U: glium::uniforms::Uniforms>(shape: &(&glium::VertexBuffer<Vertex>, &glium::IndexBuffer<u32>), frame: &mut glium::Frame, program: &glium::Program, uniforms: &U, draw_parameters: &glium::DrawParameters<'_>) {
+    frame.draw(shape.0, shape.1, program, uniforms, draw_parameters).unwrap();
+}
+
+pub fn draw_frame_buffer<'a, U: glium::uniforms::Uniforms>(shape: &(&glium::VertexBuffer<Vertex>, &glium::IndexBuffer<u32>), frame: &mut glium::framebuffer::SimpleFrameBuffer, program: &glium::Program, uniforms: &U, draw_parameters: &glium::DrawParameters<'_>) {
     frame.draw(shape.0, shape.1, program, uniforms, draw_parameters).unwrap();
 }
