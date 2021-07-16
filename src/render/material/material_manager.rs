@@ -1,6 +1,5 @@
 use crate::render::material::*;
 
-use std::collections::HashMap;
 use std::rc::Rc;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -10,8 +9,8 @@ pub enum MaterialType {
 }
 
 pub struct MaterialManager {
-    materials: HashMap<MaterialType, Box<dyn Material>>,
     click_material: ClickMaterial,
+    solid_color_material: SolidColorMaterial,
 }
 
 impl MaterialManager {
@@ -21,29 +20,18 @@ impl MaterialManager {
         material
     }
 
-    pub fn get_material(&self, m: MaterialType) -> Option<Box<dyn Material>> {
-
-        match self.materials.get(&m) {
-            Some(v) => {
-                Some((*v).clone_material())
-            },
-            None => None
-        }
+    pub fn get_solid_color_material(&self) -> SolidColorMaterial {
+        self.solid_color_material.clone()
     }
 
     pub fn load_all(display: &dyn glium::backend::Facade) -> Self {
-        let mut materials: HashMap<MaterialType, Box<dyn Material>> = HashMap::new();
-
-        materials.insert(
-            MaterialType::SolidColorMaterial,
-            Box::new(SolidColorMaterial::new(Self::load_from_file(std::path::Path::new("./shaders/solid_color"), display)))
-        );
 
         let click_material = ClickMaterial::new(Self::load_from_file(std::path::Path::new("./shaders/picker"), display), [1.0, 1.0, 1.0, 1.0]);
+        let solid_color_material = SolidColorMaterial::new(Self::load_from_file(std::path::Path::new("./shaders/solid_color"), display));
 
         Self {
-            materials,
             click_material,
+            solid_color_material
         }
     }
 

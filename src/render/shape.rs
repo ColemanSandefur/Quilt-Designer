@@ -1,6 +1,5 @@
 use crate::render::matrix::Matrix;
 
-use glium::Surface;
 use lyon::math::{point, Point};
 use lyon::path::Path;
 use lyon::tessellation::*;
@@ -248,10 +247,6 @@ impl Shape for PathShape {
     }
 }
 
-pub fn draw<'a, U: glium::uniforms::Uniforms>(shape: &(&glium::VertexBuffer<Vertex>, &glium::IndexBuffer<u32>), frame: &mut glium::Frame, program: &glium::Program, uniforms: &U, draw_parameters: &glium::DrawParameters<'_>) {
-    frame.draw(shape.0, shape.1, program, uniforms, draw_parameters).unwrap();
-}
-
-pub fn draw_frame_buffer<'a, U: glium::uniforms::Uniforms>(shape: &(&glium::VertexBuffer<Vertex>, &glium::IndexBuffer<u32>), frame: &mut glium::framebuffer::SimpleFrameBuffer, program: &glium::Program, uniforms: &U, draw_parameters: &glium::DrawParameters<'_>) {
+pub fn draw<'a, U: glium::uniforms::Uniforms>(shape: &(&glium::VertexBuffer<Vertex>, &glium::IndexBuffer<u32>), frame: &mut impl glium::Surface, program: &glium::Program, uniforms: &U, draw_parameters: &glium::DrawParameters<'_>) {
     frame.draw(shape.0, shape.1, program, uniforms, draw_parameters).unwrap();
 }

@@ -10,6 +10,10 @@ impl UiManager {
 
         let dimensions = frame.get_dimensions();
 
+        
+        let mut did_click = false;
+        let mut color = *renderer.brush;
+        
         Window::new(im_str!("Textures"))
             .size([100.0, dimensions.1 as f32], Condition::Appearing)
             .size_constraints([100.0, dimensions.1 as f32], [dimensions.0 as f32, dimensions.1 as f32])
@@ -23,7 +27,13 @@ impl UiManager {
                 ui.text(im_str!("{} draws", renderer.quilt.draw_stats.draws));
                 ui.text(im_str!("{} vertices", renderer.quilt.draw_stats.vertices));
                 ui.text(im_str!("{} indices", renderer.quilt.draw_stats.indices));
+                let picker = ColorPicker::new(im_str!("color picker"), &mut color);
+                did_click = picker.build(&ui);
             });
+        
+        if did_click {
+            renderer.brush = std::sync::Arc::new(color);
+        }
         
         Window::new(im_str!("Block Designs"))
             .size([100.0, dimensions.1 as f32], Condition::Appearing)

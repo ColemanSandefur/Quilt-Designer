@@ -247,13 +247,13 @@ impl Square {
     }
 
     //returns wether or not it clicked
-    pub fn click(&mut self, id: u32) -> bool {
+    pub fn click(&mut self, id: u32, brush: std::sync::Arc<[f32; 4]>) -> bool {
         let mut was_clicked = false;
         
         for index in 0..self.shape_protector.get_shapes().len() {
             
             if self.shape_protector.get_shape(index).unwrap().shape.was_clicked(id) {
-                self.shape_protector.set_shape_color(index, [1.0, 0.0, 0.0, 1.0]);
+                self.shape_protector.set_shape_color(index, *brush);
 
                 was_clicked = true;
 

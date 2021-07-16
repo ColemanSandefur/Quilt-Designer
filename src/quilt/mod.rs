@@ -1,9 +1,9 @@
 pub mod square;
 
-use crate::render::material::{material_manager::{MaterialManager, MaterialType}};
+use crate::render::material::{material_manager::{MaterialManager}};
 use crate::render::matrix::{WorldTransform};
 use crate::render::shape::Vertex;
-use crate::render::material::{Material};
+use crate::render::material::{SolidColorMaterial};
 use crate::render::matrix::Matrix;
 use crate::render::picker::{Picker, PickerEntry};
 use square::Square;
@@ -38,7 +38,7 @@ pub struct Quilt {
     index_vec: Vec<u32>,
     vertex_buffer: VertexBuffer<Vertex>,
     index_buffer: IndexBuffer<u32>,
-    pub shader: Box<dyn Material>,
+    pub shader: SolidColorMaterial,
     needs_updated: bool,
     pub draw_stats: DrawStats,
 }
@@ -89,7 +89,7 @@ impl Quilt {
             squares,
             vertex_buffer,
             index_buffer,
-            shader: shaders.get_material(MaterialType::SolidColorMaterial).unwrap(),
+            shader: shaders.get_solid_color_material(),
             needs_updated: true,
             vert_vec,
             index_vec,  
@@ -97,7 +97,7 @@ impl Quilt {
         }
     }
     
-    pub fn draw(&mut self, frame: &mut glium::Frame, world_transform: &WorldTransform, draw_parameters: &glium::DrawParameters<'_>, picker: &mut Picker) {
+    pub fn draw(&mut self, frame: &mut impl glium::Surface, world_transform: &WorldTransform, draw_parameters: &glium::DrawParameters<'_>, picker: &mut Picker) {
         self.draw_stats.reset();
 
         
@@ -148,7 +148,7 @@ impl Quilt {
         }
     }
 
-    fn empty(&mut self, frame: &mut glium::Frame, world_transform: &WorldTransform, draw_parameters: &glium::DrawParameters<'_>) {
+    fn empty(&mut self, frame: &mut impl glium::Surface, world_transform: &WorldTransform, draw_parameters: &glium::DrawParameters<'_>) {
         self.draw_stats.indices += self.index_vec.len();
         self.draw_stats.vertices += self.vert_vec.len();
         self.draw_stats.draws += 1;
@@ -162,7 +162,7 @@ impl Quilt {
         self.index_buffer.invalidate();
     }
 
-    fn draw_buffer(&mut self, frame: &mut glium::Frame, world_transform: &WorldTransform, draw_parameters: &glium::DrawParameters<'_>, picker: Option<&mut Picker>) {
+    fn draw_buffer(&mut self, frame: &mut impl glium::Surface, world_transform: &WorldTransform, draw_parameters: &glium::DrawParameters<'_>, picker: Option<&mut Picker>) {
         self.draw_stats.indices += self.index_vec.len();
         self.draw_stats.vertices += self.vert_vec.len();
         self.draw_stats.draws += 1;
@@ -178,9 +178,9 @@ impl Quilt {
         (self.width, self.height)
     }
 
-    pub fn click(&mut self, entry: &PickerEntry) -> bool {
+    pub fn click(&mut self, entry: &PickerEntry, brush: std::sync::Arc<[f32; 4]>) -> bool {
 
-        if self.squares[entry.row][entry.column].click(entry.id) {
+        if self.squares[entry.row][entry.column].click(entry.id, brush) {
             self.needs_updated = true;
 
             return true;

@@ -74,7 +74,7 @@ impl Picker {
         None
     }
 
-    pub fn draw(&mut self, target: &mut glium::Frame, facade: &dyn glium::backend::Facade, global_transform: &WorldTransform,
+    pub fn draw(&mut self, target: &mut impl glium::Surface, facade: &dyn glium::backend::Facade, global_transform: &WorldTransform,
         vertex_buffer: &VertexBuffer<Vertex>, index_buffer: &IndexBuffer<u32>, draw_parameters: &glium::DrawParameters<'_>) {
         // renderer.quilt.draw_click(target, global_transform, &Default::default());
 
@@ -108,7 +108,7 @@ impl Picker {
             let mut picking_target = glium::framebuffer::SimpleFrameBuffer::with_depth_buffer(facade, picking_texture, depth_buffer).unwrap();
             picking_target.clear_depth(1.0);
 
-            self.shader.draw_frame_buffer(&(&vertex_buffer, &index_buffer), &mut picking_target, global_transform, &Matrix::new(), draw_parameters);
+            self.shader.draw(&(&vertex_buffer, &index_buffer), &mut picking_target, global_transform, &Matrix::new(), draw_parameters);
         }
     }
 
