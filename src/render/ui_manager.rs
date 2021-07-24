@@ -1,5 +1,13 @@
 use crate::render::renderer::Renderer;
 
+struct ClickState {
+    pub clicked: bool,
+    pub double_clicked: bool,
+}
+
+static mut IS_COLOR_PICKER_OPEN: bool = false;
+static mut COLOR_PICKER: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
+
 pub struct UiManager {}
 
 impl UiManager {
@@ -10,9 +18,11 @@ impl UiManager {
 
         let dimensions = frame.get_dimensions();
 
-        
-        let mut did_click = false;
-        let mut color = *renderer.brush;
+        let mut was_color_clicked = ClickState{ clicked: false, double_clicked: false };
+        let color = unsafe {
+            // *renderer.brush
+            COLOR_PICKER
+        };
         
         Window::new(im_str!("Textures"))
             .size([100.0, dimensions.1 as f32], Condition::Appearing)
@@ -27,12 +37,35 @@ impl UiManager {
                 ui.text(im_str!("{} draws", renderer.quilt.draw_stats.draws));
                 ui.text(im_str!("{} vertices", renderer.quilt.draw_stats.vertices));
                 ui.text(im_str!("{} indices", renderer.quilt.draw_stats.indices));
-                let picker = ColorPicker::new(im_str!("color picker"), &mut color);
-                did_click = picker.build(&ui);
+
+                let button = imgui::ColorButton::new(im_str!("Color"), color)
+                    .size([40.0, 40.0]);
+                was_color_clicked.clicked = button.build(&ui);
+                was_color_clicked.double_clicked = ui.is_item_hovered() && ui.is_mouse_double_clicked(MouseButton::Left);
+                
+                if was_color_clicked.clicked {
+                    renderer.brush = std::sync::Arc::new(color)
+                }
+
+                if was_color_clicked.double_clicked {
+                    unsafe {IS_COLOR_PICKER_OPEN = true;}
+                }
             });
-        
-        if did_click {
-            renderer.brush = std::sync::Arc::new(color);
+
+        unsafe {
+            if IS_COLOR_PICKER_OPEN {
+                Window::new(im_str!("Color Picker"))
+                    // .size([200.0, 400.0], Condition::Appearing)
+                    .opened(&mut IS_COLOR_PICKER_OPEN)
+                    .always_auto_resize(true)
+                    .build(ui, || {
+                        let picker = ColorPicker::new(im_str!("color picker"), &mut COLOR_PICKER);
+                        if picker.build(&ui) {
+                            renderer.brush = std::sync::Arc::new(COLOR_PICKER)
+                        }
+                    });
+                
+            }
         }
         
         Window::new(im_str!("Block Designs"))
@@ -54,5 +87,13 @@ impl UiManager {
                     mouse_pos[0], mouse_pos[1]
                 ));
             });
+
+        
+        // Checks if any imgui window was clicked, if not tell the renderer that it was clicked
+        if ui.is_mouse_clicked(MouseButton::Left) {
+            if !ui.is_window_hovered_with_flags(WindowHoveredFlags::all()) {
+                renderer.clicked();
+            }
+        }
     }
 }

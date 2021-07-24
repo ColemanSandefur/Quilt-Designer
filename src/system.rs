@@ -142,12 +142,6 @@ impl System {
                         }
                     }
 
-                    if let WindowEvent::MouseInput{button, state, ..} = &event {
-                        if *button == glutin::event::MouseButton::Left && *state == glium::glutin::event::ElementState::Pressed {
-                            renderer.clicked();
-                        }
-                    }
-
                     if let WindowEvent::CursorMoved{position, ..} = &event {
                         renderer.cursor_moved(position);
                     }
