@@ -153,7 +153,7 @@ impl ShapeProtector {
     }
 
     pub fn can_fit_in_buffers(&self, vb_capacity: usize, ib_capacity: usize, vb_index: usize, ib_index: usize) -> bool {
-        vb_index + self.vertex_buffer.len() < vb_capacity - 1 && ib_index + self.index_buffer.len() < ib_capacity - 1
+        vb_index + self.vertex_buffer.len() <= vb_capacity && ib_index + self.index_buffer.len() <= ib_capacity
     }
 
     // shape modification

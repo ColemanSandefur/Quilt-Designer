@@ -8,6 +8,15 @@ struct ClickState {
 static mut IS_COLOR_PICKER_OPEN: bool = false;
 static mut COLOR_PICKER: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
 
+static UI_STYLE: [(imgui::StyleColor, [f32; 4]); 6] = [
+    (imgui::StyleColor::ResizeGrip, [0.0; 4]),
+    (imgui::StyleColor::ResizeGripActive, [0.0; 4]),
+    (imgui::StyleColor::ResizeGripHovered, [0.0; 4]),
+    (imgui::StyleColor::Text, [1.0, 1.0, 1.0, 1.0]),
+    (imgui::StyleColor::TitleBg, [0.2, 0.2, 0.2, 1.0]),
+    (imgui::StyleColor::TitleBgActive, [0.2, 0.2, 0.2, 1.0]),
+];
+
 pub struct UiManager {}
 
 impl UiManager {
@@ -23,7 +32,9 @@ impl UiManager {
             // *renderer.brush
             COLOR_PICKER
         };
-        
+
+        let style = ui.push_style_colors(&UI_STYLE);
+
         Window::new(im_str!("Textures"))
             .size([100.0, dimensions.1 as f32], Condition::Appearing)
             .size_constraints([100.0, dimensions.1 as f32], [dimensions.0 as f32, dimensions.1 as f32])
@@ -32,14 +43,10 @@ impl UiManager {
             .movable(false)
             .collapsible(false)
             .build(ui, || {
-                ui.text(im_str!("{}ms", renderer.frame_timing.delta_frame_time().num_milliseconds()));
-                ui.text(im_str!("{:.0} fps", 1.0 / (renderer.frame_timing.delta_frame_time().num_microseconds().unwrap() as f64 / 1_000_000.0)));
-                ui.text(im_str!("{} draws", renderer.quilt.draw_stats.draws));
-                ui.text(im_str!("{} vertices", renderer.quilt.draw_stats.vertices));
-                ui.text(im_str!("{} indices", renderer.quilt.draw_stats.indices));
 
-                let button = imgui::ColorButton::new(im_str!("Color"), color)
-                    .size([40.0, 40.0]);
+                let button = imgui::ColorButton::new(im_str!("Custom Color"), color)
+                    .size([40.0, 40.0])
+                    .alpha(false);
                 was_color_clicked.clicked = button.build(&ui);
                 was_color_clicked.double_clicked = ui.is_item_hovered() && ui.is_mouse_double_clicked(MouseButton::Left);
                 
@@ -52,17 +59,32 @@ impl UiManager {
                 }
             });
 
+        Window::new(im_str!("Performance"))
+            .always_auto_resize(true)
+            .collapsible(true)
+            .position([100.0, 0.0], Condition::FirstUseEver)
+            .build(ui, || {
+                ui.text(im_str!("{}ms", renderer.frame_timing.delta_frame_time().num_milliseconds()));
+                ui.text(im_str!("{:.0} fps", 1.0 / (renderer.frame_timing.delta_frame_time().num_microseconds().unwrap() as f64 / 1_000_000.0)));
+                ui.text(im_str!("{} draws", renderer.quilt.draw_stats.draws));
+                ui.text(im_str!("{} vertices", renderer.quilt.draw_stats.vertices));
+                ui.text(im_str!("{} indices", renderer.quilt.draw_stats.indices));
+            });
+
         unsafe {
             if IS_COLOR_PICKER_OPEN {
                 Window::new(im_str!("Color Picker"))
-                    // .size([200.0, 400.0], Condition::Appearing)
                     .opened(&mut IS_COLOR_PICKER_OPEN)
                     .always_auto_resize(true)
+                    .collapsible(false)
                     .build(ui, || {
-                        let picker = ColorPicker::new(im_str!("color picker"), &mut COLOR_PICKER);
+                        let picker = ColorPicker::new(im_str!(""), &mut COLOR_PICKER)
+                            .alpha(false);
                         if picker.build(&ui) {
                             renderer.brush = std::sync::Arc::new(COLOR_PICKER)
                         }
+
+                        ui.button(im_str!("Close"), [200.0, 20.0]);
                     });
                 
             }
@@ -95,5 +117,7 @@ impl UiManager {
                 renderer.clicked();
             }
         }
+
+        style.pop(&ui);
     }
 }
