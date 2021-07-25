@@ -31,7 +31,6 @@ impl Vertex {
 
 implement_vertex!(Vertex, position, color, model, id);
 
-
 pub trait Shape {
     fn get_vertices(&mut self) -> Vec<Vertex>;
     fn get_indices(&mut self) -> Vec<u32>;
@@ -44,8 +43,80 @@ pub trait Shape {
     fn was_clicked(&self, id: u32) -> bool {
         self.get_id() == id
     }
+    fn clone_shape(&self) -> Box<dyn Shape>;
 }
 
+#[derive(Clone)]
+pub struct Triangle {
+    vertex_buffer: Vec<Vertex>,
+    index_buffer: Vec<u32>,
+}
+
+impl Triangle {
+    pub fn new(pos1: (f32, f32), pos2: (f32, f32), pos3: (f32, f32), id: u32) -> Self {
+        let vertex_buffer = vec!{
+            Vertex { position: [pos1.0, pos1.1], id, .. Default::default() },
+            Vertex { position: [pos2.0, pos2.1], id, .. Default::default() },
+            Vertex { position: [pos3.0, pos3.1], id, .. Default::default() },
+        };
+
+        let index_buffer = vec!{0u32, 1, 2};
+
+        Self {
+            vertex_buffer,
+            index_buffer,
+        }
+    }
+}
+
+impl Shape for Triangle {
+    fn get_vertices(&mut self) -> Vec<Vertex> {
+        self.vertex_buffer.clone()
+    }
+
+    fn get_indices(&mut self) -> Vec<u32> {
+        self.index_buffer.clone()
+    }
+
+    fn set_color(&mut self, color: [f32; 4]) {
+        for vertex in &mut self.vertex_buffer {
+            vertex.color = color;
+        }
+    }
+
+    fn set_model_matrix(&mut self, matrix: Matrix) {
+        for vertex in &mut self.vertex_buffer {
+            vertex.model = matrix.get_matrix();
+        }
+    }
+
+    fn get_num_vertices(&mut self) -> usize {
+        self.vertex_buffer.len()
+    }
+    
+    fn get_num_indices(&mut self) -> usize {
+        self.index_buffer.len()
+    }
+
+    fn get_id(&self) -> u32 {
+        match self.vertex_buffer.get(0) {
+            Some(vertex) => vertex.id,
+            None => 0,
+        }
+    }
+
+    fn set_id(&mut self, id: u32) {
+        for vertex in &mut self.vertex_buffer {
+            vertex.id = id;
+        }
+    }
+
+    fn clone_shape(&self) -> Box<dyn Shape> {
+        Box::new(self.clone())
+    }
+}
+
+#[derive(Clone)]
 pub struct Square {
     vertex_buffer: Vec<Vertex>,
     index_buffer: Vec<u32>,
@@ -127,8 +198,13 @@ impl Shape for Square {
             vertex.id = id;
         }
     }
+
+    fn clone_shape(&self) -> Box<dyn Shape> {
+        Box::new(self.clone())
+    }
 }
 
+#[derive(Clone)]
 pub struct PathShape {
     vertex_buffer: Vec<Vertex>,
     index_buffer: Vec<u32>,
@@ -244,6 +320,10 @@ impl Shape for PathShape {
         for vertex in &mut self.vertex_buffer {
             vertex.id = id;
         }
+    }
+
+    fn clone_shape(&self) -> Box<dyn Shape> {
+        Box::new(self.clone())
     }
 }
 

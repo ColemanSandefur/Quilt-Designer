@@ -1,3 +1,4 @@
+use crate::quilt::brush::*;
 use crate::render::renderer::Renderer;
 
 struct ClickState {
@@ -6,15 +7,16 @@ struct ClickState {
 }
 
 static mut IS_COLOR_PICKER_OPEN: bool = false;
-static mut COLOR_PICKER: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
+static mut COLOR_PICKER: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 
-static UI_STYLE: [(imgui::StyleColor, [f32; 4]); 6] = [
+static UI_STYLE: [(imgui::StyleColor, [f32; 4]); 7] = [
     (imgui::StyleColor::ResizeGrip, [0.0; 4]),
     (imgui::StyleColor::ResizeGripActive, [0.0; 4]),
     (imgui::StyleColor::ResizeGripHovered, [0.0; 4]),
     (imgui::StyleColor::Text, [1.0, 1.0, 1.0, 1.0]),
     (imgui::StyleColor::TitleBg, [0.2, 0.2, 0.2, 1.0]),
     (imgui::StyleColor::TitleBgActive, [0.2, 0.2, 0.2, 1.0]),
+    (imgui::StyleColor::WindowBg, [0.05, 0.05, 0.05, 1.0]),
 ];
 
 pub struct UiManager {}
@@ -51,7 +53,7 @@ impl UiManager {
                 was_color_clicked.double_clicked = ui.is_item_hovered() && ui.is_mouse_double_clicked(MouseButton::Left);
                 
                 if was_color_clicked.clicked {
-                    renderer.brush = std::sync::Arc::new(color)
+                    renderer.brush.set_pattern_brush(std::sync::Arc::new(PatternBrush{ color }));
                 }
 
                 if was_color_clicked.double_clicked {
@@ -81,10 +83,12 @@ impl UiManager {
                         let picker = ColorPicker::new(im_str!(""), &mut COLOR_PICKER)
                             .alpha(false);
                         if picker.build(&ui) {
-                            renderer.brush = std::sync::Arc::new(COLOR_PICKER)
+                            renderer.brush.set_pattern_brush(std::sync::Arc::new(PatternBrush{ color: COLOR_PICKER }));
                         }
 
-                        ui.button(im_str!("Close"), [200.0, 20.0]);
+                        if ui.button(im_str!("Close"), [200.0, 20.0]) {
+                            IS_COLOR_PICKER_OPEN = false;
+                        }
                     });
                 
             }
@@ -99,15 +103,27 @@ impl UiManager {
             .movable(false)
             .collapsible(false)
             .build(ui, || {
-                ui.text(im_str!("Hello world!"));
-                ui.text(im_str!("こんにちは世界！"));
-                ui.text(im_str!("This...is...imgui-rs!"));
-                ui.separator();
-                let mouse_pos = ui.io().mouse_pos;
-                ui.text(format!(
-                    "Mouse Position: ({:.1},{:.1})",
-                    mouse_pos[0], mouse_pos[1]
-                ));
+                use crate::quilt::square::square_pattern::SquarePattern;
+                use crate::render::object::ShapeDataStruct;
+
+                if ColorButton::new(im_str!("hst"), [0.2, 0.2, 0.2, 1.0])
+                    .tooltip(false)
+                    .build(&ui) {
+                        let square_pattern = SquarePattern::new(vec![
+                            Box::new(
+                                ShapeDataStruct::new(
+                                    Box::new(crate::render::shape::Triangle::new((0.0, 0.0), (0.0, 1.0), (1.0, 0.0), 0)),
+                                )
+                            ),
+                            Box::new(
+                                ShapeDataStruct::new(
+                                    Box::new(crate::render::shape::Triangle::new((1.0, 1.0), (0.0, 1.0), (1.0, 0.0), 0)),
+                                )
+                            ),
+                        ]);
+
+                        renderer.brush.set_block_brush(std::sync::Arc::new(BlockBrush {square_pattern}))
+                    }
             });
 
         

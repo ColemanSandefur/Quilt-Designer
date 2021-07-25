@@ -1,3 +1,4 @@
+use crate::quilt::brush::*;
 use crate::quilt::Quilt;
 use crate::util::frame_timing::FrameTiming;
 use crate::util::keyboard_tracker::KeyboardTracker;
@@ -5,8 +6,6 @@ use crate::render::material::material_manager::MaterialManager;
 use crate::render::matrix::{Matrix, WorldTransform};
 use crate::render::ui_manager::UiManager;
 use crate::render::picker::Picker;
-
-use std::sync::Arc;
 
 use glium::Surface;
 
@@ -19,7 +18,7 @@ pub struct Renderer {
     pub quilt: Quilt,
     pub picker: Picker,
     pub cursor_pos: Option<(i32, i32)>,
-    pub brush: Arc<[f32; 4]>,
+    pub brush: Brush,
 }
 
 impl Renderer {
@@ -50,7 +49,7 @@ impl Renderer {
             quilt,
             picker,
             cursor_pos: None,
-            brush: Arc::new([0.0, 0.0, 0.0, 1.0]),
+            brush: Brush::new_pattern_brush(PatternBrush{ color: [1.0; 4]}),
             // picking_pixel_buffer: glium::texture::pixel_buffer::PixelBuffer::new_empty(display, 1),
         }
     }
@@ -133,9 +132,9 @@ impl Renderer {
 
             let entry = self.picker.get_clicked();
 
-            
-            if let Some(entry) = entry {
-                self.quilt.click(&entry, self.brush.clone());
+            if entry.is_some() {
+                let entry = entry.unwrap().clone();
+                self.quilt.click(&entry, &self.brush, &mut self.picker);
             }
         }
     }

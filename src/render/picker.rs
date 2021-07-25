@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use rand::prelude::*;
 use glium::{VertexBuffer, IndexBuffer, Surface};
 
+#[derive(Clone)]
 pub struct PickerEntry {
     pub row: usize,
     pub column: usize,

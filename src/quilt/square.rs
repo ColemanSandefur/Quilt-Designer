@@ -1,3 +1,6 @@
+pub mod square_pattern;
+
+use crate::quilt::brush::*;
 use crate::render::object::{ShapeDataStruct};
 use crate::render::material::{material_manager::{MaterialManager}};
 use crate::render::matrix::{Matrix};
@@ -76,6 +79,14 @@ impl ShapeProtector {
 
             self.update_buffer();
         }
+    }
+
+    pub fn set_shapes(&mut self, shapes: Vec<Box<ShapeDataStruct>>) {
+        self.shapes = shapes;
+
+        self.set_model_transform(self.model_transform);
+
+        self.update_buffer();
     }
 
     // model accessors
@@ -247,13 +258,17 @@ impl Square {
     }
 
     //returns wether or not it clicked
-    pub fn click(&mut self, id: u32, brush: std::sync::Arc<[f32; 4]>) -> bool {
+    pub fn click(&mut self, id: u32, brush: &Brush, picker: &mut Picker) -> bool {
         let mut was_clicked = false;
         
         for index in 0..self.shape_protector.get_shapes().len() {
             
             if self.shape_protector.get_shape(index).unwrap().shape.was_clicked(id) {
-                self.shape_protector.set_shape_color(index, *brush);
+                if brush.is_pattern_brush() {
+                    self.shape_protector.set_shape_color(index, brush.get_pattern_brush().unwrap().color);
+                } else {
+                    self.shape_protector.set_shapes(brush.get_block_brush().unwrap().get_pattern(picker, self.row, self.column).get_shapes().clone());
+                }
 
                 was_clicked = true;
 

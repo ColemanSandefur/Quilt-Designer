@@ -1,5 +1,7 @@
+pub mod brush;
 pub mod square;
 
+use crate::quilt::brush::*;
 use crate::render::material::{material_manager::{MaterialManager}};
 use crate::render::matrix::{WorldTransform};
 use crate::render::shape::Vertex;
@@ -174,9 +176,9 @@ impl Quilt {
         (self.width, self.height)
     }
 
-    pub fn click(&mut self, entry: &PickerEntry, brush: std::sync::Arc<[f32; 4]>) -> bool {
+    pub fn click(&mut self, entry: &PickerEntry, brush: &Brush, picker: &mut Picker) -> bool {
 
-        if self.squares[entry.row][entry.column].click(entry.id, brush) {
+        if self.squares[entry.row][entry.column].click(entry.id, brush, picker) {
             self.needs_updated = true;
 
             return true;

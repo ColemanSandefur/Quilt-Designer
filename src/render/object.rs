@@ -11,6 +11,7 @@ use lyon::geom::Angle;
 // Everything rendered will be a Shape Object, this will be added to the renderer's list
 // the renderer will then handle the drawing of the object
 
+
 pub struct ShapeDataStruct {
     pub shape: Box<dyn Shape>,
 }
@@ -19,6 +20,14 @@ impl ShapeDataStruct {
     pub fn new(shape: Box<dyn Shape>) -> Self {
         Self {
             shape,
+        }
+    }
+}
+
+impl Clone for ShapeDataStruct {
+    fn clone(&self) -> Self {
+        Self {
+            shape: self.shape.clone_shape()
         }
     }
 }
