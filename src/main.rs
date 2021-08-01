@@ -8,10 +8,10 @@ pub mod util;
 fn main() {
     let system = system::init("title");
 
-    system.main_loop(move |_, frame, renderer, ui| {
+    system.main_loop(move |_, frame, renderer, ui, glium_renderer, facade| {
         // println!("{}ms", renderer.frame_timing.delta_frame_time().num_milliseconds());
         // println!("{:?}", renderer.world_transform.get_scale());
 
-        renderer.draw(frame, ui);
+        renderer.draw(frame, ui, glium_renderer, facade);
     });
 }

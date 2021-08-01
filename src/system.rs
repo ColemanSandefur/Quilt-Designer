@@ -10,6 +10,9 @@ use imgui_glium_renderer::Renderer as GliumRenderer;
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
 use std::path::Path;
 use std::time::Instant;
+use glium::Surface;
+use crate::quilt::square::square_pattern::SquarePattern;
+use crate::render::object::ShapeDataStruct;
 
 pub struct System {
     pub event_loop: EventLoop<()>,
@@ -84,9 +87,11 @@ pub fn init(title: &str) -> System {
     }
 }
 
+pub static mut TEXTURE_ID: Option<imgui::TextureId> = None;
+
 impl System {
     pub fn main_loop<
-        F: FnMut(&mut bool, &mut glium::Frame, &mut Renderer, &mut Ui) + 'static>(self, mut run_ui: F) {
+        F: FnMut(&mut bool, &mut glium::Frame, &mut Renderer, &mut Ui, &mut imgui_glium_renderer::Renderer, &dyn glium::backend::Facade) + 'static>(self, mut run_ui: F) {
         let System {
             event_loop,
             display,
@@ -97,6 +102,42 @@ impl System {
             ..
         } = self;
         let mut last_frame = Instant::now();
+
+        let textures = glium_renderer.textures();
+
+        let texture = glium::texture::Texture2d::empty(
+            &display,
+            100,
+            100
+        ).unwrap();
+
+        let mut surface = texture.as_surface();
+
+        let mut square_pattern = SquarePattern::new(vec![
+            Box::new(
+                ShapeDataStruct::new(
+                    Box::new(crate::render::shape::Triangle::new((0.0, 0.0), (0.0, 1.0), (1.0, 0.0), 0)),
+                )
+            ),
+            Box::new(
+                ShapeDataStruct::new(
+                    Box::new(crate::render::shape::Triangle::new((1.0, 1.0), (0.0, 1.0), (1.0, 0.0), 0)),
+                )
+            ),
+        ]);
+
+        surface.clear_color(0.0, 0.0, 0.0, 1.0);
+        let material_manager = &crate::render::material::material_manager::MaterialManager::load_all(&display);
+        square_pattern.draw(&mut surface, &display, &material_manager);
+
+        let texture_id = textures.insert(imgui_glium_renderer::Texture
+            {
+                texture: std::rc::Rc::new(texture),
+                sampler: Default::default()
+            }
+        );
+
+        unsafe {TEXTURE_ID = Some(texture_id);}
 
         event_loop.run(move |event, _, control_flow| match event {
             Event::NewEvents(_) => {
@@ -116,10 +157,12 @@ impl System {
                 let mut target = display.draw();
 
                 let mut run = true;
-                run_ui(&mut run, &mut target, &mut renderer, &mut ui);
+                run_ui(&mut run, &mut target, &mut renderer, &mut ui, &mut glium_renderer, &display);
                 if !run {
                     *control_flow = ControlFlow::Exit;
                 }
+
+                
 
                 let gl_window = display.gl_window();
                 // target.clear_color_srgb(1.0, 1.0, 1.0, 1.0);

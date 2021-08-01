@@ -36,8 +36,8 @@ pub trait Shape {
     fn get_indices(&mut self) -> Vec<u32>;
     fn set_color(&mut self, color: [f32; 4]);
     fn set_model_matrix(&mut self, matrix: Matrix);
-    fn get_num_vertices(&mut self) -> usize;
-    fn get_num_indices(&mut self) -> usize;
+    fn get_num_vertices(&self) -> usize;
+    fn get_num_indices(&self) -> usize;
     fn get_id(&self) -> u32;
     fn set_id(&mut self, id: u32);
     fn was_clicked(&self, id: u32) -> bool {
@@ -90,11 +90,11 @@ impl Shape for Triangle {
         }
     }
 
-    fn get_num_vertices(&mut self) -> usize {
+    fn get_num_vertices(&self) -> usize {
         self.vertex_buffer.len()
     }
     
-    fn get_num_indices(&mut self) -> usize {
+    fn get_num_indices(&self) -> usize {
         self.index_buffer.len()
     }
 
@@ -178,11 +178,11 @@ impl Shape for Square {
         }
     }
 
-    fn get_num_vertices(&mut self) -> usize {
+    fn get_num_vertices(&self) -> usize {
         self.vertex_buffer.len()
     }
     
-    fn get_num_indices(&mut self) -> usize {
+    fn get_num_indices(&self) -> usize {
         self.index_buffer.len()
     }
 
@@ -301,11 +301,11 @@ impl Shape for PathShape {
         }
     }
 
-    fn get_num_vertices(&mut self) -> usize {
+    fn get_num_vertices(&self) -> usize {
         self.vertex_buffer.len()
     }
 
-    fn get_num_indices(&mut self) -> usize {
+    fn get_num_indices(&self) -> usize {
         self.index_buffer.len()
     }
 

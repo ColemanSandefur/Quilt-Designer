@@ -34,7 +34,7 @@ impl Renderer {
 
         
         let mut picker = Picker::new(display, &shaders);
-        let quilt = Quilt::new(display, &mut shaders, 6 * 4, 8 * 4, &mut picker);
+        let quilt = Quilt::new(display, &mut shaders, 6, 8, &mut picker);
 
         //garbage way to fit quilt to screen
         let dimensions = quilt.get_dimensions();
@@ -54,7 +54,7 @@ impl Renderer {
         }
     }
 
-    pub fn draw(&mut self, target: &mut glium::Frame, ui: &mut imgui::Ui) {
+    pub fn draw(&mut self, target: &mut glium::Frame, ui: &mut imgui::Ui, _glium_renderer: &mut imgui_glium_renderer::Renderer, _facade: &dyn glium::backend::Facade) {
 
         target.clear_color(0.02, 0.02, 0.02, 1.0);
 

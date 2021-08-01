@@ -106,24 +106,30 @@ impl UiManager {
                 use crate::quilt::square::square_pattern::SquarePattern;
                 use crate::render::object::ShapeDataStruct;
 
-                if ColorButton::new(im_str!("hst"), [0.2, 0.2, 0.2, 1.0])
-                    .tooltip(false)
-                    .build(&ui) {
-                        let square_pattern = SquarePattern::new(vec![
-                            Box::new(
-                                ShapeDataStruct::new(
-                                    Box::new(crate::render::shape::Triangle::new((0.0, 0.0), (0.0, 1.0), (1.0, 0.0), 0)),
-                                )
-                            ),
-                            Box::new(
-                                ShapeDataStruct::new(
-                                    Box::new(crate::render::shape::Triangle::new((1.0, 1.0), (0.0, 1.0), (1.0, 0.0), 0)),
-                                )
-                            ),
-                        ]);
-
-                        renderer.brush.set_block_brush(std::sync::Arc::new(BlockBrush {square_pattern}))
-                    }
+                unsafe {
+                    if crate::system::TEXTURE_ID.is_some() && ImageButton::new(crate::system::TEXTURE_ID.unwrap(), [50.0, 50.0])
+                        // .tooltip(false)
+                        .build(&ui) {
+                            let square_pattern = SquarePattern::new(vec![
+                                Box::new(
+                                    ShapeDataStruct::new(
+                                        Box::new(crate::render::shape::Triangle::new((0.0, 0.0), (0.0, 1.0), (1.0, 0.0), 0)),
+                                    )
+                                ),
+                                Box::new(
+                                    ShapeDataStruct::new(
+                                        Box::new(crate::render::shape::Triangle::new((1.0, 1.0), (0.0, 1.0), (1.0, 0.0), 0)),
+                                    )
+                                ),
+                            ]);
+    
+                            renderer.brush.set_block_brush(std::sync::Arc::new(BlockBrush {square_pattern}));
+    
+                        }
+                        if ui.is_item_hovered() {
+                            ui.tooltip_text("Half Square Triangle");
+                        }
+                }
             });
 
         
