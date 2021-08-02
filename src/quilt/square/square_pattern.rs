@@ -20,7 +20,7 @@ impl SquarePattern {
         &self.shapes
     }
 
-    pub fn draw(&mut self, surface: &mut impl glium::Surface, facade: & impl glium::backend::Facade, materail_manager: &crate::render::material::material_manager::MaterialManager) {
+    pub fn draw(&mut self, surface: &mut impl glium::Surface, facade: & impl glium::backend::Facade) {
 
         // get num elements to avoid resizing vector
         let mut total_vertices = 0;
@@ -56,7 +56,7 @@ impl SquarePattern {
         let vb = glium::VertexBuffer::new(facade, &vb_vec).expect("Unable to initialize vb for square pattern");
         let ib = glium::IndexBuffer::new(facade, glium::index::PrimitiveType::TrianglesList, &ib_vec).expect("Unable to initialize ib for square pattern");
 
-        let material = materail_manager.get_solid_color_material();
+        let material = crate::render::material::material_manager::get_material_manager().get_solid_color_material();
 
         let world_transform = crate::render::matrix::WorldTransform {
             projection: crate::render::matrix::Matrix::new(),

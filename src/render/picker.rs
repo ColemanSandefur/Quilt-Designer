@@ -1,5 +1,4 @@
 use crate::render::shape::Vertex;
-use crate::render::material::material_manager::{MaterialManager};
 use crate::render::material::{*};
 use crate::render::matrix::{WorldTransform, Matrix};
 
@@ -24,9 +23,9 @@ pub struct Picker {
 }
 
 impl Picker {
-    pub fn new(display: &dyn glium::backend::Facade, materials: &MaterialManager) -> Self {
+    pub fn new(display: &dyn glium::backend::Facade) -> Self {
 
-        let shader = materials.get_click_material();
+        let shader = crate::render::material::material_manager::get_material_manager().get_click_material();
 
         Self {
             picking_pixel_buffer: glium::texture::pixel_buffer::PixelBuffer::new_empty(display, 1),

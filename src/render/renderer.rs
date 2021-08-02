@@ -2,7 +2,6 @@ use crate::quilt::brush::*;
 use crate::quilt::Quilt;
 use crate::util::frame_timing::FrameTiming;
 use crate::util::keyboard_tracker::KeyboardTracker;
-use crate::render::material::material_manager::MaterialManager;
 use crate::render::matrix::{Matrix, WorldTransform};
 use crate::render::ui_manager::UiManager;
 use crate::render::picker::Picker;
@@ -11,7 +10,6 @@ use glium::Surface;
 
 #[allow(dead_code)]
 pub struct Renderer {
-    pub shaders: MaterialManager,
     pub world_transform: Matrix,
     pub frame_timing: FrameTiming,
     pub keyboard_tracker: KeyboardTracker,
@@ -23,7 +21,6 @@ pub struct Renderer {
 
 impl Renderer {
     pub fn new(display: &dyn glium::backend::Facade) -> Self {
-        let mut shaders = MaterialManager::load_all(display);
 
         let mut world_transform = Matrix::new_with_data([
             [1.0, 0.0, 0.0, 0.0],
@@ -33,8 +30,8 @@ impl Renderer {
         ]);
 
         
-        let mut picker = Picker::new(display, &shaders);
-        let quilt = Quilt::new(display, &mut shaders, 6, 8, &mut picker);
+        let mut picker = Picker::new(display);
+        let quilt = Quilt::new(display, 6, 8, &mut picker);
 
         //garbage way to fit quilt to screen
         let dimensions = quilt.get_dimensions();
@@ -42,7 +39,6 @@ impl Renderer {
 
 
         Self {
-            shaders,
             world_transform,
             frame_timing: FrameTiming::new(),
             keyboard_tracker: KeyboardTracker::new(),

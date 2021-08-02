@@ -2,6 +2,22 @@ use crate::render::material::*;
 
 use std::rc::Rc;
 
+static mut MATERIAL_MANAGER: Option<MaterialManager> = None;
+
+pub fn initialize_material_manager(display: &dyn glium::backend::Facade) {
+    unsafe {
+        assert!(MATERIAL_MANAGER.is_none()); // make sure this isn't called more than once
+    
+        MATERIAL_MANAGER = Some(MaterialManager::load_all(display));
+    }
+}
+
+pub fn get_material_manager() -> &'static MaterialManager {
+    unsafe {
+        return &MATERIAL_MANAGER.as_ref().unwrap();
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum MaterialType {
     SolidColorMaterial,

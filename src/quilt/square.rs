@@ -2,7 +2,6 @@ pub mod square_pattern;
 
 use crate::quilt::brush::*;
 use crate::render::object::{ShapeDataStruct};
-use crate::render::material::{material_manager::{MaterialManager}};
 use crate::render::matrix::{Matrix};
 use crate::render::shape::{Shape, Vertex};
 use crate::render::picker::{Picker};
@@ -190,7 +189,7 @@ impl Square {
     pub const MAX_VERTICES: usize = 256;
     pub const MAX_INDICES: usize = Self::MAX_VERTICES * 4;
 
-    pub fn new(row: usize, column: usize, _shaders: &mut MaterialManager, picker: &mut Picker) -> Self {
+    pub fn new(row: usize, column: usize, picker: &mut Picker) -> Self {
 
         let mut half_circle = Path::svg_builder().flattened(0.001);
         half_circle.move_to(point(0.5, 0.25));

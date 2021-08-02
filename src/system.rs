@@ -35,11 +35,13 @@ pub fn init(title: &str) -> System {
         .with_multisampling(16)
         .with_vsync(true);
     let builder = WindowBuilder::new()
-        .with_title(title.to_owned())
-        .with_inner_size(glutin::dpi::LogicalSize::new(1024f64, 768f64));
+    .with_title(title.to_owned())
+    .with_inner_size(glutin::dpi::LogicalSize::new(1024f64, 768f64));
     let display =
-        Display::new(builder, context, &event_loop).expect("Failed to initialize display");
-
+    Display::new(builder, context, &event_loop).expect("Failed to initialize display");
+    
+    crate::render::material::material_manager::initialize_material_manager(&display);
+    
     let renderer = Renderer::new(&display);
 
     let mut imgui = Context::create();
@@ -75,6 +77,7 @@ pub fn init(title: &str) -> System {
     imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
 
     let glium_renderer = GliumRenderer::init(&mut imgui, &display).expect("Failed to initialize renderer");
+
 
     System {
         event_loop,
@@ -127,8 +130,8 @@ impl System {
         ]);
 
         surface.clear_color(0.0, 0.0, 0.0, 1.0);
-        let material_manager = &crate::render::material::material_manager::MaterialManager::load_all(&display);
-        square_pattern.draw(&mut surface, &display, &material_manager);
+
+        square_pattern.draw(&mut surface, &display);
 
         let texture_id = textures.insert(imgui_glium_renderer::Texture
             {

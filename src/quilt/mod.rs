@@ -2,7 +2,6 @@ pub mod brush;
 pub mod square;
 
 use crate::quilt::brush::*;
-use crate::render::material::{material_manager::{MaterialManager}};
 use crate::render::matrix::{WorldTransform};
 use crate::render::shape::Vertex;
 use crate::render::material::{SolidColorMaterial};
@@ -50,15 +49,14 @@ impl Quilt {
     pub const INIT_VERTICES: usize = 6000;
     pub const INIT_INDICES: usize = Self::INIT_VERTICES * 4;
 
-    pub fn new(display: &dyn glium::backend::Facade, shaders: &mut MaterialManager, width: usize, height: usize, picker: &mut Picker) -> Self {
-
+    pub fn new(display: &dyn glium::backend::Facade, width: usize, height: usize, picker: &mut Picker) -> Self {
         let mut squares = Vec::with_capacity(height);
 
         for r in 0..height {
             let mut row = Vec::with_capacity(width);
 
             for c in 0..width {
-                let mut square = Square::new(r, c, shaders, picker);
+                let mut square = Square::new(r, c, picker);
 
                 let column = c as f32;
                 let r = -1.0 * r as f32 - 1.0;
@@ -91,7 +89,7 @@ impl Quilt {
             squares,
             vertex_buffer,
             index_buffer,
-            shader: shaders.get_solid_color_material(),
+            shader: crate::render::material::material_manager::get_material_manager().get_solid_color_material(),
             needs_updated: true,
             vert_vec,
             index_vec,  
