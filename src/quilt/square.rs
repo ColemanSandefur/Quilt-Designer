@@ -208,10 +208,7 @@ impl Square {
         let mut shape_protector = ShapeProtector::with_shapes(
             vec!{
                 Box::new(ShapeDataStruct::new(
-                    Box::new(crate::render::shape::Square::with_width_height(0.0, 0.0, 1.0, 1.0, 0)),
-                )),
-                Box::new(ShapeDataStruct::new(
-                    Box::new(crate::render::shape::Square::with_width_height(0.05, 0.05, 0.9, 0.9, picker.get_new_id(row, column))),
+                    Box::new(crate::render::shape::Square::with_line_width(0.0, 0.0, 1.0, 1.0, picker.get_new_id(row, column), 0.05)),
                 )),
                 Box::new(ShapeDataStruct::new(
                     Box::new(crate::render::shape::Square::with_width_height(0.25, 0.25, 0.5, 0.5, picker.get_new_id(row, column))),
@@ -230,10 +227,10 @@ impl Square {
             }
         );
 
-        shape_protector.set_shape_color(0, [0.0, 0.0, 0.0, 1.0]);
-        shape_protector.set_shape_color(2, [0.3, 0.3, 0.8, 1.0]);
-        shape_protector.set_shape_color(3, [0.8, 0.2, 0.2, 1.0]);
-        shape_protector.set_shape_color(4, [0.1, 0.8, 0.8, 1.0]);
+        // shape_protector.set_shape_color(0, [0.0, 0.0, 0.0, 1.0]);
+        shape_protector.set_shape_color(1, [0.3, 0.3, 0.8, 1.0]);
+        shape_protector.set_shape_color(2, [0.8, 0.2, 0.2, 1.0]);
+        shape_protector.set_shape_color(3, [0.1, 0.8, 0.8, 1.0]);
 
         let s = Self {
             shape_protector,
@@ -259,21 +256,24 @@ impl Square {
     //returns wether or not it clicked
     pub fn click(&mut self, id: u32, brush: &Brush, picker: &mut Picker) -> bool {
         let mut was_clicked = false;
-        
-        for index in 0..self.shape_protector.get_shapes().len() {
-            
-            if self.shape_protector.get_shape(index).unwrap().shape.was_clicked(id) {
-                if brush.is_pattern_brush() {
+
+        if brush.is_block_brush() {
+            println!("Clicked");
+            self.shape_protector.set_shapes(brush.get_block_brush().unwrap().get_pattern(picker, self.row, self.column).get_shapes().clone());
+            was_clicked = true;
+        } else if brush.is_pattern_brush() {
+            for index in 0..self.shape_protector.get_shapes().len() {
+                
+                if self.shape_protector.get_shape(index).unwrap().shape.was_clicked(id) {
                     self.shape_protector.set_shape_color(index, brush.get_pattern_brush().unwrap().color);
-                } else {
-                    self.shape_protector.set_shapes(brush.get_block_brush().unwrap().get_pattern(picker, self.row, self.column).get_shapes().clone());
+    
+                    was_clicked = true;
+    
+                    break;
                 }
-
-                was_clicked = true;
-
-                break;
             }
         }
+        
 
         was_clicked
     }

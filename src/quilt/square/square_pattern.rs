@@ -1,4 +1,6 @@
 use crate::render::object::{ShapeDataStruct};
+use lyon::path::*;
+use lyon::math::point;
 
 #[derive(Clone)]
 pub struct SquarePattern {
@@ -8,9 +10,20 @@ pub struct SquarePattern {
 impl SquarePattern {
     pub fn new(mut shapes: Vec<Box<ShapeDataStruct>>) -> Self {
 
-        if let Some(shape) = shapes.get_mut(1) {
-            shape.shape.set_color([0.2, 0.2, 0.2, 1.0]);
-        }
+        // add black outline to square pattern
+        let mut path = Path::svg_builder();
+        path.move_to(point(0.0, 0.0));
+        path.line_to(point(0.0, 1.0));
+        path.line_to(point(1.0, 1.0));
+        path.line_to(point(1.0, 0.0));
+        path.close();
+        let path = path.build();
+
+        shapes.push(
+            Box::new(ShapeDataStruct::new(
+                Box::new(crate::render::shape::StrokeShape::new(&path, 0, &lyon::lyon_tessellation::StrokeOptions::default().with_line_width(0.05)),
+            )),
+        ));
 
         Self {
             shapes,
@@ -35,6 +48,14 @@ impl SquarePattern {
         let mut ib_vec = Vec::with_capacity(total_indices);
 
         for shape in &mut self.shapes {
+            // add to ib_vec
+            let indices = shape.shape.get_indices();
+            let start_index = vb_vec.len();
+    
+            for i in 0..indices.len() {
+                ib_vec.push(start_index as u32 + indices[i]);
+            }
+            
             // add to vb_vec
             for vert in &mut shape.shape.get_vertices() {
                 let mut vert = vert.clone();
@@ -44,13 +65,6 @@ impl SquarePattern {
                 vb_vec.push(vert);
             }
 
-            // add to ib_vec
-            let indices = shape.shape.get_indices();
-            let start_index = ib_vec.len();
-    
-            for i in 0..indices.len() {
-                ib_vec.push(start_index as u32 + indices[i]);
-            }
         }
 
         let vb = glium::VertexBuffer::new(facade, &vb_vec).expect("Unable to initialize vb for square pattern");

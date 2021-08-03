@@ -32,8 +32,8 @@ impl Vertex {
 implement_vertex!(Vertex, position, color, model, id);
 
 pub trait Shape {
-    fn get_vertices(&mut self) -> Vec<Vertex>;
-    fn get_indices(&mut self) -> Vec<u32>;
+    fn get_vertices(&self) -> Vec<Vertex>;
+    fn get_indices(&self) -> Vec<u32>;
     fn set_color(&mut self, color: [f32; 4]);
     fn set_model_matrix(&mut self, matrix: Matrix);
     fn get_num_vertices(&self) -> usize;
@@ -54,13 +54,30 @@ pub struct Triangle {
 
 impl Triangle {
     pub fn new(pos1: (f32, f32), pos2: (f32, f32), pos3: (f32, f32), id: u32) -> Self {
-        let vertex_buffer = vec!{
+        let mut vertex_buffer = vec!{
             Vertex { position: [pos1.0, pos1.1], id, .. Default::default() },
             Vertex { position: [pos2.0, pos2.1], id, .. Default::default() },
             Vertex { position: [pos3.0, pos3.1], id, .. Default::default() },
         };
 
-        let index_buffer = vec!{0u32, 1, 2};
+        let mut index_buffer = vec!{0u32, 1, 2};
+
+        let mut outline = Path::svg_builder();
+        outline.move_to(point(pos1.0, pos1.1));
+        outline.line_to(point(pos2.0, pos2.1));
+        outline.line_to(point(pos3.0, pos3.1));
+        outline.close();
+        let outline = outline.build();
+
+        let stroke = StrokeShape::new(&outline, 0, &StrokeOptions::default().with_line_width(0.008));
+
+        for index in stroke.get_indices() {
+            index_buffer.push(index + vertex_buffer.len() as u32);
+        }
+
+        for vertex in stroke.get_vertices() {
+            vertex_buffer.push(vertex);
+        }
 
         Self {
             vertex_buffer,
@@ -70,16 +87,16 @@ impl Triangle {
 }
 
 impl Shape for Triangle {
-    fn get_vertices(&mut self) -> Vec<Vertex> {
+    fn get_vertices(&self) -> Vec<Vertex> {
         self.vertex_buffer.clone()
     }
 
-    fn get_indices(&mut self) -> Vec<u32> {
+    fn get_indices(&self) -> Vec<u32> {
         self.index_buffer.clone()
     }
 
     fn set_color(&mut self, color: [f32; 4]) {
-        for vertex in &mut self.vertex_buffer {
+        for vertex in &mut self.vertex_buffer[0..3] {
             vertex.color = color;
         }
     }
@@ -106,7 +123,7 @@ impl Shape for Triangle {
     }
 
     fn set_id(&mut self, id: u32) {
-        for vertex in &mut self.vertex_buffer {
+        for vertex in &mut self.vertex_buffer[0..3] {
             vertex.id = id;
         }
     }
@@ -123,32 +140,37 @@ pub struct Square {
 }
 
 impl Square {
-    pub fn new(pos1: (f32, f32), pos2: (f32, f32), pos3: (f32, f32), pos4: (f32, f32), id: u32) -> Self {
-
-        let vertex_buffer = vec!{
-            Vertex { position: [pos1.0, pos1.1], id, .. Default::default() },
-            Vertex { position: [pos2.0, pos2.1], id, .. Default::default() },
-            Vertex { position: [pos3.0, pos3.1], id, .. Default::default() },
-            Vertex { position: [pos4.0, pos4.1], id, .. Default::default() },
-        };
-
-        let index_buffer = vec!{0u32, 1, 2, 1, 2, 3};
-
-        Self {
-            vertex_buffer,
-            index_buffer,
-        }
+    pub fn with_width_height(x: f32, y: f32, width: f32, height: f32, id: u32) -> Self {
+        Square::with_line_width(x, y, width, height, id, 0.008)
     }
 
-    pub fn with_width_height(x: f32, y: f32, width: f32, height: f32, id: u32) -> Self {
-        let vertex_buffer = vec!{
+    pub fn with_line_width(x: f32, y:f32, width: f32, height: f32, id: u32, outline_width: f32) -> Self {
+        let mut vertex_buffer = vec!{
             Vertex { position: [ x, y ], id, .. Default::default() },
             Vertex { position: [ x + width, y ], id, .. Default::default() },
             Vertex { position: [ x, y + height ], id, .. Default::default() },
             Vertex { position: [ x + width, y + height ], id, .. Default::default() },
         };
 
-        let index_buffer = vec!{0u32, 1, 2, 1, 2, 3};
+        let mut index_buffer = vec!{0u32, 1, 2, 1, 2, 3};
+        let mut outline = Path::svg_builder();
+        outline.move_to(point(x, y));
+        outline.line_to(point(x + width, y));
+        outline.line_to(point(x + width, y + height));
+        outline.line_to(point(x, y + height));
+        outline.line_to(point(x, y));
+        outline.close();
+        let outline = outline.build();
+
+        let stroke = StrokeShape::new(&outline, 0, &StrokeOptions::default().with_line_width(outline_width));
+
+        for index in stroke.get_indices() {
+            index_buffer.push(index + vertex_buffer.len() as u32);
+        }
+
+        for vertex in stroke.get_vertices() {
+            vertex_buffer.push(vertex);
+        }
 
         Self {
             vertex_buffer,
@@ -158,16 +180,16 @@ impl Square {
 }
 
 impl Shape for Square {
-    fn get_vertices(&mut self) -> Vec<Vertex> {
+    fn get_vertices(&self) -> Vec<Vertex> {
         self.vertex_buffer.clone()
     }
 
-    fn get_indices(&mut self) -> Vec<u32> {
+    fn get_indices(&self) -> Vec<u32> {
         self.index_buffer.clone()
     }
 
     fn set_color(&mut self, color: [f32; 4]) {
-        for vertex in &mut self.vertex_buffer {
+        for vertex in &mut self.vertex_buffer[0..4] {
             vertex.color = color;
         }
     }
@@ -194,7 +216,7 @@ impl Shape for Square {
     }
 
     fn set_id(&mut self, id: u32) {
-        for vertex in &mut self.vertex_buffer {
+        for vertex in &mut self.vertex_buffer[0..4] {
             vertex.id = id;
         }
     }
@@ -239,39 +261,92 @@ impl PathShape {
             index_buffer,
         }
     }
+}
 
-    pub fn from_vertices(vertices: &Vec<Vertex>, id: u32) -> Self {
+impl Shape for PathShape {
+    fn get_vertices(&self) -> Vec<Vertex> {
+        self.vertex_buffer.clone()
+    }
 
-        let mut builder = Path::builder();
-        builder.begin(vertices[0].to_point());
+    fn get_indices(&self) -> Vec<u32> {
+        self.index_buffer.clone()
+    }
 
-        for i in 1..vertices.len() {
-            builder.line_to(vertices[i].to_point());
+    fn set_color(&mut self, color: [f32; 4]) {
+        for vertex in &mut self.vertex_buffer {
+            vertex.color = color;
         }
-        builder.close();
-        let path = builder.build();
+    }
 
-        let mut geometry: VertexBuffers<Vertex, u32> = VertexBuffers::new();
+    fn set_model_matrix(&mut self, matrix: Matrix) {
+        for vertex in &mut self.vertex_buffer {
+            vertex.model = matrix.get_matrix();
+        }
+    }
 
-        let mut tessellator = FillTessellator::new();
+    fn get_num_vertices(&self) -> usize {
+        self.vertex_buffer.len()
+    }
+
+    fn get_num_indices(&self) -> usize {
+        self.index_buffer.len()
+    }
+
+    fn get_id(&self) -> u32 {
+        match self.vertex_buffer.get(0) {
+            Some(vertex) => vertex.id,
+            None => 0,
+        }
+    }
+
+    fn set_id(&mut self, id: u32) {
+        for vertex in &mut self.vertex_buffer {
+            vertex.id = id;
+        }
+    }
+
+    fn clone_shape(&self) -> Box<dyn Shape> {
+        Box::new(self.clone())
+    }
+}
+
+#[derive(Clone)]
+pub struct StrokeShape {
+    vertex_buffer: Vec<Vertex>,
+    index_buffer: Vec<u32>,
+}
+
+impl StrokeShape {
+    pub fn new(path: &Path, id: u32, stroke_options: &StrokeOptions) -> Self {
+        let mut buffers: VertexBuffers<Point, u16> = VertexBuffers::new();
 
         {
-            tessellator.tessellate_path(
-                &path, 
-                &FillOptions::default(), 
-                &mut BuffersBuilder::new(&mut geometry, |vertex: FillVertex| {
-                    Vertex {
-                        position: vertex.position().to_array(),
-                        id,
-                        .. Default::default()
-                    }
-                }),
-            ).unwrap();
+            let mut vertex_builder = lyon::tessellation::geometry_builder::simple_builder(&mut buffers);
+            let mut tessellator = StrokeTessellator::new();
+
+            tessellator.tessellate(path, &stroke_options, &mut vertex_builder).expect("error making stroke");
         }
 
-        let vertex_buffer = geometry.vertices.to_vec();
+        let i = buffers.indices;
+        let mut index_buffer = Vec::with_capacity(i.len());
 
-        let index_buffer = geometry.indices.to_vec();
+        for index in i {
+            index_buffer.push(index as u32);
+        }
+
+        
+
+        let v = buffers.vertices;
+        let mut vertex_buffer = Vec::with_capacity(v.len());
+
+        for vertex in v {
+            vertex_buffer.push(Vertex {
+                position: [vertex.x, vertex.y],
+                color: [0.0, 0.0, 0.0, 1.0],
+                id,
+                model: crate::render::matrix::Matrix::new().get_matrix()
+            })
+        }
 
         Self {
             vertex_buffer,
@@ -280,12 +355,12 @@ impl PathShape {
     }
 }
 
-impl Shape for PathShape {
-    fn get_vertices(&mut self) -> Vec<Vertex> {
+impl Shape for StrokeShape {
+    fn get_vertices(&self) -> Vec<Vertex> {
         self.vertex_buffer.clone()
     }
 
-    fn get_indices(&mut self) -> Vec<u32> {
+    fn get_indices(&self) -> Vec<u32> {
         self.index_buffer.clone()
     }
 

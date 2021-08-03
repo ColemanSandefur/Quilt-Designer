@@ -66,14 +66,6 @@ impl DefaultShapeObject {
                 Box::new(crate::render::shape::Square::with_width_height(-0.25, -0.25, 0.5, 0.5, 0)),
             )),
             Box::new(ShapeDataStruct::new(
-                Box::new(crate::render::shape::PathShape::from_vertices(&vec!{
-                    crate::render::shape::Vertex {position: [0.0, -0.5], .. Default::default()},
-                    crate::render::shape::Vertex {position: [-0.5, 0.2], .. Default::default()},
-                    crate::render::shape::Vertex {position: [0.0, 0.0], .. Default::default()},
-                    crate::render::shape::Vertex {position: [0.5, 0.5], .. Default::default()},
-                }, 0)),
-            )),
-            Box::new(ShapeDataStruct::new(
                 Box::new(
                     crate::render::shape::PathShape::new(half_circle, 0),
                 ),
