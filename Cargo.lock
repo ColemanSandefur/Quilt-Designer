@@ -612,6 +612,7 @@ dependencies = [
  "imgui",
  "imgui-glium-renderer",
  "imgui-winit-support",
+ "lazy_static",
  "lyon",
  "rand",
  "winit 0.25.0",

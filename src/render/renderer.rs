@@ -20,7 +20,7 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn new(display: &dyn glium::backend::Facade) -> Self {
+    pub fn new(display: &dyn glium::backend::Facade, _glium_renderer: &imgui_glium_renderer::Renderer) -> Self {
 
         let mut world_transform = Matrix::new_with_data([
             [1.0, 0.0, 0.0, 0.0],

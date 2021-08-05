@@ -1,16 +1,11 @@
 pub mod square_pattern;
+pub mod block_manager;
 
 use crate::quilt::brush::*;
 use crate::render::object::{ShapeDataStruct};
 use crate::render::matrix::{Matrix};
 use crate::render::shape::{Shape, Vertex};
 use crate::render::picker::{Picker};
-
-use lyon::path::{ArcFlags, Path};
-use lyon::path::builder::SvgPathBuilder;
-use lyon::math::point;
-use lyon::geom::vector;
-use lyon::geom::Angle;
 
 struct ShapeProtector {
     shapes: Vec<Box<ShapeDataStruct>>,
@@ -189,24 +184,9 @@ impl Square {
     pub const MAX_VERTICES: usize = 256;
     pub const MAX_INDICES: usize = Self::MAX_VERTICES * 4;
     pub const BORDER_WIDTH: f32 = 0.05;
-    pub const SHAPE_BORDER: f32 = 0.008;
+    pub const SHAPE_BORDER: f32 = 0.02;
 
     pub fn new(row: usize, column: usize, picker: &mut Picker) -> Self {
-
-        let mut half_circle = Path::svg_builder().flattened(0.001);
-        // half_circle.move_to(point(0.25, 0.25));
-        half_circle.move_to(point(0.5, 0.25));
-        half_circle.relative_arc_to(
-            vector(0.25, 0.25),
-            Angle {radians: std::f32::consts::PI},
-            ArcFlags {
-                large_arc: true,
-                sweep: true,
-            },
-            vector(0.0, 0.5),
-        );
-        half_circle.close();
-        let half_circle = half_circle.build();
 
         let mut shape_protector = ShapeProtector::with_shapes(
             vec!{
@@ -224,14 +204,9 @@ impl Square {
                 )),
                 Box::new(ShapeDataStruct::new(
                     Box::new(
-                        crate::render::shape::PathShape::new(half_circle, picker.get_new_id(row, column)),
+                        crate::render::shape::PathShape::circle(lyon::math::point(0.5, 0.5), 0.25, -0.5 * std::f32::consts::PI, 0.5 * std::f32::consts::PI, picker.get_new_id(row, column)),
                     ),
                 )),
-                // Box::new(
-                //     ShapeDataStruct::new(
-                //         Box::new(crate::render::shape::Triangle::new((0.0, 0.0), (0.0, 1.0), (1.0, 0.0), 0)),
-                //     )
-                // ),
                 Box::new(ShapeDataStruct::new(
                     Box::new(crate::render::shape::StrokeShape::square(0.0, 0.0, 1.0, 1.0, 0, &lyon::tessellation::StrokeOptions::default().with_line_width(crate::quilt::square::Square::BORDER_WIDTH))),
                 )),

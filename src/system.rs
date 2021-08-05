@@ -10,9 +10,6 @@ use imgui_glium_renderer::Renderer as GliumRenderer;
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
 use std::path::Path;
 use std::time::Instant;
-use glium::Surface;
-use crate::quilt::square::square_pattern::SquarePattern;
-use crate::render::object::ShapeDataStruct;
 
 pub struct System {
     pub event_loop: EventLoop<()>,
@@ -42,18 +39,16 @@ pub fn init(title: &str) -> System {
     
     crate::render::material::material_manager::initialize_material_manager(&display);
     
-    let renderer = Renderer::new(&display);
-
     let mut imgui = Context::create();
     imgui.set_ini_filename(None);
-
+    
     let mut platform = WinitPlatform::init(&mut imgui);
     {
         let gl_window = display.gl_window();
         let window = gl_window.window();
         platform.attach_window(imgui.io_mut(), window, HiDpiMode::Locked(1.0));
     }
-
+    
     let hidpi_factor = platform.hidpi_factor();
     let font_size = (13.0 * hidpi_factor) as f32;
     imgui.fonts().add_font(&[
@@ -72,12 +67,13 @@ pub fn init(title: &str) -> System {
                 ..FontConfig::default()
             }),
         },
-    ]);
-
-    imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
-
-    let glium_renderer = GliumRenderer::init(&mut imgui, &display).expect("Failed to initialize renderer");
-
+        ]);
+        
+        imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
+        
+        let glium_renderer = GliumRenderer::init(&mut imgui, &display).expect("Failed to initialize renderer");
+        
+        let renderer = Renderer::new(&display, &glium_renderer);
 
     System {
         event_loop,
@@ -89,8 +85,6 @@ pub fn init(title: &str) -> System {
         font_size,
     }
 }
-
-pub static mut TEXTURE_ID: Option<imgui::TextureId> = None;
 
 impl System {
     pub fn main_loop<
@@ -106,36 +100,7 @@ impl System {
         } = self;
         let mut last_frame = Instant::now();
 
-        let textures = glium_renderer.textures();
-
-        let texture = glium::texture::Texture2d::empty(
-            &display,
-            100,
-            100
-        ).unwrap();
-
-        let mut surface = texture.as_surface();
-
-        let mut square_pattern = SquarePattern::new(vec![
-            Box::new(
-                ShapeDataStruct::new(
-                    Box::new(crate::render::shape::Triangle::new((0.0, 0.0), (0.0, 1.0), (1.0, 0.0), 0)),
-                )
-            ),
-        ]);
-
-        surface.clear_color(0.0, 0.0, 0.0, 1.0);
-
-        square_pattern.draw(&mut surface, &display);
-
-        let texture_id = textures.insert(imgui_glium_renderer::Texture
-            {
-                texture: std::rc::Rc::new(texture),
-                sampler: Default::default()
-            }
-        );
-
-        unsafe {TEXTURE_ID = Some(texture_id);}
+        crate::quilt::square::block_manager::load_textures(&display, &mut glium_renderer);
 
         event_loop.run(move |event, _, control_flow| match event {
             Event::NewEvents(_) => {

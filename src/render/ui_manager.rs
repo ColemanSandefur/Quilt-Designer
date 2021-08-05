@@ -37,6 +37,7 @@ impl UiManager {
 
         let style = ui.push_style_colors(&UI_STYLE);
 
+        // Left side-bar
         Window::new(im_str!("Textures"))
             .size([100.0, dimensions.1 as f32], Condition::Appearing)
             .size_constraints([100.0, dimensions.1 as f32], [dimensions.0 as f32, dimensions.1 as f32])
@@ -94,6 +95,7 @@ impl UiManager {
             }
         }
         
+        // Right side-bar
         Window::new(im_str!("Block Designs"))
             .size([100.0, dimensions.1 as f32], Condition::Appearing)
             .size_constraints([100.0, dimensions.1 as f32], [dimensions.0 as f32, dimensions.1 as f32])
@@ -103,32 +105,19 @@ impl UiManager {
             .movable(false)
             .collapsible(false)
             .build(ui, || {
-                use crate::quilt::square::square_pattern::SquarePattern;
-                use crate::render::object::ShapeDataStruct;
 
-                unsafe {
-                    if crate::system::TEXTURE_ID.is_some() && ImageButton::new(crate::system::TEXTURE_ID.unwrap(), [50.0, 50.0])
-                        // .tooltip(false)
-                        .build(&ui) {
-                            let square_pattern = SquarePattern::new(vec![
-                                Box::new(
-                                    ShapeDataStruct::new(
-                                        Box::new(crate::render::shape::Triangle::new((0.0, 0.0), (0.0, 1.0), (1.0, 0.0), 0)),
-                                    )
-                                ),
-                                Box::new(
-                                    ShapeDataStruct::new(
-                                        Box::new(crate::render::shape::Triangle::new((1.0, 1.0), (0.0, 1.0), (1.0, 0.0), 0)),
-                                    )
-                                ),
-                            ]);
-    
-                            renderer.brush.set_block_brush(std::sync::Arc::new(BlockBrush {square_pattern}));
-    
-                        }
-                        if ui.is_item_hovered() {
-                            ui.tooltip_text("Half Square Triangle");
-                        }
+                let block_list = crate::quilt::square::block_manager::BLOCK_LIST.lock().unwrap();
+
+                for block_pattern in block_list.iter() {
+                    if block_pattern.get_texture_id().is_some() && ImageButton::new(block_pattern.get_texture_id().unwrap(), [64.0, 64.0]).frame_padding(0).build(&ui) {
+                        renderer.brush.set_block_brush(std::sync::Arc::new(BlockBrush {square_pattern: block_pattern.clone()}));
+                    }
+                    if ui.is_item_hovered() {
+                        ui.tooltip(|| {
+                            ui.text(block_pattern.get_pattern_name());
+                            ImageButton::new(block_pattern.get_texture_id().unwrap(), [128.0, 128.0]).build(&ui);
+                        });
+                    }
                 }
             });
 

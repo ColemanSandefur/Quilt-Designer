@@ -1,12 +1,15 @@
 use crate::render::object::{ShapeDataStruct};
+use crate::glium::Surface;
 
 #[derive(Clone)]
 pub struct SquarePattern {
     shapes: Vec<Box<ShapeDataStruct>>,
+    texture_id: Option<imgui::TextureId>,
+    pattern_name: String,
 }
 
 impl SquarePattern {
-    pub fn new(mut shapes: Vec<Box<ShapeDataStruct>>) -> Self {
+    pub fn new(mut shapes: Vec<Box<ShapeDataStruct>>, name: String) -> Self {
 
         // add square to background and black outline to square pattern
 
@@ -24,6 +27,8 @@ impl SquarePattern {
 
         Self {
             shapes,
+            texture_id: None,
+            pattern_name: name,
         }
     }
 
@@ -41,7 +46,15 @@ impl SquarePattern {
         vec
     }
 
-    pub fn draw(&mut self, surface: &mut impl glium::Surface, facade: & impl glium::backend::Facade) {
+    pub fn get_pattern_name(&self) -> &String {
+        &self.pattern_name
+    }
+
+    pub fn get_texture_id(&self) -> &Option<imgui::TextureId> {
+        &self.texture_id
+    }
+
+    pub fn draw(&self, surface: &mut impl glium::Surface, facade: & impl glium::backend::Facade) {
 
         // get num elements to avoid resizing vector
         let mut total_vertices = 0;
@@ -55,7 +68,7 @@ impl SquarePattern {
         let mut vb_vec: Vec<crate::render::shape::Vertex> = Vec::with_capacity(total_vertices);
         let mut ib_vec = Vec::with_capacity(total_indices);
 
-        for shape in &mut self.shapes {
+        for shape in &self.shapes {
             // add to ib_vec
             let indices = shape.shape.get_indices();
             let start_index = vb_vec.len();
@@ -86,5 +99,35 @@ impl SquarePattern {
         };
 
         material.draw(&(&vb, &ib), surface, &world_transform, &crate::render::matrix::Matrix::new(), &Default::default());
+    }
+
+    pub fn create_and_draw_texture(&mut self, display: &impl glium::backend::Facade, textures: &mut imgui::Textures<imgui_glium_renderer::Texture>) {
+
+        let texture = glium::texture::Texture2d::empty(
+            display,
+            512,
+            512
+        ).unwrap();
+
+        let mut surface = texture.as_surface();
+
+        surface.clear_color(0.0, 0.0, 0.0, 1.0);
+
+        self.draw(&mut surface, display);
+
+        let mut sampler = glium::uniforms::SamplerBehavior::default();
+        sampler.magnify_filter = glium::uniforms::MagnifySamplerFilter::Linear;
+        sampler.minify_filter = glium::uniforms::MinifySamplerFilter::LinearMipmapLinear;
+        sampler.max_anisotropy = 65535;
+
+        let texture_id = textures.insert(imgui_glium_renderer::Texture
+            {
+                texture: std::rc::Rc::new(texture),
+                sampler: Default::default()
+            }
+        );
+
+
+        self.texture_id = Some(texture_id);
     }
 }

@@ -69,7 +69,7 @@ impl BlockBrush {
             shape.set_color([1.0; 4]);
         }
 
-        SquarePattern::new(shapes)
+        SquarePattern::new(shapes, self.square_pattern.get_pattern_name().clone())
     }
 }
 

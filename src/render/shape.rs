@@ -3,6 +3,10 @@ use crate::render::matrix::Matrix;
 use lyon::math::{point, Point};
 use lyon::path::Path;
 use lyon::tessellation::*;
+use lyon::path::{ArcFlags};
+use lyon::path::builder::SvgPathBuilder;
+use lyon::geom::vector;
+use lyon::geom::Angle;
 
 #[derive(Copy, Clone, Debug)]
 pub struct Vertex {
@@ -31,7 +35,7 @@ impl Vertex {
 
 implement_vertex!(Vertex, position, color, model, id);
 
-pub trait Shape {
+pub trait Shape: Sync + Send{
     fn get_vertices(&self) -> Vec<Vertex>;
     fn get_indices(&self) -> Vec<u32>;
     fn set_color(&mut self, color: [f32; 4]);
@@ -72,7 +76,7 @@ impl Triangle {
         outline.close();
         let outline = outline.build();
 
-        let stroke = StrokeShape::new(&outline, 0, &StrokeOptions::default().with_line_width(0.008));
+        let stroke = StrokeShape::new(&outline, 0, &StrokeOptions::default().with_line_width(crate::quilt::square::Square::SHAPE_BORDER));
 
         // Add generated ib and vb to current ib and vb
 
@@ -271,6 +275,69 @@ impl PathShape {
             should_outline: true,
             outline,
         }
+    }
+
+    pub fn relative_arc_to(start: lyon::math::Point, radius: f32, destination: lyon::math::Vector, draw_clockwise: bool, large_arc: bool, id: u32) -> Self {
+
+        let mut path = Path::svg_builder().flattened(0.001);
+        path.move_to(start);
+        path.relative_arc_to(
+            vector(radius, radius), 
+            Angle {radians: 0.0}, 
+            ArcFlags {
+                sweep: !draw_clockwise,
+                large_arc: large_arc
+            }, 
+            destination
+        );
+        path.close();
+        let path = path.build();
+
+        Self::new(path, id)
+    }
+
+    pub fn circle(center: lyon::math::Point, radius: f32, start_angle_radians: f32, end_angle_radians: f32, id: u32) -> Self {
+        let total_angle = end_angle_radians - start_angle_radians;
+
+        // You need to draw 2 arcs if you are doing a complete circle
+        if total_angle == 2.0 * std::f32::consts::PI {
+            let mut path = Path::svg_builder().flattened(0.001);
+            path.move_to(point(radius + center.x, center.y));
+            path.arc_to(vector(radius, radius), Angle {radians: 0.0}, ArcFlags::default(), point(-radius + center.x, center.y));
+            path.arc_to(vector(radius, radius), Angle {radians: 0.0}, ArcFlags::default(), point( radius + center.x, center.y));
+            let path = path.build();
+
+            return Self::new(path, id);
+        }
+
+        let mut arc_flags = ArcFlags {
+            sweep: true,
+            large_arc: false,
+        };
+
+        // determines which direction the arc starts drawing, should draw clockwise when the total angle is negative
+        if total_angle < 0.0 {
+            arc_flags.sweep = false;
+        }
+
+        if total_angle.abs() > std::f32::consts::PI {
+            arc_flags.large_arc = true;
+        }
+
+        let start_x = radius * start_angle_radians.cos() + center.x;
+        let start_y = radius * start_angle_radians.sin() + center.y;
+
+        let stop_x = radius * end_angle_radians.cos() + center.x;
+        let stop_y = radius * end_angle_radians.sin() + center.y;
+
+        let mut path = Path::svg_builder().flattened(0.001);
+        path.move_to(point(start_x, start_y));
+        path.arc_to(vector(radius, radius), Angle {radians: 0.0}, arc_flags, point(stop_x, stop_y));
+        path.line_to(center);
+        path.close();
+        let path = path.build();
+
+        Self::new(path, id)
     }
 }
 

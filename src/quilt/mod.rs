@@ -158,12 +158,15 @@ impl Quilt {
         self.index_buffer.slice_mut(0..self.index_vec.len()).expect("Invalid index range").write(&self.index_vec); 
 
         // Really bad way to invalidate index buffer, calling invalidate doesn't seem to do anything
-        let slice = self.index_buffer.slice(self.index_vec.len()..).unwrap();
-        let mut buffer: Vec<u32> = Vec::with_capacity(slice.len());
-        for _ in 0..slice.len() {
-            buffer.push(0);
+        if self.index_buffer.len() - self.index_vec.len() > 0 {
+
+            let slice = self.index_buffer.slice(self.index_vec.len()..).expect("Invalid index range");
+            let mut buffer: Vec<u32> = Vec::with_capacity(slice.len());
+            for _ in 0..slice.len() {
+                buffer.push(0);
+            }
+            slice.write(&buffer);
         }
-        slice.write(&buffer);
 
         self.draw_buffer(frame, world_transform, draw_parameters, picker);
     }
