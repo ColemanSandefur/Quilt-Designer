@@ -188,17 +188,20 @@ impl Square {
 
     pub const MAX_VERTICES: usize = 256;
     pub const MAX_INDICES: usize = Self::MAX_VERTICES * 4;
+    pub const BORDER_WIDTH: f32 = 0.05;
+    pub const SHAPE_BORDER: f32 = 0.008;
 
     pub fn new(row: usize, column: usize, picker: &mut Picker) -> Self {
 
         let mut half_circle = Path::svg_builder().flattened(0.001);
+        // half_circle.move_to(point(0.25, 0.25));
         half_circle.move_to(point(0.5, 0.25));
         half_circle.relative_arc_to(
             vector(0.25, 0.25),
-            Angle {radians: 3.14},
+            Angle {radians: std::f32::consts::PI},
             ArcFlags {
                 large_arc: true,
-                sweep: true
+                sweep: true,
             },
             vector(0.0, 0.5),
         );
@@ -208,7 +211,7 @@ impl Square {
         let mut shape_protector = ShapeProtector::with_shapes(
             vec!{
                 Box::new(ShapeDataStruct::new(
-                    Box::new(crate::render::shape::Square::with_line_width(0.0, 0.0, 1.0, 1.0, picker.get_new_id(row, column), 0.05)),
+                    Box::new(crate::render::shape::Square::with_line_width(0.0, 0.0, 1.0, 1.0, picker.get_new_id(row, column), 0.0)),
                 )),
                 Box::new(ShapeDataStruct::new(
                     Box::new(crate::render::shape::Square::with_width_height(0.25, 0.25, 0.5, 0.5, picker.get_new_id(row, column))),
@@ -224,10 +227,18 @@ impl Square {
                         crate::render::shape::PathShape::new(half_circle, picker.get_new_id(row, column)),
                     ),
                 )),
+                // Box::new(
+                //     ShapeDataStruct::new(
+                //         Box::new(crate::render::shape::Triangle::new((0.0, 0.0), (0.0, 1.0), (1.0, 0.0), 0)),
+                //     )
+                // ),
+                Box::new(ShapeDataStruct::new(
+                    Box::new(crate::render::shape::StrokeShape::square(0.0, 0.0, 1.0, 1.0, 0, &lyon::tessellation::StrokeOptions::default().with_line_width(crate::quilt::square::Square::BORDER_WIDTH))),
+                )),
             }
         );
 
-        // shape_protector.set_shape_color(0, [0.0, 0.0, 0.0, 1.0]);
+        shape_protector.set_shape_color(0, [1.0, 1.0, 1.0, 1.0]);
         shape_protector.set_shape_color(1, [0.3, 0.3, 0.8, 1.0]);
         shape_protector.set_shape_color(2, [0.8, 0.2, 0.2, 1.0]);
         shape_protector.set_shape_color(3, [0.1, 0.8, 0.8, 1.0]);
@@ -255,19 +266,18 @@ impl Square {
 
     //returns wether or not it clicked
     pub fn click(&mut self, id: u32, brush: &Brush, picker: &mut Picker) -> bool {
-        let mut was_clicked = false;
+        let mut should_update = false;
 
         if brush.is_block_brush() {
-            println!("Clicked");
             self.shape_protector.set_shapes(brush.get_block_brush().unwrap().get_pattern(picker, self.row, self.column).get_shapes().clone());
-            was_clicked = true;
+            should_update = true;
         } else if brush.is_pattern_brush() {
             for index in 0..self.shape_protector.get_shapes().len() {
                 
                 if self.shape_protector.get_shape(index).unwrap().shape.was_clicked(id) {
                     self.shape_protector.set_shape_color(index, brush.get_pattern_brush().unwrap().color);
     
-                    was_clicked = true;
+                    should_update = true;
     
                     break;
                 }
@@ -275,7 +285,7 @@ impl Square {
         }
         
 
-        was_clicked
+        should_update
     }
 
     pub fn set_shape_color(&mut self, index: usize, color: [f32; 4]) {

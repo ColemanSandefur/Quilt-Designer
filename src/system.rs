@@ -122,11 +122,6 @@ impl System {
                     Box::new(crate::render::shape::Triangle::new((0.0, 0.0), (0.0, 1.0), (1.0, 0.0), 0)),
                 )
             ),
-            Box::new(
-                ShapeDataStruct::new(
-                    Box::new(crate::render::shape::Triangle::new((1.0, 1.0), (0.0, 1.0), (1.0, 0.0), 0)),
-                )
-            ),
         ]);
 
         surface.clear_color(0.0, 0.0, 0.0, 1.0);

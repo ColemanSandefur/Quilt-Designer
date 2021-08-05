@@ -1,6 +1,4 @@
 use crate::render::object::{ShapeDataStruct};
-use lyon::path::*;
-use lyon::math::point;
 
 #[derive(Clone)]
 pub struct SquarePattern {
@@ -10,18 +8,17 @@ pub struct SquarePattern {
 impl SquarePattern {
     pub fn new(mut shapes: Vec<Box<ShapeDataStruct>>) -> Self {
 
-        // add black outline to square pattern
-        let mut path = Path::svg_builder();
-        path.move_to(point(0.0, 0.0));
-        path.line_to(point(0.0, 1.0));
-        path.line_to(point(1.0, 1.0));
-        path.line_to(point(1.0, 0.0));
-        path.close();
-        let path = path.build();
+        // add square to background and black outline to square pattern
+
+        shapes.insert(0, 
+            Box::new(ShapeDataStruct::new(
+                Box::new(crate::render::shape::Square::with_line_width(0.0, 0.0, 1.0, 1.0, 0, 0.0)),
+            )),
+        );
 
         shapes.push(
             Box::new(ShapeDataStruct::new(
-                Box::new(crate::render::shape::StrokeShape::new(&path, 0, &lyon::lyon_tessellation::StrokeOptions::default().with_line_width(0.05)),
+                Box::new(crate::render::shape::StrokeShape::square(0.0, 0.0, 1.0, 1.0, 0, &lyon::lyon_tessellation::StrokeOptions::default().with_line_width(crate::quilt::square::Square::BORDER_WIDTH)),
             )),
         ));
 
@@ -29,8 +26,19 @@ impl SquarePattern {
             shapes,
         }
     }
+
     pub fn get_shapes(&self) -> &Vec<Box<ShapeDataStruct>> {
         &self.shapes
+    }
+
+    pub fn get_shape_clone(&self) -> Vec<Box<ShapeDataStruct>> {
+        let mut vec = Vec::with_capacity(self.shapes.len());
+
+        for shape in &self.shapes {
+            vec.push(shape.clone());
+        }
+
+        vec
     }
 
     pub fn draw(&mut self, surface: &mut impl glium::Surface, facade: & impl glium::backend::Facade) {

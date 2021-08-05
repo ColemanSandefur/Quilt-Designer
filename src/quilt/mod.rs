@@ -103,6 +103,8 @@ impl Quilt {
         
         if self.needs_updated {
             // println!("Updating buffers");
+            self.vertex_buffer.invalidate();
+            self.index_buffer.invalidate();
             self.vert_vec.clear();
             self.index_vec.clear();
     
@@ -115,7 +117,7 @@ impl Quilt {
                 for column in 0..self.squares[row].len() {
                     
                     if !self.squares[row][column].can_fit_in_buffers(max_vertices, max_indices, self.vert_vec.len(), self.index_vec.len()) {
-                        self.empty(frame, world_transform, draw_parameters);
+                        self.empty(frame, world_transform, draw_parameters, Some(picker));
                         self.vert_vec.clear();
                         self.index_vec.clear();
 
@@ -129,7 +131,7 @@ impl Quilt {
             }
 
             if self.vert_vec.len() > 0{
-                self.empty(frame, world_transform, draw_parameters);
+                self.empty(frame, world_transform, draw_parameters, Some(picker));
             }
 
             if self.draw_stats.vertices > self.vertex_buffer.len() {
@@ -148,14 +150,22 @@ impl Quilt {
         }
     }
 
-    fn empty(&mut self, frame: &mut impl glium::Surface, world_transform: &WorldTransform, draw_parameters: &glium::DrawParameters<'_>) {
+    fn empty(&mut self, frame: &mut impl glium::Surface, world_transform: &WorldTransform, draw_parameters: &glium::DrawParameters<'_>, picker: Option<&mut Picker>) {
         self.vertex_buffer.invalidate();
         self.index_buffer.invalidate();
 
-        self.vertex_buffer.slice(0..self.vert_vec.len()).expect("Invalid vertex range").write(&self.vert_vec);
-        self.index_buffer.slice(0..self.index_vec.len()).expect("Invalid index range").write(&self.index_vec); 
+        self.vertex_buffer.slice_mut(0..self.vert_vec.len()).expect("Invalid vertex range").write(&self.vert_vec);
+        self.index_buffer.slice_mut(0..self.index_vec.len()).expect("Invalid index range").write(&self.index_vec); 
 
-        self.draw_buffer(frame, world_transform, draw_parameters, None);
+        // Really bad way to invalidate index buffer, calling invalidate doesn't seem to do anything
+        let slice = self.index_buffer.slice(self.index_vec.len()..).unwrap();
+        let mut buffer: Vec<u32> = Vec::with_capacity(slice.len());
+        for _ in 0..slice.len() {
+            buffer.push(0);
+        }
+        slice.write(&buffer);
+
+        self.draw_buffer(frame, world_transform, draw_parameters, picker);
     }
 
     fn draw_buffer(&mut self, frame: &mut impl glium::Surface, world_transform: &WorldTransform, draw_parameters: &glium::DrawParameters<'_>, picker: Option<&mut Picker>) {

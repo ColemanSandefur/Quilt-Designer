@@ -4,7 +4,7 @@ use lyon::math::{point, Point};
 use lyon::path::Path;
 use lyon::tessellation::*;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Vertex {
     pub position: [f32; 2],
     pub color: [f32; 4],
@@ -62,14 +62,19 @@ impl Triangle {
 
         let mut index_buffer = vec!{0u32, 1, 2};
 
+        // Generate outline
+
         let mut outline = Path::svg_builder();
         outline.move_to(point(pos1.0, pos1.1));
         outline.line_to(point(pos2.0, pos2.1));
         outline.line_to(point(pos3.0, pos3.1));
+        outline.line_to(point(pos1.0, pos1.1));
         outline.close();
         let outline = outline.build();
 
         let stroke = StrokeShape::new(&outline, 0, &StrokeOptions::default().with_line_width(0.008));
+
+        // Add generated ib and vb to current ib and vb
 
         for index in stroke.get_indices() {
             index_buffer.push(index + vertex_buffer.len() as u32);
@@ -96,6 +101,7 @@ impl Shape for Triangle {
     }
 
     fn set_color(&mut self, color: [f32; 4]) {
+        // only change the color of the triangle, not the outline
         for vertex in &mut self.vertex_buffer[0..3] {
             vertex.color = color;
         }
@@ -123,6 +129,7 @@ impl Shape for Triangle {
     }
 
     fn set_id(&mut self, id: u32) {
+        // only change the id of the triangle not its outline
         for vertex in &mut self.vertex_buffer[0..3] {
             vertex.id = id;
         }
@@ -141,7 +148,7 @@ pub struct Square {
 
 impl Square {
     pub fn with_width_height(x: f32, y: f32, width: f32, height: f32, id: u32) -> Self {
-        Square::with_line_width(x, y, width, height, id, 0.008)
+        Square::with_line_width(x, y, width, height, id, crate::quilt::square::Square::SHAPE_BORDER)
     }
 
     pub fn with_line_width(x: f32, y:f32, width: f32, height: f32, id: u32, outline_width: f32) -> Self {
@@ -153,16 +160,12 @@ impl Square {
         };
 
         let mut index_buffer = vec!{0u32, 1, 2, 1, 2, 3};
-        let mut outline = Path::svg_builder();
-        outline.move_to(point(x, y));
-        outline.line_to(point(x + width, y));
-        outline.line_to(point(x + width, y + height));
-        outline.line_to(point(x, y + height));
-        outline.line_to(point(x, y));
-        outline.close();
-        let outline = outline.build();
+        
+        // Generate outline
 
-        let stroke = StrokeShape::new(&outline, 0, &StrokeOptions::default().with_line_width(outline_width));
+        let stroke = StrokeShape::square(x, y, width, height, 0, &StrokeOptions::default().with_line_width(outline_width));
+
+        // Join stroke vb and ib to current ib and vb
 
         for index in stroke.get_indices() {
             index_buffer.push(index + vertex_buffer.len() as u32);
@@ -189,6 +192,7 @@ impl Shape for Square {
     }
 
     fn set_color(&mut self, color: [f32; 4]) {
+        // Only change the color of the square
         for vertex in &mut self.vertex_buffer[0..4] {
             vertex.color = color;
         }
@@ -216,6 +220,7 @@ impl Shape for Square {
     }
 
     fn set_id(&mut self, id: u32) {
+        // Only change the id of the square
         for vertex in &mut self.vertex_buffer[0..4] {
             vertex.id = id;
         }
@@ -230,6 +235,8 @@ impl Shape for Square {
 pub struct PathShape {
     vertex_buffer: Vec<Vertex>,
     index_buffer: Vec<u32>,
+    should_outline: bool,
+    outline: StrokeShape,
 }
 
 impl PathShape {
@@ -256,20 +263,40 @@ impl PathShape {
 
         let index_buffer = geometry.indices.to_vec();
 
+        let outline = StrokeShape::new(&path, 0, &StrokeOptions::default().with_line_width(crate::quilt::square::Square::SHAPE_BORDER));
+
         Self {
             vertex_buffer,
             index_buffer,
+            should_outline: true,
+            outline,
         }
     }
 }
 
 impl Shape for PathShape {
     fn get_vertices(&self) -> Vec<Vertex> {
-        self.vertex_buffer.clone()
+        let mut vb = self.vertex_buffer.clone();
+        
+        if self.should_outline {
+            vb.append(&mut self.outline.get_vertices());
+        }
+        
+        vb
     }
-
+    
     fn get_indices(&self) -> Vec<u32> {
-        self.index_buffer.clone()
+        let mut ib = self.index_buffer.clone();
+        
+        if self.should_outline {
+            ib.reserve(self.outline.get_num_indices());
+    
+            for index in self.outline.get_indices() {
+                ib.push(index + self.vertex_buffer.len() as u32);
+            }
+        }
+
+        ib
     }
 
     fn set_color(&mut self, color: [f32; 4]) {
@@ -282,14 +309,16 @@ impl Shape for PathShape {
         for vertex in &mut self.vertex_buffer {
             vertex.model = matrix.get_matrix();
         }
+
+        self.outline.set_model_matrix(matrix);
     }
 
     fn get_num_vertices(&self) -> usize {
-        self.vertex_buffer.len()
+        self.vertex_buffer.len() + self.outline.get_num_vertices()
     }
 
     fn get_num_indices(&self) -> usize {
-        self.index_buffer.len()
+        self.index_buffer.len() + self.outline.get_num_indices()
     }
 
     fn get_id(&self) -> u32 {
@@ -317,7 +346,11 @@ pub struct StrokeShape {
 }
 
 impl StrokeShape {
+
     pub fn new(path: &Path, id: u32, stroke_options: &StrokeOptions) -> Self {
+        let stroke_options = stroke_options.clone().with_tolerance(0.001);
+
+
         let mut buffers: VertexBuffers<Point, u16> = VertexBuffers::new();
 
         {
@@ -353,6 +386,20 @@ impl StrokeShape {
             index_buffer,
         }
     }
+
+
+    pub fn square(x: f32, y: f32, width: f32, height: f32, id: u32, stroke_options: &StrokeOptions) -> Self {
+        let mut path = Path::svg_builder();
+        path.move_to(point(x, y));
+        path.line_to(point(x + width, y));
+        path.line_to(point(x + width, y + height));
+        path.line_to(point(x, y + height));
+        path.line_to(point(x, y));
+        path.close();
+        let path = path.build();
+
+        Self::new(&path, id, stroke_options)
+    }
 }
 
 impl Shape for StrokeShape {
@@ -379,7 +426,7 @@ impl Shape for StrokeShape {
     fn get_num_vertices(&self) -> usize {
         self.vertex_buffer.len()
     }
-
+    
     fn get_num_indices(&self) -> usize {
         self.index_buffer.len()
     }
