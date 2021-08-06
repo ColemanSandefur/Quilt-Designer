@@ -74,16 +74,13 @@ impl Picker {
         None
     }
 
-    pub fn draw(&mut self, target: &mut impl glium::Surface, facade: &dyn glium::backend::Facade, global_transform: &WorldTransform,
-        vertex_buffer: &VertexBuffer<Vertex>, index_buffer: &IndexBuffer<u32>, draw_parameters: &glium::DrawParameters<'_>) {
-        // renderer.quilt.draw_click(target, global_transform, &Default::default());
-
-        //make sure that picking attachments (picking texture, depth buffer) are valid for the current context
+    pub fn clear_surface(&mut self, window: &mut impl glium::Surface, facade: &dyn glium::backend::Facade) {
+        
         if self.picking_attachments.is_none() || (
             self.picking_attachments.as_ref().unwrap().0.get_width(),
             self.picking_attachments.as_ref().unwrap().0.get_height().unwrap()
-        ) != target.get_dimensions() {
-            let (width, height) = target.get_dimensions();
+        ) != window.get_dimensions() {
+            let (width, height) = window.get_dimensions();
 
             self.picking_attachments = Some((
                 glium::texture::UnsignedTexture2d::empty_with_format(
@@ -107,6 +104,16 @@ impl Picker {
 
             let mut picking_target = glium::framebuffer::SimpleFrameBuffer::with_depth_buffer(facade, picking_texture, depth_buffer).unwrap();
             picking_target.clear_depth(1.0);
+        }
+    }
+
+    pub fn draw(&mut self, facade: &dyn glium::backend::Facade, global_transform: &WorldTransform,
+        vertex_buffer: &VertexBuffer<Vertex>, index_buffer: &IndexBuffer<u32>, draw_parameters: &glium::DrawParameters<'_>) {
+
+        //draw to textures
+        if let Some((ref picking_texture, ref depth_buffer)) = &self.picking_attachments {
+            //clear picking texture
+            let mut picking_target = glium::framebuffer::SimpleFrameBuffer::with_depth_buffer(facade, picking_texture, depth_buffer).unwrap();
 
             self.shader.draw(&(&vertex_buffer, &index_buffer), &mut picking_target, global_transform, &Matrix::new(), draw_parameters);
         }

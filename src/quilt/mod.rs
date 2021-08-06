@@ -1,5 +1,5 @@
 pub mod brush;
-pub mod square;
+pub mod block;
 
 use crate::quilt::brush::*;
 use crate::render::matrix::{WorldTransform};
@@ -7,7 +7,7 @@ use crate::render::shape::Vertex;
 use crate::render::material::{SolidColorMaterial};
 use crate::render::matrix::Matrix;
 use crate::render::picker::{Picker, PickerEntry};
-use square::Square;
+use block::Block;
 
 use glium::{VertexBuffer, IndexBuffer};
 
@@ -34,7 +34,7 @@ impl DrawStats {
 pub struct Quilt {
     pub width: usize,
     pub height: usize,
-    pub squares: Vec<Vec<Square>>,
+    pub squares: Vec<Vec<Block>>,
     vert_vec: Vec<Vertex>,
     index_vec: Vec<u32>,
     vertex_buffer: VertexBuffer<Vertex>,
@@ -56,7 +56,7 @@ impl Quilt {
             let mut row = Vec::with_capacity(width);
 
             for c in 0..width {
-                let mut square = Square::new(r, c, picker);
+                let mut square = Block::new(r, c, picker);
 
                 let column = c as f32;
                 let r = -1.0 * r as f32 - 1.0;
@@ -100,9 +100,12 @@ impl Quilt {
     pub fn draw(&mut self, frame: &mut impl glium::Surface, world_transform: &WorldTransform, draw_parameters: &glium::DrawParameters<'_>, picker: &mut Picker) {
         self.draw_stats.reset();
 
+        picker.clear_surface(frame, self.vertex_buffer.get_context());
         
         if self.needs_updated {
-            // println!("Updating buffers");
+
+            // Rebuild the buffers
+
             self.vertex_buffer.invalidate();
             self.index_buffer.invalidate();
             self.vert_vec.clear();
@@ -121,6 +124,7 @@ impl Quilt {
                         self.vert_vec.clear();
                         self.index_vec.clear();
 
+                        // marks the buffers as "needing updated" because we want to re-size the buffers and re-render everything to get it down to 1 draw call
                         self.needs_updated = true;
                     }
     
@@ -133,19 +137,28 @@ impl Quilt {
             if self.vert_vec.len() > 0{
                 self.empty(frame, world_transform, draw_parameters, Some(picker));
             }
-
+            
+            // Resize the buffer to reduce the number of draw calls needed
             if self.draw_stats.vertices > self.vertex_buffer.len() {
                 println!("Resizing vertex buffer");
-                self.vertex_buffer = VertexBuffer::empty_dynamic(self.vertex_buffer.get_context(), self.draw_stats.vertices).unwrap();
+
+                // slightly oversizes the buffer to reduce the number of reallocations
+                self.vertex_buffer = VertexBuffer::empty_dynamic(self.vertex_buffer.get_context(), (self.draw_stats.vertices as f32 * 1.1) as usize).unwrap();
                 self.vert_vec = Vec::with_capacity(self.draw_stats.vertices);
             }
-    
+            
+            // Resize the buffer to reduce the number of draw calls needed
             if self.draw_stats.indices > self.index_buffer.len() {
                 println!("Resizing index buffer");
-                self.index_buffer = IndexBuffer::empty_dynamic(self.index_buffer.get_context(), glium::index::PrimitiveType::TrianglesList, self.draw_stats.indices).unwrap();
+
+                // slightly oversizes the buffer to reduce the number of reallocations
+                self.index_buffer = IndexBuffer::empty_dynamic(self.index_buffer.get_context(), glium::index::PrimitiveType::TrianglesList, (self.draw_stats.indices as f32 * 1.1) as usize).unwrap();
                 self.index_vec = Vec::with_capacity(self.draw_stats.indices);
             }
         } else {
+            
+            // just display the current buffers
+
             self.draw_buffer(frame, world_transform, draw_parameters, Some(picker));
         }
     }
@@ -179,7 +192,7 @@ impl Quilt {
         self.shader.draw(&(&self.vertex_buffer, &self.index_buffer), frame, world_transform, &Matrix::new(), draw_parameters);
 
         if picker.is_some() {
-            picker.unwrap().draw(frame, self.vertex_buffer.get_context(), world_transform, &self.vertex_buffer, &self.index_buffer, draw_parameters);
+            picker.unwrap().draw(self.vertex_buffer.get_context(), world_transform, &self.vertex_buffer, &self.index_buffer, draw_parameters);
         }
     }
 

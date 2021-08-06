@@ -22,6 +22,10 @@ pub struct System {
 }
 
 pub fn init(title: &str) -> System {
+    //
+    // Window
+    //
+
     let title = match Path::new(&title).file_name() {
         Some(file_name) => file_name.to_str().unwrap(),
         None => title,
@@ -37,8 +41,10 @@ pub fn init(title: &str) -> System {
     let display =
     Display::new(builder, context, &event_loop).expect("Failed to initialize display");
     
-    crate::render::material::material_manager::initialize_material_manager(&display);
-    
+    //
+    // IMGUI
+    //
+
     let mut imgui = Context::create();
     imgui.set_ini_filename(None);
     
@@ -49,6 +55,7 @@ pub fn init(title: &str) -> System {
         platform.attach_window(imgui.io_mut(), window, HiDpiMode::Locked(1.0));
     }
     
+    // font setup
     let hidpi_factor = platform.hidpi_factor();
     let font_size = (13.0 * hidpi_factor) as f32;
     imgui.fonts().add_font(&[
@@ -67,13 +74,17 @@ pub fn init(title: &str) -> System {
                 ..FontConfig::default()
             }),
         },
-        ]);
+    ]);
         
-        imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
-        
-        let glium_renderer = GliumRenderer::init(&mut imgui, &display).expect("Failed to initialize renderer");
-        
-        let renderer = Renderer::new(&display, &glium_renderer);
+    imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
+    
+    // connect imgui to glium
+    let mut glium_renderer = GliumRenderer::init(&mut imgui, &display).expect("Failed to initialize renderer");
+    
+    // my initializers
+    crate::render::material::material_manager::initialize_material_manager(&display);
+    crate::quilt::block::block_manager::load_textures(&display, &mut glium_renderer);
+    let renderer = Renderer::new(&display, &glium_renderer);
 
     System {
         event_loop,
@@ -85,10 +96,9 @@ pub fn init(title: &str) -> System {
         font_size,
     }
 }
-
+    
 impl System {
-    pub fn main_loop<
-        F: FnMut(&mut bool, &mut glium::Frame, &mut Renderer, &mut Ui, &mut imgui_glium_renderer::Renderer, &dyn glium::backend::Facade) + 'static>(self, mut run_ui: F) {
+    pub fn main_loop<F: FnMut(&mut bool, &mut glium::Frame, &mut Renderer, &mut Ui, &mut imgui_glium_renderer::Renderer, &dyn glium::backend::Facade) + 'static>(self, mut run_ui: F) {
         let System {
             event_loop,
             display,
@@ -99,8 +109,6 @@ impl System {
             ..
         } = self;
         let mut last_frame = Instant::now();
-
-        crate::quilt::square::block_manager::load_textures(&display, &mut glium_renderer);
 
         event_loop.run(move |event, _, control_flow| match event {
             Event::NewEvents(_) => {
@@ -125,10 +133,7 @@ impl System {
                     *control_flow = ControlFlow::Exit;
                 }
 
-                
-
                 let gl_window = display.gl_window();
-                // target.clear_color_srgb(1.0, 1.0, 1.0, 1.0);
                 platform.prepare_render(&ui, gl_window.window());
                 let draw_data = ui.render();
                 glium_renderer

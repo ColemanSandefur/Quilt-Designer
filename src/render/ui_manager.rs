@@ -1,5 +1,6 @@
 use crate::quilt::brush::*;
 use crate::render::renderer::Renderer;
+use lazy_static::lazy_static;
 
 struct ClickState {
     pub clicked: bool,
@@ -7,17 +8,19 @@ struct ClickState {
 }
 
 static mut IS_COLOR_PICKER_OPEN: bool = false;
-static mut COLOR_PICKER: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
+static mut COLOR_PICKER_COLOR: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 
-static UI_STYLE: [(imgui::StyleColor, [f32; 4]); 7] = [
-    (imgui::StyleColor::ResizeGrip, [0.0; 4]),
-    (imgui::StyleColor::ResizeGripActive, [0.0; 4]),
-    (imgui::StyleColor::ResizeGripHovered, [0.0; 4]),
-    (imgui::StyleColor::Text, [1.0, 1.0, 1.0, 1.0]),
-    (imgui::StyleColor::TitleBg, [0.2, 0.2, 0.2, 1.0]),
-    (imgui::StyleColor::TitleBgActive, [0.2, 0.2, 0.2, 1.0]),
-    (imgui::StyleColor::WindowBg, [0.05, 0.05, 0.05, 1.0]),
-];
+lazy_static! {
+    pub static ref UI_STYLE: Vec<(imgui::StyleColor, [f32; 4])> = vec! {
+        (imgui::StyleColor::ResizeGrip, [0.0; 4]),
+        (imgui::StyleColor::ResizeGripActive, [0.0; 4]),
+        (imgui::StyleColor::ResizeGripHovered, [0.0; 4]),
+        (imgui::StyleColor::Text, [1.0, 1.0, 1.0, 1.0]),
+        (imgui::StyleColor::TitleBg, [0.2, 0.2, 0.2, 1.0]),
+        (imgui::StyleColor::TitleBgActive, [0.2, 0.2, 0.2, 1.0]),
+        (imgui::StyleColor::WindowBg, [0.05, 0.05, 0.05, 1.0]),
+    };
+}
 
 pub struct UiManager {}
 
@@ -27,15 +30,16 @@ impl UiManager {
         use imgui::*;
         use glium::Surface;
 
+        let style = ui.push_style_colors(UI_STYLE.iter());
         let dimensions = frame.get_dimensions();
 
+        // keeps track of the click states of the color picker
         let mut was_color_clicked = ClickState{ clicked: false, double_clicked: false };
+
         let color = unsafe {
             // *renderer.brush
-            COLOR_PICKER
+            COLOR_PICKER_COLOR
         };
-
-        let style = ui.push_style_colors(&UI_STYLE);
 
         // Left side-bar
         Window::new(im_str!("Textures"))
@@ -61,6 +65,28 @@ impl UiManager {
                     unsafe {IS_COLOR_PICKER_OPEN = true;}
                 }
             });
+        
+        // Color Picker window
+        unsafe {
+            if IS_COLOR_PICKER_OPEN {
+                Window::new(im_str!("Color Picker"))
+                    .opened(&mut IS_COLOR_PICKER_OPEN)
+                    .always_auto_resize(true)
+                    .collapsible(false)
+                    .build(ui, || {
+                        let picker = ColorPicker::new(im_str!(""), &mut COLOR_PICKER_COLOR)
+                            .alpha(false);
+                        if picker.build(&ui) {
+                            renderer.brush.set_pattern_brush(std::sync::Arc::new(PatternBrush{ color: COLOR_PICKER_COLOR }));
+                        }
+
+                        if ui.button(im_str!("Close"), [200.0, 20.0]) {
+                            IS_COLOR_PICKER_OPEN = false;
+                        }
+                    });
+                
+            }
+        }
 
         Window::new(im_str!("Performance"))
             .always_auto_resize(true)
@@ -73,27 +99,6 @@ impl UiManager {
                 ui.text(im_str!("{} vertices", renderer.quilt.draw_stats.vertices));
                 ui.text(im_str!("{} indices", renderer.quilt.draw_stats.indices));
             });
-
-        unsafe {
-            if IS_COLOR_PICKER_OPEN {
-                Window::new(im_str!("Color Picker"))
-                    .opened(&mut IS_COLOR_PICKER_OPEN)
-                    .always_auto_resize(true)
-                    .collapsible(false)
-                    .build(ui, || {
-                        let picker = ColorPicker::new(im_str!(""), &mut COLOR_PICKER)
-                            .alpha(false);
-                        if picker.build(&ui) {
-                            renderer.brush.set_pattern_brush(std::sync::Arc::new(PatternBrush{ color: COLOR_PICKER }));
-                        }
-
-                        if ui.button(im_str!("Close"), [200.0, 20.0]) {
-                            IS_COLOR_PICKER_OPEN = false;
-                        }
-                    });
-                
-            }
-        }
         
         // Right side-bar
         Window::new(im_str!("Block Designs"))
@@ -106,7 +111,7 @@ impl UiManager {
             .collapsible(false)
             .build(ui, || {
 
-                let block_list = crate::quilt::square::block_manager::BLOCK_LIST.lock().unwrap();
+                let block_list = crate::quilt::block::block_manager::BLOCK_LIST.lock().unwrap();
 
                 for block_pattern in block_list.iter() {
                     if block_pattern.get_texture_id().is_some() && ImageButton::new(block_pattern.get_texture_id().unwrap(), [64.0, 64.0]).frame_padding(0).build(&ui) {

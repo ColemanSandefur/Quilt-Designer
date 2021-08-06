@@ -1,14 +1,14 @@
-use crate::render::object::{ShapeDataStruct};
+use crate::render::shape_object::{ShapeDataStruct};
 use crate::glium::Surface;
 
 #[derive(Clone)]
-pub struct SquarePattern {
+pub struct BlockPattern {
     shapes: Vec<Box<ShapeDataStruct>>,
     texture_id: Option<imgui::TextureId>,
     pattern_name: String,
 }
 
-impl SquarePattern {
+impl BlockPattern {
     pub fn new(mut shapes: Vec<Box<ShapeDataStruct>>, name: String) -> Self {
 
         // add square to background and black outline to square pattern
@@ -21,7 +21,7 @@ impl SquarePattern {
 
         shapes.push(
             Box::new(ShapeDataStruct::new(
-                Box::new(crate::render::shape::StrokeShape::square(0.0, 0.0, 1.0, 1.0, 0, &lyon::lyon_tessellation::StrokeOptions::default().with_line_width(crate::quilt::square::Square::BORDER_WIDTH)),
+                Box::new(crate::render::shape::StrokeShape::square(0.0, 0.0, 1.0, 1.0, 0, &lyon::lyon_tessellation::StrokeOptions::default().with_line_width(crate::quilt::block::Block::BLOCK_BORDER_WIDTH)),
             )),
         ));
 

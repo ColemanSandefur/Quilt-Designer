@@ -1,12 +1,13 @@
-pub mod square_pattern;
+pub mod block_pattern;
 pub mod block_manager;
 
 use crate::quilt::brush::*;
-use crate::render::object::{ShapeDataStruct};
+use crate::render::shape_object::{ShapeDataStruct};
 use crate::render::matrix::{Matrix};
 use crate::render::shape::{Shape, Vertex};
 use crate::render::picker::{Picker};
 
+// The purpose of the "shape protector" is to call update_buffer whenever a shape has changed
 struct ShapeProtector {
     shapes: Vec<Box<ShapeDataStruct>>,
     model_transform: Matrix,
@@ -172,19 +173,19 @@ impl ShapeProtector {
     }
 }
 
+// Each square represents a block on the quilt
+
 #[allow(dead_code)]
-pub struct Square {
+pub struct Block {
     shape_protector: ShapeProtector,
     row: usize,
     column: usize,
 }
 
-impl Square {
-
-    pub const MAX_VERTICES: usize = 256;
-    pub const MAX_INDICES: usize = Self::MAX_VERTICES * 4;
-    pub const BORDER_WIDTH: f32 = 0.05;
-    pub const SHAPE_BORDER: f32 = 0.02;
+impl Block {
+    // Determines how thick the boarders are for the shapes
+    pub const BLOCK_BORDER_WIDTH: f32 = 0.05;
+    pub const SHAPE_BORDER_WIDTH: f32 = 0.02;
 
     pub fn new(row: usize, column: usize, picker: &mut Picker) -> Self {
 
@@ -208,7 +209,7 @@ impl Square {
                     ),
                 )),
                 Box::new(ShapeDataStruct::new(
-                    Box::new(crate::render::shape::StrokeShape::square(0.0, 0.0, 1.0, 1.0, 0, &lyon::tessellation::StrokeOptions::default().with_line_width(crate::quilt::square::Square::BORDER_WIDTH))),
+                    Box::new(crate::render::shape::StrokeShape::square(0.0, 0.0, 1.0, 1.0, 0, &lyon::tessellation::StrokeOptions::default().with_line_width(crate::quilt::block::Block::BLOCK_BORDER_WIDTH))),
                 )),
             }
         );
@@ -218,7 +219,7 @@ impl Square {
         shape_protector.set_shape_color(2, [0.8, 0.2, 0.2, 1.0]);
         shape_protector.set_shape_color(3, [0.1, 0.8, 0.8, 1.0]);
 
-        let s = Self {
+        let s = Block {
             shape_protector,
             row,
             column,

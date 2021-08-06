@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use crate::quilt::square::square_pattern::SquarePattern;
+use crate::quilt::block::block_pattern::BlockPattern;
 
 pub struct Brush {
     block_brush: Option<Arc<BlockBrush>>,
@@ -49,17 +49,17 @@ impl Brush {
 }
 
 pub struct BlockBrush {
-    pub square_pattern: SquarePattern
+    pub square_pattern: BlockPattern
 }
 
 impl BlockBrush {
-    pub fn new(square_pattern: SquarePattern) -> Self {
+    pub fn new(square_pattern: BlockPattern) -> Self {
         Self {
             square_pattern
         }
     }
 
-    pub fn get_pattern(&self, picker: &mut crate::render::picker::Picker, row: usize, column: usize) -> SquarePattern {
+    pub fn get_pattern(&self, picker: &mut crate::render::picker::Picker, row: usize, column: usize) -> BlockPattern {
         let mut shapes = self.square_pattern.get_shapes().clone();
 
         for shape in &mut shapes {
@@ -69,7 +69,7 @@ impl BlockBrush {
             shape.set_color([1.0; 4]);
         }
 
-        SquarePattern::new(shapes, self.square_pattern.get_pattern_name().clone())
+        BlockPattern::new(shapes, self.square_pattern.get_pattern_name().clone())
     }
 }
 

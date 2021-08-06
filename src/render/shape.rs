@@ -76,7 +76,7 @@ impl Triangle {
         outline.close();
         let outline = outline.build();
 
-        let stroke = StrokeShape::new(&outline, 0, &StrokeOptions::default().with_line_width(crate::quilt::square::Square::SHAPE_BORDER));
+        let stroke = StrokeShape::new(&outline, 0, &StrokeOptions::default().with_line_width(crate::quilt::block::Block::SHAPE_BORDER_WIDTH));
 
         // Add generated ib and vb to current ib and vb
 
@@ -152,7 +152,7 @@ pub struct Square {
 
 impl Square {
     pub fn with_width_height(x: f32, y: f32, width: f32, height: f32, id: u32) -> Self {
-        Square::with_line_width(x, y, width, height, id, crate::quilt::square::Square::SHAPE_BORDER)
+        Square::with_line_width(x, y, width, height, id, crate::quilt::block::Block::SHAPE_BORDER_WIDTH)
     }
 
     pub fn with_line_width(x: f32, y:f32, width: f32, height: f32, id: u32, outline_width: f32) -> Self {
@@ -235,6 +235,8 @@ impl Shape for Square {
     }
 }
 
+// Path Shape will create a filled shape from the given path
+
 #[derive(Clone)]
 pub struct PathShape {
     vertex_buffer: Vec<Vertex>,
@@ -244,14 +246,14 @@ pub struct PathShape {
 }
 
 impl PathShape {
-    pub fn new(path: Path, id: u32) -> Self {
+    pub fn new(path: &Path, id: u32) -> Self {
         let mut geometry: VertexBuffers<Vertex, u32> = VertexBuffers::new();
 
         let mut tessellator = FillTessellator::new();
 
         {
             tessellator.tessellate(
-                &path, 
+                path, 
                 &FillOptions::default(), 
                 &mut BuffersBuilder::new(&mut geometry, |vertex: FillVertex| {
                     Vertex {
@@ -267,7 +269,7 @@ impl PathShape {
 
         let index_buffer = geometry.indices.to_vec();
 
-        let outline = StrokeShape::new(&path, 0, &StrokeOptions::default().with_line_width(crate::quilt::square::Square::SHAPE_BORDER));
+        let outline = StrokeShape::new(&path, 0, &StrokeOptions::default().with_line_width(crate::quilt::block::Block::SHAPE_BORDER_WIDTH));
 
         Self {
             vertex_buffer,
@@ -293,7 +295,7 @@ impl PathShape {
         path.close();
         let path = path.build();
 
-        Self::new(path, id)
+        Self::new(&path, id)
     }
 
     pub fn circle(center: lyon::math::Point, radius: f32, start_angle_radians: f32, end_angle_radians: f32, id: u32) -> Self {
@@ -307,15 +309,16 @@ impl PathShape {
             path.arc_to(vector(radius, radius), Angle {radians: 0.0}, ArcFlags::default(), point( radius + center.x, center.y));
             let path = path.build();
 
-            return Self::new(path, id);
+            return Self::new(&path, id);
         }
 
         let mut arc_flags = ArcFlags {
-            sweep: true,
+            sweep: true, // which way to draw (false => Clockwise, true => Counter Clockwise)
             large_arc: false,
         };
 
         // determines which direction the arc starts drawing, should draw clockwise when the total angle is negative
+        // sweep goes clockwise when false
         if total_angle < 0.0 {
             arc_flags.sweep = false;
         }
@@ -337,7 +340,7 @@ impl PathShape {
         path.close();
         let path = path.build();
 
-        Self::new(path, id)
+        Self::new(&path, id)
     }
 }
 
@@ -405,6 +408,8 @@ impl Shape for PathShape {
         Box::new(self.clone())
     }
 }
+
+// Stroke Shape will create a border for the given path
 
 #[derive(Clone)]
 pub struct StrokeShape {
