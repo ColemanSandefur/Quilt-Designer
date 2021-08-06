@@ -170,14 +170,10 @@ impl Quilt {
         self.vertex_buffer.slice_mut(0..self.vert_vec.len()).expect("Invalid vertex range").write(&self.vert_vec);
         self.index_buffer.slice_mut(0..self.index_vec.len()).expect("Invalid index range").write(&self.index_vec); 
 
-        // Really bad way to invalidate index buffer, calling invalidate doesn't seem to do anything
+        // Really bad way to invalidate index buffer, calling invalidate doesn't seem to do anything, just writes 0s to the rest of the buffer
         if self.index_buffer.len() - self.index_vec.len() > 0 {
-
             let slice = self.index_buffer.slice(self.index_vec.len()..).expect("Invalid index range");
-            let mut buffer: Vec<u32> = Vec::with_capacity(slice.len());
-            for _ in 0..slice.len() {
-                buffer.push(0);
-            }
+            let buffer: Vec<u32> = vec![0; slice.len()];
             slice.write(&buffer);
         }
 
