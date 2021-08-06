@@ -14,6 +14,7 @@ pub struct Vertex {
     pub color: [f32; 4],
     pub model: [[f32;4]; 4],
     pub id: u32,
+    pub tex_id: u32,
 }
 
 impl Default for Vertex {
@@ -23,6 +24,7 @@ impl Default for Vertex {
             color: [1.0; 4],
             model: Matrix::new().get_matrix(),
             id: 0,
+            tex_id: 0,
         }
     }
 }
@@ -33,7 +35,7 @@ impl Vertex {
     }
 }
 
-implement_vertex!(Vertex, position, color, model, id);
+implement_vertex!(Vertex, position, color, model, id, tex_id);
 
 pub trait Shape: Sync + Send{
     fn get_vertices(&self) -> Vec<Vertex>;
@@ -259,6 +261,7 @@ impl PathShape {
                     Vertex {
                         position: vertex.position().to_array(),
                         id,
+                        tex_id: 1,
                         .. Default::default()
                     }
                 }),
@@ -449,7 +452,9 @@ impl StrokeShape {
                 position: [vertex.x, vertex.y],
                 color: [0.0, 0.0, 0.0, 1.0],
                 id,
-                model: crate::render::matrix::Matrix::new().get_matrix()
+                model: crate::render::matrix::Matrix::new().get_matrix(),
+                .. Default::default()
+                // tex_id: 1,
             })
         }
 

@@ -10,4 +10,8 @@ uniform sampler2DArray tex;
 
 void main() {
     f_color = v_color;
+
+    if (v_tex_id > uint(0)) {
+        f_color = texture(tex, vec3(v_tex_coords, float(v_tex_id - uint(1))));
+    }
 }

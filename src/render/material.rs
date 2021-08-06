@@ -81,7 +81,8 @@ impl ClickMaterial {
     }
 
     pub fn draw(&self, shape: &(&glium::VertexBuffer<Vertex>, &glium::IndexBuffer<u32>), surface: &mut impl glium::Surface, world_transform: &WorldTransform, _model_transform: &Matrix, draw_parameters: &glium::DrawParameters<'_>) {
-        let uniforms = world_transform.to_uniform();
+        // let uniforms = uniform!{tex: crate::render::textures::get_textures()};
+        let uniforms = world_transform.to_uniform().add("tex", crate::render::textures::get_textures());
         
         crate::render::shape::draw(shape, surface, &self.shader, &uniforms, draw_parameters);
     }

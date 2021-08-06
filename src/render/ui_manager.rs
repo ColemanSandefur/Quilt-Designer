@@ -163,7 +163,7 @@ impl UiManager {
                     // tooltip setup
                     if ui.is_item_hovered() {
                         ui.tooltip(|| {
-                            ui.text(block_pattern.get_pattern_name());
+                            ui.text_wrapped(&ImString::from(block_pattern.get_pattern_name().clone()));
                             ui.separator();
                             Image::new(block_pattern.get_texture_id().unwrap(), [128.0, 128.0]).build(&ui);
                         });
