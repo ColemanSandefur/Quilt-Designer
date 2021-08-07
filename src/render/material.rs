@@ -37,9 +37,16 @@ impl SolidColorMaterial {
     }
 
     pub fn draw(&self, shape: &(&glium::VertexBuffer<Vertex>, &glium::IndexBuffer<u32>), surface: &mut impl glium::Surface, world_transform: &WorldTransform, _model_transform: &Matrix, draw_parameters: &glium::DrawParameters<'_>) {
-        let uniforms = world_transform.to_uniform();
+        // let uniforms = world_transform.to_uniform().add("tex", crate::render::textures::get_texture_array());
+
+        if let Some(texture_array) = crate::render::textures::get_texture_array() {
+            let uniforms = world_transform.to_uniform().add("tex", texture_array);
+            crate::render::shape::draw(shape, surface, &self.shader, &uniforms, draw_parameters);
+        } else {
+            let uniforms = world_transform.to_uniform();
+            crate::render::shape::draw(shape, surface, &self.shader, &uniforms, draw_parameters);
+        }
         
-        crate::render::shape::draw(shape, surface, &self.shader, &uniforms, draw_parameters);
     }
 
     pub fn get_shader_type(&self) -> MaterialType {
@@ -81,8 +88,7 @@ impl ClickMaterial {
     }
 
     pub fn draw(&self, shape: &(&glium::VertexBuffer<Vertex>, &glium::IndexBuffer<u32>), surface: &mut impl glium::Surface, world_transform: &WorldTransform, _model_transform: &Matrix, draw_parameters: &glium::DrawParameters<'_>) {
-        // let uniforms = uniform!{tex: crate::render::textures::get_textures()};
-        let uniforms = world_transform.to_uniform().add("tex", crate::render::textures::get_texture_array());
+        let uniforms = world_transform.to_uniform();
         
         crate::render::shape::draw(shape, surface, &self.shader, &uniforms, draw_parameters);
     }
