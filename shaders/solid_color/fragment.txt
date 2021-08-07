@@ -12,6 +12,8 @@ void main() {
     f_color = v_color;
 
     if (v_tex_id > uint(0)) {
-        f_color = texture(tex, vec3(v_tex_coords, float(v_tex_id - uint(1))));
+        vec4 tex_color = texture(tex, vec3(v_tex_coords, float(v_tex_id - uint(1))));
+        vec3 color = pow(tex_color.rgb, vec3(float(2.2)));
+        f_color = vec4(color, tex_color.a);
     }
 }
