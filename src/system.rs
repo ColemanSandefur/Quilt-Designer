@@ -82,7 +82,7 @@ pub fn init(title: &str) -> System {
     let mut glium_renderer = GliumRenderer::init(&mut imgui, &display).expect("Failed to initialize renderer");
     
     // my initializers
-    crate::render::textures::load_textures(&display);
+    crate::render::textures::load_texture_array(&display, glium_renderer.textures());
     crate::render::material::material_manager::initialize_material_manager(&display);
     crate::quilt::block::block_manager::load_textures(&display, &mut glium_renderer);
     let renderer = Renderer::new(&display, &glium_renderer);

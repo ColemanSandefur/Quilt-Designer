@@ -46,6 +46,8 @@ pub trait Shape: Sync + Send{
     fn get_num_indices(&self) -> usize;
     fn get_id(&self) -> u32;
     fn set_id(&mut self, id: u32);
+    fn get_tex_id(&self) -> u32;
+    fn set_tex_id(&mut self, id: u32);
     fn was_clicked(&self, id: u32) -> bool {
         self.get_id() == id
     }
@@ -141,6 +143,20 @@ impl Shape for Triangle {
         }
     }
 
+    fn get_tex_id(&self) -> u32 {
+        match self.vertex_buffer.get(0) {
+            Some(vertex) => vertex.tex_id,
+            None => 0,
+        }
+    }
+
+    fn set_tex_id(&mut self, id: u32) {
+        // only change the id of the triangle not its outline
+        for vertex in &mut self.vertex_buffer[0..3] {
+            vertex.tex_id = id;
+        }
+    }
+
     fn clone_shape(&self) -> Box<dyn Shape> {
         Box::new(self.clone())
     }
@@ -232,6 +248,20 @@ impl Shape for Square {
         }
     }
 
+    fn get_tex_id(&self) -> u32 {
+        match self.vertex_buffer.get(0) {
+            Some(vertex) => vertex.tex_id,
+            None => 0,
+        }
+    }
+
+    fn set_tex_id(&mut self, id: u32) {
+        // only change the id of the triangle not its outline
+        for vertex in &mut self.vertex_buffer[0..3] {
+            vertex.tex_id = id;
+        }
+    }
+
     fn clone_shape(&self) -> Box<dyn Shape> {
         Box::new(self.clone())
     }
@@ -261,7 +291,6 @@ impl PathShape {
                     Vertex {
                         position: vertex.position().to_array(),
                         id,
-                        tex_id: 1,
                         .. Default::default()
                     }
                 }),
@@ -407,6 +436,20 @@ impl Shape for PathShape {
         }
     }
 
+    fn get_tex_id(&self) -> u32 {
+        match self.vertex_buffer.get(0) {
+            Some(vertex) => vertex.tex_id,
+            None => 0,
+        }
+    }
+
+    fn set_tex_id(&mut self, id: u32) {
+        // only change the id of the triangle not its outline
+        for vertex in &mut self.vertex_buffer[0..3] {
+            vertex.tex_id = id;
+        }
+    }
+
     fn clone_shape(&self) -> Box<dyn Shape> {
         Box::new(self.clone())
     }
@@ -518,6 +561,20 @@ impl Shape for StrokeShape {
     fn set_id(&mut self, id: u32) {
         for vertex in &mut self.vertex_buffer {
             vertex.id = id;
+        }
+    }
+
+    fn get_tex_id(&self) -> u32 {
+        match self.vertex_buffer.get(0) {
+            Some(vertex) => vertex.tex_id,
+            None => 0,
+        }
+    }
+
+    fn set_tex_id(&mut self, id: u32) {
+        // only change the id of the triangle not its outline
+        for vertex in &mut self.vertex_buffer[0..3] {
+            vertex.tex_id = id;
         }
     }
 

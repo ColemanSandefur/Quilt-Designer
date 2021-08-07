@@ -57,7 +57,7 @@ impl UiManager {
             .collapsible(false)
             .build(ui, || {
                 // calculates how many columns can fit in the window
-                let num_buttons = 1; // will be the total of all textures (once they are added)
+                let num_buttons = 1 + crate::render::textures::get_texture_count() as i32; // will be the total of all textures (once they are added)
                 let num_rows = std::cmp::min(((ui.window_content_region_width() - current_style.window_padding[0]) / (Self::BUTTON_SIZE + 2.0 * current_style.window_padding[0])) as i32, num_buttons);
                 ui.columns(num_rows, im_str!("columns"), false);
 
@@ -84,13 +84,25 @@ impl UiManager {
                 ui.unindent_by(indentation);
                 ui.next_column();
 
-                // When textures are working this will be finished
-                // for each texture {
-                //      indent
-                //      create button
-                //      unindent
-                //      move to next column
-                // }
+                for id in crate::render::textures::get_texture_ids() {
+                    // create texture button
+                    ui.indent_by(indentation);
+                    if ImageButton::new(id.get_imgui_id(), [Self::BUTTON_SIZE, Self::BUTTON_SIZE]).frame_padding(0).build(&ui) {
+
+                        // on button click
+
+                        // change brush to apply texture on click
+                    }
+                    ui.unindent_by(indentation);
+                    ui.next_column();
+
+                    // tooltip setup
+                    if ui.is_item_hovered() {
+                        ui.tooltip(|| {
+                            Image::new(id.get_imgui_id(), [128.0, 128.0]).build(&ui);
+                        });
+                    }
+                }
             });
         
         // Color Picker window
