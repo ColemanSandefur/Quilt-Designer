@@ -1,6 +1,6 @@
-use glium::texture::Texture2dArray;
+use glium::texture::SrgbTexture2dArray;
 
-static mut TEXTURE_ARRAY: Option<Texture2dArray> = None;
+static mut TEXTURE_ARRAY: Option<SrgbTexture2dArray> = None;
 static mut TEXTURE_COUNT: u32 = 0;
 static mut TEXTURES: Option<Vec<Texture>> = None;
 static IMAGE_SIZE: u32 = 800;
@@ -91,7 +91,7 @@ pub fn load_texture_array(facade: &impl glium::backend::Facade, textures: &mut i
                 raw_images.push(source);
             }
 
-            TEXTURE_ARRAY = Some(Texture2dArray::new(
+            TEXTURE_ARRAY = Some(SrgbTexture2dArray::new(
                 facade,
                 raw_images
             ).unwrap());
@@ -101,7 +101,7 @@ pub fn load_texture_array(facade: &impl glium::backend::Facade, textures: &mut i
     }
 }
 
-pub fn get_texture_array() -> &'static Option<Texture2dArray> {
+pub fn get_texture_array() -> &'static Option<SrgbTexture2dArray> {
     unsafe {
         &TEXTURE_ARRAY
     }
