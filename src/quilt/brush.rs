@@ -74,5 +74,39 @@ impl BlockBrush {
 }
 
 pub struct PatternBrush {
-    pub color: [f32; 4]
+    color: Option<[f32; 4]>,
+    texture: Option<crate::render::textures::Texture>,
+}
+
+impl PatternBrush {
+    pub fn new_color(color: [f32; 4]) -> Self {
+        Self {
+            color: Some(color),
+            texture: None,
+        }
+    }
+
+    pub fn new_texture(texture: crate::render::textures::Texture) -> Self {
+        Self {
+            color: None,
+            texture: Some(texture),
+        }
+    }
+
+    pub fn get_color(&self) -> &Option<[f32; 4]> {
+        &self.color
+    }
+
+    pub fn get_texture(&self) -> &Option<crate::render::textures::Texture> {
+        &self.texture
+    }
+
+    pub fn apply_to_shape(&self, shape: &mut crate::render::shape_object::ShapeDataStruct) {
+        if let Some(color) = self.color.as_ref() {
+            shape.shape.set_color(*color);
+        } else if let Some(texture) = self.texture.as_ref() {
+            // increase the index by 1 because 0 is used as a "no texture" in the vertex
+            shape.shape.set_tex_id(texture.get_texture_index() as u32 + 1);
+        }
+    }
 }

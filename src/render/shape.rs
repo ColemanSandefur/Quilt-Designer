@@ -151,7 +151,7 @@ impl Shape for Triangle {
     }
 
     fn set_tex_id(&mut self, id: u32) {
-        // only change the id of the triangle not its outline
+        // only change the tex_id of the triangle not its outline
         for vertex in &mut self.vertex_buffer[0..3] {
             vertex.tex_id = id;
         }
@@ -256,8 +256,8 @@ impl Shape for Square {
     }
 
     fn set_tex_id(&mut self, id: u32) {
-        // only change the id of the triangle not its outline
-        for vertex in &mut self.vertex_buffer[0..3] {
+        // only change the tex_id of the square not its outline
+        for vertex in &mut self.vertex_buffer[0..4] {
             vertex.tex_id = id;
         }
     }
@@ -444,8 +444,7 @@ impl Shape for PathShape {
     }
 
     fn set_tex_id(&mut self, id: u32) {
-        // only change the id of the triangle not its outline
-        for vertex in &mut self.vertex_buffer[0..3] {
+        for vertex in &mut self.vertex_buffer {
             vertex.tex_id = id;
         }
     }
@@ -572,8 +571,7 @@ impl Shape for StrokeShape {
     }
 
     fn set_tex_id(&mut self, id: u32) {
-        // only change the id of the triangle not its outline
-        for vertex in &mut self.vertex_buffer[0..3] {
+        for vertex in &mut self.vertex_buffer {
             vertex.tex_id = id;
         }
     }

@@ -171,6 +171,16 @@ impl ShapeProtector {
             self.update_buffer();
         }
     }
+
+    pub fn apply_brush(&mut self, index: usize, pattern_brush: &crate::quilt::brush::PatternBrush) {
+
+        if let Some(shape) = self.shapes.get_mut(index) {
+            pattern_brush.apply_to_shape(shape);
+
+            self.update_buffer();
+        }
+
+    }
 }
 
 // Each square represents a block on the quilt
@@ -245,13 +255,16 @@ impl Block {
         let mut should_update = false;
 
         if brush.is_block_brush() {
+            // change the block pattern
             self.shape_protector.set_shapes(brush.get_block_brush().unwrap().get_pattern(picker, self.row, self.column).get_shapes().clone());
             should_update = true;
         } else if brush.is_pattern_brush() {
+            // change either the color or texture of a shape
+
+            // find which shape was clicked
             for index in 0..self.shape_protector.get_shapes().len() {
-                
                 if self.shape_protector.get_shape(index).unwrap().shape.was_clicked(id) {
-                    self.shape_protector.set_shape_color(index, brush.get_pattern_brush().unwrap().color);
+                    self.shape_protector.apply_brush(index, &brush.get_pattern_brush().unwrap());
     
                     should_update = true;
     

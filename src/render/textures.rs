@@ -5,6 +5,7 @@ static mut TEXTURE_COUNT: u32 = 0;
 static mut TEXTURES: Option<Vec<Texture>> = None;
 static IMAGE_SIZE: u32 = 800;
 
+#[derive(Clone)]
 pub struct Texture {
     texture_index: usize,
     imgui_id: imgui::TextureId,
@@ -37,8 +38,11 @@ pub fn load_texture_array(facade: &impl glium::backend::Facade, textures: &mut i
         TEXTURE_COUNT = texture_paths.len() as u32;
         TEXTURES = Some(Vec::with_capacity(TEXTURE_COUNT as usize));
         let mut raw_images = Vec::with_capacity(TEXTURE_COUNT as usize);
+
+        println!("Found {} textures", TEXTURE_COUNT);
         
         for dir_entry in texture_paths {
+            println!("Loading {}/{}", TEXTURES.as_ref().unwrap().len() + 1, TEXTURE_COUNT);
             // load texture
             let image = image::open(dir_entry.path()).unwrap().to_rgba8();
             

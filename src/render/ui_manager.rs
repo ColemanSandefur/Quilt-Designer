@@ -74,7 +74,7 @@ impl UiManager {
                 was_color_clicked.double_clicked = ui.is_item_hovered() && ui.is_mouse_double_clicked(MouseButton::Left);
                 
                 if was_color_clicked.clicked {
-                    renderer.brush.set_pattern_brush(std::sync::Arc::new(PatternBrush{ color }));
+                    renderer.brush.set_pattern_brush(std::sync::Arc::new(PatternBrush::new_color(color)));
                 }
 
                 if was_color_clicked.double_clicked {
@@ -92,6 +92,7 @@ impl UiManager {
                         // on button click
 
                         // change brush to apply texture on click
+                        renderer.brush.set_pattern_brush(std::sync::Arc::new(crate::quilt::brush::PatternBrush::new_texture(id.clone())));
                     }
                     ui.unindent_by(indentation);
                     ui.next_column();
@@ -116,7 +117,7 @@ impl UiManager {
                         let picker = ColorPicker::new(im_str!(""), &mut COLOR_PICKER_COLOR)
                             .alpha(false);
                         if picker.build(&ui) {
-                            renderer.brush.set_pattern_brush(std::sync::Arc::new(PatternBrush{ color: COLOR_PICKER_COLOR }));
+                            renderer.brush.set_pattern_brush(std::sync::Arc::new(PatternBrush::new_color(COLOR_PICKER_COLOR)));
                         }
 
                         if ui.button(im_str!("Close"), [ui.window_content_region_width(), 20.0]) {
