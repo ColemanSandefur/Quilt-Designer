@@ -1,3 +1,4 @@
+use crate::parse::{Yaml, SavableBlueprint, Parse};
 use crate::render::matrix::Matrix;
 use cgmath::Matrix4;
 use cgmath::Rad;
@@ -614,4 +615,46 @@ impl Shape for StrokeShape {
 
 pub fn draw<'a, U: glium::uniforms::Uniforms>(shape: &(&glium::VertexBuffer<Vertex>, &glium::IndexBuffer<u32>), frame: &mut impl glium::Surface, program: &glium::Program, uniforms: &U, draw_parameters: &glium::DrawParameters<'_>) {
     frame.draw(shape.0, shape.1, program, uniforms, draw_parameters).unwrap();
+}
+
+fn decode_movement(yaml: Yaml, path: &mut lyon::path::builder::WithSvg<lyon::path::builder::Flattened<lyon::path::path::Builder>>) {
+    let map = Into::<crate::parse::LinkedHashMap>::into(yaml);
+
+    let name =  map.get("name").as_str().unwrap();
+
+    match name {
+        "move" => {
+            let coords = Into::<crate::parse::LinkedHashMap>::into(map.get("point").clone());
+
+            let x: f64 = coords.get("x").clone().parse();
+            let y: f64 = coords.get("y").clone().parse();
+
+            path.move_to(point((x / 20.0) as f32, (y / 20.0) as f32));
+        },
+        "line" => {
+            let coords = Into::<crate::parse::LinkedHashMap>::into(map.get("end").clone());
+
+            let x: f64 = coords.get("x").clone().parse();
+            let y: f64 = coords.get("y").clone().parse();
+
+            path.line_to(point((x / 20.0) as f32, (y / 20.0) as f32));
+        },
+        _ => ()
+    };
+}
+
+impl SavableBlueprint for PathShape {
+    fn from_save_blueprint(yaml: Yaml) -> Box<Self> where Self: Sized {
+        let yaml_movements = Into::<Vec<_>>::into(yaml);
+
+        let mut path = Path::svg_builder().flattened(0.001);
+
+        for movement in yaml_movements {
+            decode_movement(movement, &mut path);
+        }
+
+        let path = path.build();
+
+        Box::new(Self::new(&path, 0))
+    }
 }

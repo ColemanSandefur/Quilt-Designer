@@ -84,7 +84,7 @@ impl UiManager {
                 ui.unindent_by(indentation);
                 ui.next_column();
 
-                for id in crate::render::textures::get_texture_ids() {
+                for id in crate::render::textures::get_textures() {
                     // create texture button
                     ui.indent_by(indentation);
                     if ImageButton::new(id.get_imgui_id(), [Self::BUTTON_SIZE, Self::BUTTON_SIZE]).frame_padding(0).build(&ui) {

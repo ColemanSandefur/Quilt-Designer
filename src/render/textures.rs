@@ -3,7 +3,7 @@ use glium::texture::SrgbTexture2dArray;
 static mut TEXTURE_ARRAY: Option<SrgbTexture2dArray> = None;
 static mut TEXTURE_COUNT: u32 = 0;
 static mut TEXTURES: Option<Vec<Texture>> = None;
-static IMAGE_SIZE: u32 = 800;
+static IMAGE_SIZE: u32 = 2048;
 
 #[derive(Clone)]
 pub struct Texture {
@@ -114,6 +114,7 @@ fn is_image(extension: &std::ffi::OsStr) -> bool {
     match path {
         p if p.eq("png") => true,
         p if p.eq("jpg") => true,
+        p if p.eq("gif") => true,
         _ => false
     }
 }
@@ -144,7 +145,7 @@ pub fn get_texture_count() -> u32 {
     }
 }
 
-pub fn get_texture_ids() -> &'static Vec<Texture> {
+pub fn get_textures() -> &'static Vec<Texture> {
     unsafe {
         return TEXTURES.as_ref().unwrap()
     }

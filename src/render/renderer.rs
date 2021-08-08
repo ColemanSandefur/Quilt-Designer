@@ -48,7 +48,6 @@ impl Renderer {
             picker,
             cursor_pos: None,
             brush: Brush::new_pattern_brush(PatternBrush::new_color([1.0; 4])),
-            // picking_pixel_buffer: glium::texture::pixel_buffer::PixelBuffer::new_empty(display, 1),
         }
     }
 

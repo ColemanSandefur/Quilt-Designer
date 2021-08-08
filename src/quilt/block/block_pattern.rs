@@ -1,5 +1,6 @@
 use crate::render::shape_object::{ShapeDataStruct};
 use crate::glium::Surface;
+use crate::parse::{Yaml, SavableBlueprint};
 
 #[derive(Clone)]
 pub struct BlockPattern {
@@ -129,5 +130,23 @@ impl BlockPattern {
 
 
         self.texture_id = Some(texture_id);
+    }
+}
+
+impl SavableBlueprint for BlockPattern {
+    fn from_save_blueprint(yaml: Yaml) -> Box<Self> where Self: Sized {
+        let yaml_vec = Into::<Vec<_>>::into(yaml);
+
+        let mut shapes = Vec::with_capacity(yaml_vec.len());
+        
+        for yaml_entry in yaml_vec {
+            shapes.push(ShapeDataStruct::from_save_blueprint(yaml_entry));
+        }
+
+        Box::new(Self {
+            shapes,
+            texture_id: None,
+            pattern_name: String::from(""),
+        })
     }
 }
