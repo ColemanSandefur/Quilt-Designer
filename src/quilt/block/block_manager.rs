@@ -16,6 +16,14 @@ lazy_static!{
         ], String::from("half-square triangle")),
 
         BlockPattern::new(vec![
+            Box::new(
+                ShapeDataStruct::new(
+                    Box::new(crate::render::shape::Square::with_width_height(0.0, 0.0, 1.0, 1.0, 0)),
+                )
+            )
+        ], String::from("square")),
+
+        BlockPattern::new(vec![
             Box::new(ShapeDataStruct::new(
                 Box::new(crate::render::shape::Square::with_width_height(0.25, 0.25, 0.5, 0.5, 0)),
             )),

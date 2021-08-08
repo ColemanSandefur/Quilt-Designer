@@ -150,6 +150,7 @@ impl System {
                 if let Event::WindowEvent {event, ..} = &event {
                     if let WindowEvent::KeyboardInput {input, ..} = event {
                         if let Some(keycode) = input.virtual_keycode {
+                            renderer.key_pressed(keycode, input.state);
                             renderer.keyboard_tracker.set_pressed(keycode, input.state == glutin::event::ElementState::Pressed);
                         }
                     }

@@ -7,6 +7,8 @@ use crate::render::ui_manager::UiManager;
 use crate::render::picker::Picker;
 
 use glium::Surface;
+use glium::glutin::event::VirtualKeyCode;
+use glium::glutin::event::ElementState;
 
 #[allow(dead_code)]
 pub struct Renderer {
@@ -85,8 +87,8 @@ impl Renderer {
         self.frame_timing.update_frame_time();
     }
 
+    // handles key events that should happen every frame while pressed
     fn handle_keys(&mut self) {
-        use glium::glutin::event::VirtualKeyCode;
 
         let keyboard_tracker = &mut self.keyboard_tracker;
 
@@ -119,6 +121,13 @@ impl Renderer {
             if translation.2 <= zoom_threshold {
                 self.world_transform.set_scale(translation.0, translation.1, zoom_threshold);
             }
+        }
+    }
+
+    // handles event that should only happen once per press
+    pub fn key_pressed(&mut self, key_code: VirtualKeyCode, state: ElementState) {
+        if key_code == VirtualKeyCode::R  && state == ElementState::Pressed {
+            Brush::increase_rotation(-std::f32::consts::FRAC_PI_2);
         }
     }
 

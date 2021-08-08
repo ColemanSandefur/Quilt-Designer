@@ -199,35 +199,17 @@ impl Block {
 
     pub fn new(row: usize, column: usize, picker: &mut Picker) -> Self {
 
-        let mut shape_protector = ShapeProtector::with_shapes(
+        // the default pattern for the block
+        let shape_protector = ShapeProtector::with_shapes(
             vec!{
                 Box::new(ShapeDataStruct::new(
                     Box::new(crate::render::shape::Square::with_line_width(0.0, 0.0, 1.0, 1.0, picker.get_new_id(row, column), 0.0)),
-                )),
-                Box::new(ShapeDataStruct::new(
-                    Box::new(crate::render::shape::Square::with_width_height(0.25, 0.25, 0.5, 0.5, picker.get_new_id(row, column))),
-                )),
-                Box::new(ShapeDataStruct::new(
-                    Box::new(crate::render::shape::Square::with_width_height(0.3, 0.3, 0.4, 0.4, picker.get_new_id(row, column))),
-                )),
-                Box::new(ShapeDataStruct::new(
-                    Box::new(crate::render::shape::Square::with_width_height(0.35, 0.35, 0.3, 0.3, picker.get_new_id(row, column))),
-                )),
-                Box::new(ShapeDataStruct::new(
-                    Box::new(
-                        crate::render::shape::PathShape::circle(lyon::math::point(0.5, 0.5), 0.25, -0.5 * std::f32::consts::PI, 0.5 * std::f32::consts::PI, picker.get_new_id(row, column)),
-                    ),
                 )),
                 Box::new(ShapeDataStruct::new(
                     Box::new(crate::render::shape::StrokeShape::square(0.0, 0.0, 1.0, 1.0, 0, &lyon::tessellation::StrokeOptions::default().with_line_width(crate::quilt::block::Block::BLOCK_BORDER_WIDTH))),
                 )),
             }
         );
-
-        shape_protector.set_shape_color(0, [1.0, 1.0, 1.0, 1.0]);
-        shape_protector.set_shape_color(1, [0.3, 0.3, 0.8, 1.0]);
-        shape_protector.set_shape_color(2, [0.8, 0.2, 0.2, 1.0]);
-        shape_protector.set_shape_color(3, [0.1, 0.8, 0.8, 1.0]);
 
         let s = Block {
             shape_protector,

@@ -1,17 +1,14 @@
+use cgmath::Matrix4;
+
 #[derive(Clone, Copy)]
 pub struct Matrix {
-    matrix: [[f32; 4]; 4]
+    matrix: cgmath::Matrix4<f32>
 }
 
 impl Matrix {
     pub fn new() -> Self {
 
-        let matrix = [
-            [1.0, 0.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0, 0.0],
-            [0.0, 0.0, 1.0, 0.0],
-            [0.0, 0.0, 0.0, 1.0],
-        ];
+        let matrix = Matrix4::from_scale(1.0);
 
         Self {
             matrix
@@ -19,16 +16,22 @@ impl Matrix {
     }
 
     pub fn new_with_data(matrix: [[f32; 4]; 4]) -> Self {
+
+        let matrix = Matrix4::from_cols(matrix[0].into(), matrix[1].into(), matrix[2].into(), matrix[3].into());
+
         Self {
             matrix
         }
     }
 
     pub fn get_matrix(&self) -> [[f32; 4]; 4] {
-        self.matrix
+        self.matrix.into()
     }
 
     pub fn set_matrix(&mut self, matrix: [[f32; 4]; 4]) {
+
+        let matrix = Matrix4::from_cols(matrix[0].into(), matrix[1].into(), matrix[2].into(), matrix[3].into());
+        
         self.matrix = matrix;
     }
 
@@ -78,8 +81,9 @@ pub struct WorldTransform {
 }
 
 impl WorldTransform {
-    pub fn to_uniform(&self) -> glium::uniforms::UniformsStorage<[[f32; 4]; 4], glium::uniforms::UniformsStorage<[[f32; 4]; 4], glium::uniforms::EmptyUniforms>>
+    pub fn to_uniform(&self) -> glium::uniforms::UniformsStorage<[[f32; 4]; 4], glium::uniforms::UniformsStorage<[[f32; 4]; 4], glium::uniforms::UniformsStorage<[[f32; 4]; 4], glium::uniforms::EmptyUniforms>>>
     {
-        uniform!{projection: self.projection.get_matrix(), view: self.world.get_matrix()}
+        let rotation_points: [[f32; 4]; 4] = Matrix4::from_translation([0.5, 0.5, 0.0].into()).into();
+        uniform!{projection: self.projection.get_matrix(), view: self.world.get_matrix(), rotation_point: rotation_points}
     }
 }

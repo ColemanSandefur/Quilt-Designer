@@ -1,12 +1,22 @@
 use std::sync::Arc;
 use crate::quilt::block::block_pattern::BlockPattern;
 
+static mut ROTATION: f32 = 0.0;
+
 pub struct Brush {
     block_brush: Option<Arc<BlockBrush>>,
     pattern_brush: Option<Arc<PatternBrush>>,
 }
 
 impl Brush {
+    pub fn set_rotation(rotation: f32) {
+        unsafe {ROTATION = rotation % (2.0 * std::f32::consts::PI);}
+    }
+
+    pub fn increase_rotation(rotation: f32) {
+        unsafe {Self::set_rotation(rotation + ROTATION);}
+    }
+
     pub fn new_block_brush(block_brush: BlockBrush) -> Self {
         Self {
             block_brush: Some(Arc::new(block_brush)),
@@ -49,13 +59,13 @@ impl Brush {
 }
 
 pub struct BlockBrush {
-    pub square_pattern: BlockPattern
+    pub square_pattern: BlockPattern,
 }
 
 impl BlockBrush {
     pub fn new(square_pattern: BlockPattern) -> Self {
         Self {
-            square_pattern
+            square_pattern,
         }
     }
 
@@ -67,6 +77,7 @@ impl BlockBrush {
 
             shape.set_id(picker.get_new_id(row, column));
             shape.set_color([1.0; 4]);
+            unsafe {shape.set_rotation(ROTATION);}
         }
 
         BlockPattern::new(shapes, self.square_pattern.get_pattern_name().clone())

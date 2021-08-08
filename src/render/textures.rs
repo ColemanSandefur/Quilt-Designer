@@ -43,6 +43,7 @@ pub fn load_texture_array(facade: &impl glium::backend::Facade, textures: &mut i
         if TEXTURE_COUNT > 0 {
             for dir_entry in texture_paths {
                 println!("Loading {}/{}", TEXTURES.as_ref().unwrap().len() + 1, TEXTURE_COUNT);
+
                 // load texture
                 let image = image::open(dir_entry.path()).unwrap().to_rgba8();
                 

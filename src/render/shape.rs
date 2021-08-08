@@ -1,4 +1,6 @@
 use crate::render::matrix::Matrix;
+use cgmath::Matrix4;
+use cgmath::Rad;
 
 use lyon::math::{point, Point};
 use lyon::path::Path;
@@ -13,6 +15,7 @@ pub struct Vertex {
     pub position: [f32; 2],
     pub color: [f32; 4],
     pub model: [[f32;4]; 4],
+    pub rotation: [[f32;4]; 4],
     pub id: u32,
     pub tex_id: u32,
 }
@@ -23,6 +26,7 @@ impl Default for Vertex {
             position: [0.0; 2],
             color: [1.0; 4],
             model: Matrix::new().get_matrix(),
+            rotation: Matrix4::from_angle_z(Rad(0.0)).into(),
             id: 0,
             tex_id: 0,
         }
@@ -35,7 +39,7 @@ impl Vertex {
     }
 }
 
-implement_vertex!(Vertex, position, color, model, id, tex_id);
+implement_vertex!(Vertex, position, color, model, rotation, id, tex_id);
 
 pub trait Shape: Sync + Send{
     fn get_vertices(&self) -> Vec<Vertex>;
@@ -48,6 +52,7 @@ pub trait Shape: Sync + Send{
     fn set_id(&mut self, id: u32);
     fn get_tex_id(&self) -> u32;
     fn set_tex_id(&mut self, id: u32);
+    fn set_rotation(&mut self, rotation: f32);
     fn was_clicked(&self, id: u32) -> bool {
         self.get_id() == id
     }
@@ -157,6 +162,12 @@ impl Shape for Triangle {
         }
     }
 
+    fn set_rotation(&mut self, rotation: f32) {
+        for vertex in &mut self.vertex_buffer {
+            vertex.rotation = Matrix4::from_angle_z(cgmath::Rad(rotation)).into()
+        }
+    }
+
     fn clone_shape(&self) -> Box<dyn Shape> {
         Box::new(self.clone())
     }
@@ -259,6 +270,12 @@ impl Shape for Square {
         // only change the tex_id of the square not its outline
         for vertex in &mut self.vertex_buffer[0..4] {
             vertex.tex_id = id;
+        }
+    }
+
+    fn set_rotation(&mut self, rotation: f32) {
+        for vertex in &mut self.vertex_buffer {
+            vertex.rotation = Matrix4::from_angle_z(cgmath::Rad(rotation)).into()
         }
     }
 
@@ -449,6 +466,14 @@ impl Shape for PathShape {
         }
     }
 
+    fn set_rotation(&mut self, rotation: f32) {
+        for vertex in &mut self.vertex_buffer {
+            vertex.rotation = Matrix4::from_angle_z(cgmath::Rad(rotation)).into()
+        }
+
+        self.outline.set_rotation(rotation);
+    }
+
     fn clone_shape(&self) -> Box<dyn Shape> {
         Box::new(self.clone())
     }
@@ -573,6 +598,12 @@ impl Shape for StrokeShape {
     fn set_tex_id(&mut self, id: u32) {
         for vertex in &mut self.vertex_buffer {
             vertex.tex_id = id;
+        }
+    }
+
+    fn set_rotation(&mut self, rotation: f32) {
+        for vertex in &mut self.vertex_buffer {
+            vertex.rotation = Matrix4::from_angle_z(cgmath::Rad(rotation)).into()
         }
     }
 
