@@ -1,4 +1,4 @@
-use crate::parse::{Yaml, SavableBlueprint, Parse};
+use crate::parse::{Yaml, SavableBlueprint};
 use crate::render::matrix::Matrix;
 use cgmath::Matrix4;
 use cgmath::Rad;
@@ -392,6 +392,41 @@ impl PathShape {
 
         Self::new(&path, id)
     }
+
+    pub fn add_arc_to_path(center: lyon::math::Point, radius: f32, start_angle_radians: f32, end_angle_radians: f32, path: &mut lyon::path::builder::WithSvg<lyon::path::builder::Flattened<lyon::path::path::Builder>>) {
+        let total_angle = end_angle_radians - start_angle_radians;
+
+        // You need to draw 2 arcs if you are doing a complete circle
+        if total_angle == 2.0 * std::f32::consts::PI {
+            path.move_to(point(radius + center.x, center.y));
+            path.arc_to(vector(radius, radius), Angle {radians: 0.0}, ArcFlags::default(), point(-radius + center.x, center.y));
+            path.arc_to(vector(radius, radius), Angle {radians: 0.0}, ArcFlags::default(), point( radius + center.x, center.y));
+        }
+
+        let mut arc_flags = ArcFlags {
+            sweep: true, // which way to draw (false => Clockwise, true => Counter Clockwise)
+            large_arc: false,
+        };
+
+        // determines which direction the arc starts drawing, should draw clockwise when the total angle is negative
+        // sweep goes clockwise when false
+        if total_angle < 0.0 {
+            arc_flags.sweep = false;
+        }
+
+        if total_angle.abs() > std::f32::consts::PI {
+            arc_flags.large_arc = true;
+        }
+
+        let start_x = radius * start_angle_radians.cos() + center.x;
+        let start_y = radius * start_angle_radians.sin() + center.y;
+
+        let stop_x = radius * end_angle_radians.cos() + center.x;
+        let stop_y = radius * end_angle_radians.sin() + center.y;
+
+        path.move_to(point(start_x, start_y));
+        path.arc_to(vector(radius, radius), Angle {radians: 0.0}, arc_flags, point(stop_x, stop_y));
+    }
 }
 
 impl Shape for PathShape {
@@ -477,6 +512,22 @@ impl Shape for PathShape {
 
     fn clone_shape(&self) -> Box<dyn Shape> {
         Box::new(self.clone())
+    }
+}
+
+impl SavableBlueprint for PathShape {
+    fn from_save_blueprint(yaml: Yaml) -> Box<Self> where Self: Sized {
+        let yaml_movements = Vec::<Yaml>::from(yaml);
+
+        let mut path = Path::svg_builder().flattened(0.001);
+
+        for movement in yaml_movements {
+            decode_movement(movement, &mut path);
+        }
+
+        let path = path.build();
+
+        Box::new(Self::new(&path, 0))
     }
 }
 
@@ -618,43 +669,41 @@ pub fn draw<'a, U: glium::uniforms::Uniforms>(shape: &(&glium::VertexBuffer<Vert
 }
 
 fn decode_movement(yaml: Yaml, path: &mut lyon::path::builder::WithSvg<lyon::path::builder::Flattened<lyon::path::path::Builder>>) {
-    let map = Into::<crate::parse::LinkedHashMap>::into(yaml);
+    let map = crate::parse::LinkedHashMap::from(yaml);
 
-    let name =  map.get("name").as_str().unwrap();
+    let name = map.get("name").as_str().unwrap();
 
     match name {
         "move" => {
-            let coords = Into::<crate::parse::LinkedHashMap>::into(map.get("point").clone());
+            let coords = crate::parse::LinkedHashMap::from(map.get("point").clone());
 
-            let x: f64 = coords.get("x").clone().parse();
-            let y: f64 = coords.get("y").clone().parse();
+            let x = f32::from(coords.get("x"));
+            let y = f32::from(coords.get("y"));
 
-            path.move_to(point((x / 20.0) as f32, (y / 20.0) as f32));
+            path.line_to(point(x, y));
         },
         "line" => {
-            let coords = Into::<crate::parse::LinkedHashMap>::into(map.get("end").clone());
+            let coords = crate::parse::LinkedHashMap::from(map.get("point").clone());
 
-            let x: f64 = coords.get("x").clone().parse();
-            let y: f64 = coords.get("y").clone().parse();
+            let x = f32::from(coords.get("x"));
+            let y = f32::from(coords.get("y"));
 
-            path.line_to(point((x / 20.0) as f32, (y / 20.0) as f32));
+            path.line_to(point(x, y));
         },
+        "arc" => {
+            // not sure if this works or not
+            let center = crate::parse::LinkedHashMap::from(map.get("center").clone());
+
+            let x = f32::from(center.get("x"));
+            let y = f32::from(center.get("y"));
+
+            let radius = f32::from(map.get("radius"));
+            let start_angle = f32::from(map.get("start_angle"));
+            let end_angle = f32::from(map.get("end_angle"));
+
+            PathShape::add_arc_to_path(point(x, y), radius, start_angle, end_angle, path);
+        }
         _ => ()
     };
 }
 
-impl SavableBlueprint for PathShape {
-    fn from_save_blueprint(yaml: Yaml) -> Box<Self> where Self: Sized {
-        let yaml_movements = Into::<Vec<_>>::into(yaml);
-
-        let mut path = Path::svg_builder().flattened(0.001);
-
-        for movement in yaml_movements {
-            decode_movement(movement, &mut path);
-        }
-
-        let path = path.build();
-
-        Box::new(Self::new(&path, 0))
-    }
-}

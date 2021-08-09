@@ -1,22 +1,20 @@
 use yaml_rust::Yaml as YamlRust;
 use linked_hash_map::LinkedHashMap as LinkedHashMapRust;
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 use std::fs::File;
 use std::path::Path;
 use std::io::Read;
 
 // yaml wrapper
 #[derive(Clone, Hash, std::cmp::PartialEq, std::cmp::Eq)]
-pub struct Yaml {
-    pub yaml: YamlRust
-}
+pub struct Yaml(YamlRust);
 
 impl Yaml {
     pub fn print(&self) {
         let mut output = String::new();
         let mut emitter = yaml_rust::YamlEmitter::new(&mut output);
         emitter.dump(&self).unwrap();
-        println!("=== dump: ===\n {}\n=============\n",output);
+        println!("=== dump: ===\n{}\n=============\n",output);
     }
 
     pub fn load_from_file(path: &Path) -> Self {
@@ -33,24 +31,35 @@ impl Yaml {
 
 impl From<YamlRust> for Yaml {
     fn from(yaml: YamlRust) -> Self {
-        Yaml {
-            yaml
-        }
+        Yaml(yaml)
     }
 }
 
 impl From<Yaml> for YamlRust {
     fn from(yaml: Yaml) -> Self {
-        yaml.yaml
+        yaml.0
     }
 }
 
 impl AsRef<YamlRust> for Yaml {
     fn as_ref(&self) -> &YamlRust {
-        &self.yaml
+        &self.0
     }
 }
 
+impl Deref for Yaml {
+    type Target = YamlRust;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for Yaml {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
 
 // hash map wrapper
 
@@ -61,6 +70,16 @@ pub struct LinkedHashMap {
 impl LinkedHashMap {
     pub fn get(&self, key: &str) -> &Yaml {
         self.linked_hash_map.get(&YamlRust::from_str(key).into()).unwrap()
+    }
+
+    pub fn create<T: Into<Yaml>>(data: Vec<(&str, T)>) -> Yaml {
+        let mut map: LinkedHashMapRust<YamlRust, YamlRust> = LinkedHashMapRust::with_capacity(data.len());
+
+        for (key, value) in data {
+            map.insert(YamlRust::String(String::from(key)), YamlRust::from(value.into()));
+        }
+
+        YamlRust::Hash(map).into()
     }
 }
 
@@ -90,59 +109,151 @@ impl From<LinkedHashMap> for LinkedHashMapRust<Yaml, Yaml> {
     }
 }
 
-pub trait Parse<T> {
-    fn parse(&self) -> T;
+//
+// converting from yaml
+//
+
+impl From<&Yaml> for bool {
+    fn from(yaml: &Yaml) -> Self {
+        yaml.as_bool().unwrap()
+    }
 }
 
-impl Parse<f64> for Yaml {
-    fn parse(&self) -> f64 {
-        if let Some(number) = self.as_i64() {
+impl From<Yaml> for bool {
+    fn from(yaml: Yaml) -> Self {
+        yaml.into()
+    }
+}
+
+impl From<&Yaml> for i32 {
+    fn from(yaml: &Yaml) -> Self {
+        i64::from(yaml) as i32
+    }
+}
+
+impl From<Yaml> for i32 {
+    fn from(yaml: Yaml) -> Self {
+        yaml.into()
+    }
+}
+
+impl From<&Yaml> for i64 {
+    fn from(yaml: &Yaml) -> Self {
+        yaml.as_i64().unwrap()
+    }
+}
+
+impl From<Yaml> for i64 {
+    fn from(yaml: Yaml) -> Self {
+        yaml.into()
+    }
+}
+
+impl From<&Yaml> for f32 {
+    fn from(yaml: &Yaml) -> Self {
+        f64::from(yaml) as f32
+    }
+}
+
+impl From<Yaml> for f32 {
+    fn from(yaml: Yaml) -> Self {
+        yaml.into()
+    }
+}
+
+impl From<&Yaml> for f64 {
+    fn from(yaml: &Yaml) -> Self {
+        if let Some(number) = yaml.as_i64() {
             return number as f64;
         }
         
-        if let Some(number) = self.as_f64() {
+        if let Some(number) = yaml.as_f64() {
             return number;
         }
         
-        self.as_str().unwrap().parse().unwrap()
+        yaml.as_str().unwrap().parse().unwrap()
     }
 }
 
-impl Parse<i64> for Yaml {
-    fn parse(&self) -> i64 {
-        self.yaml.as_i64().unwrap()
+impl From<Yaml> for f64 {
+    fn from(yaml: Yaml) -> Self {
+        yaml.into()
     }
 }
 
-impl Parse<bool> for Yaml {
-    fn parse(&self) -> bool {
-        self.yaml.as_bool().unwrap()
+impl From<&Yaml> for String {
+    fn from(yaml: &Yaml) -> Self {
+        yaml.as_str().unwrap().into()
     }
 }
 
-impl Parse<String> for Yaml {
-    fn parse(&self) -> String {
-        self.yaml.as_str().unwrap().into()
+impl<T: From<Yaml>> From<Yaml> for Vec<T> {
+    fn from(yaml: Yaml) -> Self {
+        yaml.0.into_vec().unwrap().into_iter().map(|element| T::from(element.into())).collect()
     }
 }
 
-impl Deref for Yaml {
-    type Target = YamlRust;
-
-    fn deref(&self) -> &Self::Target {
-        &self.yaml
+impl<T: From<Yaml>> From<&Yaml> for Vec<T> {
+    fn from(yaml: &Yaml) -> Self {
+        yaml.as_vec().unwrap().into_iter().map(|element| T::from(element.clone().into())).collect()
     }
 }
 
 impl From<Yaml> for LinkedHashMap {
     fn from(yaml: Yaml) -> Self {
-        yaml.yaml.into_hash().unwrap().into()
+        yaml.0.into_hash().unwrap().into()
     }
 }
 
-impl From<Yaml> for Vec<Yaml> {
-    fn from(yaml: Yaml) -> Self {
-        yaml.yaml.into_vec().unwrap().into_iter().map(|element| element.into()).collect()
+impl From<&Yaml> for LinkedHashMap {
+    fn from(yaml: &Yaml) -> Self {
+        yaml.as_hash().unwrap().clone().into()
+    }
+}
+
+//
+// converting to yaml
+//
+
+impl From<bool> for Yaml {
+    fn from(data: bool) -> Self {
+        Yaml(YamlRust::Boolean(data))
+    }
+}
+
+impl From<i32> for Yaml {
+    fn from(data: i32) -> Self {
+        Yaml::from(data as i64)
+    }
+}
+
+impl From<i64> for Yaml {
+    fn from(data: i64) -> Self {
+        Yaml(YamlRust::Integer(data))
+    }
+}
+
+impl From<f32> for Yaml {
+    fn from(data: f32) -> Self {
+        Yaml::from(data as f64)
+    }
+}
+
+impl From<f64> for Yaml {
+    fn from(data: f64) -> Self {
+        Yaml(YamlRust::Real(data.to_string()))
+    }
+}
+
+impl From<String> for Yaml {
+    fn from(data: String) -> Self {
+        YamlRust::String(data).into()
+    }
+}
+
+impl<T: Into<Yaml>> From<Vec<T>> for Yaml {
+    fn from(data: Vec<T>) -> Self {
+        YamlRust::Array(data.into_iter().map(|data| {Into::<Yaml>::into(data).0}).collect()).into()
     }
 }
 

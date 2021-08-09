@@ -135,7 +135,7 @@ impl BlockPattern {
 
 impl SavableBlueprint for BlockPattern {
     fn from_save_blueprint(yaml: Yaml) -> Box<Self> where Self: Sized {
-        let yaml_vec = Into::<Vec<_>>::into(yaml);
+        let yaml_vec = Vec::<Yaml>::from(yaml);
 
         let mut shapes = Vec::with_capacity(yaml_vec.len());
         
