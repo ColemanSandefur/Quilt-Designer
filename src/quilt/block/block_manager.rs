@@ -54,7 +54,7 @@ lazy_static!{
                 BlockPattern::new(vec![
                     Box::new(
                         ShapeDataStruct::new(
-                            Box::new(crate::render::shape::Triangle::new((0.0, 0.0), (0.0, 1.0), (1.0, 0.0), 0)),
+                            Box::new(crate::render::shape::PathShape::triangle((0.0, 0.0), (0.0, 1.0), (1.0, 0.0), 0)),
                         )
                     ),
                 ], String::from("half-square triangle")),
@@ -62,20 +62,20 @@ lazy_static!{
                 BlockPattern::new(vec![
                     Box::new(
                         ShapeDataStruct::new(
-                            Box::new(crate::render::shape::Square::with_width_height(0.0, 0.0, 1.0, 1.0, 0)),
+                            Box::new(crate::render::shape::PathShape::square(0.0, 0.0, 1.0, 1.0, 0)),
                         )
                     )
                 ], String::from("square")),
         
                 BlockPattern::new(vec![
                     Box::new(ShapeDataStruct::new(
-                        Box::new(crate::render::shape::Square::with_width_height(0.25, 0.25, 0.5, 0.5, 0)),
+                        Box::new(crate::render::shape::PathShape::square(0.25, 0.25, 0.5, 0.5, 0)),
                     )),
                     Box::new(ShapeDataStruct::new(
-                        Box::new(crate::render::shape::Square::with_width_height(0.3, 0.3, 0.4, 0.4, 0)),
+                        Box::new(crate::render::shape::PathShape::square(0.3, 0.3, 0.4, 0.4, 0)),
                     )),
                     Box::new(ShapeDataStruct::new(
-                        Box::new(crate::render::shape::Square::with_width_height(0.35, 0.35, 0.3, 0.3, 0)),
+                        Box::new(crate::render::shape::PathShape::square(0.35, 0.35, 0.3, 0.3, 0)),
                     )),
                     Box::new(ShapeDataStruct::new(
                         Box::new(

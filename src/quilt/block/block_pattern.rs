@@ -16,7 +16,7 @@ impl BlockPattern {
 
         shapes.insert(0, 
             Box::new(ShapeDataStruct::new(
-                Box::new(crate::render::shape::Square::with_line_width(0.0, 0.0, 1.0, 1.0, 0, 0.0)),
+                Box::new(crate::render::shape::PathShape::square_with_line_width(0.0, 0.0, 1.0, 1.0, 0, 0.0)),
             )),
         );
 

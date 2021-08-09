@@ -203,7 +203,7 @@ impl Block {
         let shape_protector = ShapeProtector::with_shapes(
             vec!{
                 Box::new(ShapeDataStruct::new(
-                    Box::new(crate::render::shape::Square::with_line_width(0.0, 0.0, 1.0, 1.0, picker.get_new_id(row, column), 0.0)),
+                    Box::new(crate::render::shape::PathShape::square_with_line_width(0.0, 0.0, 1.0, 1.0, picker.get_new_id(row, column), 0.0)),
                 )),
                 Box::new(ShapeDataStruct::new(
                     Box::new(crate::render::shape::StrokeShape::square(0.0, 0.0, 1.0, 1.0, 0, &lyon::tessellation::StrokeOptions::default().with_line_width(crate::quilt::block::Block::BLOCK_BORDER_WIDTH))),
