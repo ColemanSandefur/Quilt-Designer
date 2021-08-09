@@ -1,6 +1,6 @@
 use crate::render::shape_object::{ShapeDataStruct};
 use crate::glium::Surface;
-use crate::parse::{Yaml, SavableBlueprint};
+use crate::parse::{Yaml, SavableBlueprint, LinkedHashMap};
 
 #[derive(Clone)]
 pub struct BlockPattern {
@@ -134,8 +134,22 @@ impl BlockPattern {
 }
 
 impl SavableBlueprint for BlockPattern {
+    fn to_save_blueprint(&self) -> Yaml {
+        let mut shapes = Vec::with_capacity(self.shapes.len());
+
+        for shape in &self.shapes[1..self.shapes.len() - 1] {
+            shapes.push(shape.to_save_blueprint());
+        }
+
+        LinkedHashMap::create(vec![
+            ("name", Yaml::from(self.pattern_name.clone())),
+            ("pattern", shapes.into())
+        ])
+    }
+
     fn from_save_blueprint(yaml: Yaml) -> Box<Self> where Self: Sized {
-        let yaml_vec = Vec::<Yaml>::from(yaml);
+        let map = LinkedHashMap::from(yaml);
+        let yaml_vec = Vec::<Yaml>::from(map.get("pattern"));
 
         let mut shapes = Vec::with_capacity(yaml_vec.len());
         
@@ -143,10 +157,6 @@ impl SavableBlueprint for BlockPattern {
             shapes.push(ShapeDataStruct::from_save_blueprint(yaml_entry));
         }
 
-        Box::new(Self {
-            shapes,
-            texture_id: None,
-            pattern_name: String::from(""),
-        })
+        Box::new(Self::new(shapes, map.get("name").into()))
     }
 }

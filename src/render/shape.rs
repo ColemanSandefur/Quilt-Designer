@@ -8,7 +8,6 @@ use crate::parse::{Yaml, SavableBlueprint};
 use cgmath::Matrix4;
 use cgmath::Rad;
 use lyon::math::{point, Point};
-use lyon::path::Path;
 use lyon::tessellation::*;
 
 #[derive(Copy, Clone, Debug)]
@@ -42,7 +41,11 @@ impl Vertex {
 
 implement_vertex!(Vertex, position, color, model, rotation, id, tex_id);
 
-pub trait Shape: Sync + Send{
+pub trait Shape: Sync + Send + SavableBlueprint + PrimitiveShape {
+    fn clone_shape(&self) -> Box<dyn Shape>;
+}
+
+pub trait PrimitiveShape: Sync + Send {
     fn get_vertices(&self) -> Vec<Vertex>;
     fn get_indices(&self) -> Vec<u32>;
     fn set_color(&mut self, color: [f32; 4]);
@@ -57,7 +60,7 @@ pub trait Shape: Sync + Send{
     fn was_clicked(&self, id: u32) -> bool {
         self.get_id() == id
     }
-    fn clone_shape(&self) -> Box<dyn Shape>;
+    fn clone_primitive(&self) -> Box<dyn PrimitiveShape>;
 }
 
 // Path Shape will create a filled shape from the given path
@@ -95,7 +98,7 @@ impl PathShape {
 
         let index_buffer = geometry.indices.to_vec();
 
-        let outline = StrokeShape::new(&path.build_path(), 0, &StrokeOptions::default().with_line_width(crate::quilt::block::Block::SHAPE_BORDER_WIDTH));
+        let outline = StrokeShape::new(path.clone(), 0, &StrokeOptions::default().with_line_width(crate::quilt::block::Block::SHAPE_BORDER_WIDTH));
 
         Self {
             path,
@@ -129,7 +132,7 @@ impl PathShape {
 
         let index_buffer = geometry.indices.to_vec();
 
-        let outline = StrokeShape::new(&path.build_path(), 0, &StrokeOptions::default().with_line_width(line_width));
+        let outline = StrokeShape::new(path.clone(), 0, &StrokeOptions::default().with_line_width(line_width));
 
         Self {
             path,
@@ -186,7 +189,18 @@ impl PathShape {
     }
 }
 
-impl Shape for PathShape {
+impl SavableBlueprint for PathShape {
+    fn to_save_blueprint(&self) -> Yaml {
+        self.path.to_save_blueprint()
+    }
+    fn from_save_blueprint(yaml: Yaml) -> Box<Self> where Self: Sized {
+        let path = ShapePath::from_save_blueprint(yaml);
+
+        Box::new(Self::new(*path, 0))
+    }
+}
+
+impl PrimitiveShape for PathShape {
     fn get_vertices(&self) -> Vec<Vertex> {
         let mut vb = self.vertex_buffer.clone();
         
@@ -267,16 +281,14 @@ impl Shape for PathShape {
         self.outline.set_rotation(rotation);
     }
 
-    fn clone_shape(&self) -> Box<dyn Shape> {
+    fn clone_primitive(&self) -> Box<dyn PrimitiveShape> {
         Box::new(self.clone())
     }
 }
 
-impl SavableBlueprint for PathShape {
-    fn from_save_blueprint(yaml: Yaml) -> Box<Self> where Self: Sized {
-        let path = ShapePath::from_save_blueprint(yaml);
-
-        Box::new(Self::new(*path, 0))
+impl Shape for PathShape{
+    fn clone_shape(&self) -> Box<dyn Shape> {
+        Box::new(self.clone())
     }
 }
 
@@ -284,13 +296,14 @@ impl SavableBlueprint for PathShape {
 
 #[derive(Clone)]
 pub struct StrokeShape {
+    path: ShapePath,
     vertex_buffer: Vec<Vertex>,
     index_buffer: Vec<u32>,
 }
 
 impl StrokeShape {
 
-    pub fn new(path: &Path, id: u32, stroke_options: &StrokeOptions) -> Self {
+    pub fn new(path: ShapePath, id: u32, stroke_options: &StrokeOptions) -> Self {
         let stroke_options = stroke_options.clone().with_tolerance(0.001);
 
 
@@ -300,7 +313,7 @@ impl StrokeShape {
             let mut vertex_builder = lyon::tessellation::geometry_builder::simple_builder(&mut buffers);
             let mut tessellator = StrokeTessellator::new();
 
-            tessellator.tessellate(path, &stroke_options, &mut vertex_builder).expect("error making stroke");
+            tessellator.tessellate(&path.build_path(), &stroke_options, &mut vertex_builder).expect("error making stroke");
         }
 
         let i = buffers.indices;
@@ -327,6 +340,7 @@ impl StrokeShape {
         }
 
         Self {
+            path,
             vertex_buffer,
             index_buffer,
         }
@@ -334,20 +348,37 @@ impl StrokeShape {
 
 
     pub fn square(x: f32, y: f32, width: f32, height: f32, id: u32, stroke_options: &StrokeOptions) -> Self {
-        let mut path = Path::svg_builder();
+        let mut path = ShapePath::new();
+
         path.move_to(point(x, y));
         path.line_to(point(x + width, y));
         path.line_to(point(x + width, y + height));
         path.line_to(point(x, y + height));
         path.line_to(point(x, y));
         path.close();
-        let path = path.build();
 
-        Self::new(&path, id, stroke_options)
+        Self::new(path, id, stroke_options)
     }
 }
 
-impl Shape for StrokeShape {
+impl SavableBlueprint for StrokeShape {
+    fn to_save_blueprint(&self) -> Yaml {
+        self.path.to_save_blueprint()
+    }
+    fn from_save_blueprint(yaml: Yaml) -> Box<Self> where Self: Sized {
+        let path = ShapePath::from_save_blueprint(yaml);
+
+        Box::new(Self::new(*path, 0, &StrokeOptions::default().with_line_width(crate::quilt::block::Block::SHAPE_BORDER_WIDTH)))
+    }
+}
+
+impl Shape for StrokeShape{
+    fn clone_shape(&self) -> Box<dyn Shape> {
+        Box::new(self.clone())
+    }
+}
+
+impl PrimitiveShape for StrokeShape {
     fn get_vertices(&self) -> Vec<Vertex> {
         self.vertex_buffer.clone()
     }
@@ -408,7 +439,7 @@ impl Shape for StrokeShape {
         }
     }
 
-    fn clone_shape(&self) -> Box<dyn Shape> {
+    fn clone_primitive(&self) -> Box<dyn PrimitiveShape> {
         Box::new(self.clone())
     }
 }

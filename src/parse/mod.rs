@@ -4,6 +4,8 @@ use std::ops::{Deref, DerefMut};
 use std::fs::File;
 use std::path::Path;
 use std::io::Read;
+use std::io::Write;
+use lyon::math::{point, Point};
 
 // yaml wrapper
 #[derive(Clone, Hash, std::cmp::PartialEq, std::cmp::Eq)]
@@ -11,10 +13,7 @@ pub struct Yaml(YamlRust);
 
 impl Yaml {
     pub fn print(&self) {
-        let mut output = String::new();
-        let mut emitter = yaml_rust::YamlEmitter::new(&mut output);
-        emitter.dump(&self).unwrap();
-        println!("=== dump: ===\n{}\n=============\n",output);
+        println!("=== dump: ===\n{}\n=============\n", self.dump_to_string());
     }
 
     pub fn load_from_file(path: &Path) -> Self {
@@ -24,6 +23,20 @@ impl Yaml {
         file.read_to_string(&mut contents).unwrap();
 
         yaml_rust::YamlLoader::load_from_str(&contents).unwrap().remove(0).into()
+    }
+
+    pub fn save_to_file(&self, path: &Path) {
+        let mut file = File::create(path).expect("Error creating file to save");
+
+        file.write(self.dump_to_string().as_bytes()).expect("Error writing file");
+    }
+
+    pub fn dump_to_string(&self) -> String {
+        let mut output = String::new();
+        let mut emitter = yaml_rust::YamlEmitter::new(&mut output);
+        emitter.dump(&self).unwrap();
+
+        output
     }
 }
 
@@ -211,6 +224,22 @@ impl From<&Yaml> for LinkedHashMap {
     }
 }
 
+impl From<Yaml> for Point {
+    fn from(yaml: Yaml) -> Self {
+        let map = LinkedHashMap::from(yaml);
+
+        point(map.get("x").into(), map.get("y").into())
+    }
+}
+
+impl From<&Yaml> for Point {
+    fn from(yaml: &Yaml) -> Self {
+        let map = LinkedHashMap::from(yaml);
+
+        point(map.get("x").into(), map.get("y").into())
+    }
+}
+
 //
 // converting to yaml
 //
@@ -251,6 +280,21 @@ impl From<String> for Yaml {
     }
 }
 
+impl From<&str> for Yaml {
+    fn from(data: &str) -> Self {
+        String::from(data).into()
+    }
+}
+
+impl From<Point> for Yaml {
+    fn from(data: Point) -> Self {
+        LinkedHashMap::create(vec![
+            ("x", data.x),
+            ("y", data.y)
+        ])
+    }
+}
+
 impl<T: Into<Yaml>> From<Vec<T>> for Yaml {
     fn from(data: Vec<T>) -> Self {
         YamlRust::Array(data.into_iter().map(|data| {Into::<Yaml>::into(data).0}).collect()).into()
@@ -258,6 +302,6 @@ impl<T: Into<Yaml>> From<Vec<T>> for Yaml {
 }
 
 pub trait SavableBlueprint {
-    // fn to_save_blueprint(&self) -> Yaml;
+    fn to_save_blueprint(&self) -> Yaml;
     fn from_save_blueprint(yaml: Yaml) -> Box<Self> where Self: Sized;
 }

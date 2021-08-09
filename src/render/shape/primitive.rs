@@ -3,7 +3,6 @@ use crate::render::matrix::Matrix;
 use cgmath::Matrix4;
 
 use lyon::math::{point};
-use lyon::path::Path;
 
 #[derive(Clone)]
 pub struct Triangle {
@@ -23,15 +22,14 @@ impl Triangle {
 
         // Generate outline
 
-        let mut outline = Path::svg_builder();
+        let mut outline = ShapePath::new();
         outline.move_to(point(pos1.0, pos1.1));
         outline.line_to(point(pos2.0, pos2.1));
         outline.line_to(point(pos3.0, pos3.1));
         outline.line_to(point(pos1.0, pos1.1));
         outline.close();
-        let outline = outline.build();
 
-        let stroke = StrokeShape::new(&outline, 0, &StrokeOptions::default().with_line_width(crate::quilt::block::Block::SHAPE_BORDER_WIDTH));
+        let stroke = StrokeShape::new(outline, 0, &StrokeOptions::default().with_line_width(crate::quilt::block::Block::SHAPE_BORDER_WIDTH));
 
         // Add generated ib and vb to current ib and vb
 
@@ -50,7 +48,7 @@ impl Triangle {
     }
 }
 
-impl Shape for Triangle {
+impl PrimitiveShape for Triangle {
     fn get_vertices(&self) -> Vec<Vertex> {
         self.vertex_buffer.clone()
     }
@@ -114,7 +112,7 @@ impl Shape for Triangle {
         }
     }
 
-    fn clone_shape(&self) -> Box<dyn Shape> {
+    fn clone_primitive(&self) -> Box<dyn PrimitiveShape> {
         Box::new(self.clone())
     }
 }
@@ -161,7 +159,7 @@ impl Square {
     }
 }
 
-impl Shape for Square {
+impl PrimitiveShape for Square {
     fn get_vertices(&self) -> Vec<Vertex> {
         self.vertex_buffer.clone()
     }
@@ -225,7 +223,7 @@ impl Shape for Square {
         }
     }
 
-    fn clone_shape(&self) -> Box<dyn Shape> {
+    fn clone_primitive(&self) -> Box<dyn PrimitiveShape> {
         Box::new(self.clone())
     }
 }

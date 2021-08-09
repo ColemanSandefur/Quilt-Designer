@@ -33,6 +33,10 @@ pub trait ShapeObject {
 }
 
 impl SavableBlueprint for ShapeDataStruct {
+    fn to_save_blueprint(&self) -> Yaml {
+        self.shape.to_save_blueprint()
+    }
+
     fn from_save_blueprint(yaml: Yaml) -> Box<Self> where Self: Sized {
         Box::new(Self {
             shape: PathShape::from_save_blueprint(yaml)
