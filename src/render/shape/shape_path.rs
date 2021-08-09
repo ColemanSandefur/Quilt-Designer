@@ -1,3 +1,5 @@
+use crate::parse::{Yaml, SavableBlueprint};
+
 use lyon::math::{point, Point};
 use lyon::path::Path;
 use lyon::path::{ArcFlags};
@@ -111,4 +113,57 @@ impl ShapePath {
 
         path.build()
     } 
+
+    fn decode_movement(yaml: Yaml, path: &mut ShapePath) {
+        let map = crate::parse::LinkedHashMap::from(yaml);
+    
+        let name = map.get("name").as_str().unwrap();
+    
+        match name {
+            "move" => {
+                let coords = crate::parse::LinkedHashMap::from(map.get("point").clone());
+    
+                let x = f32::from(coords.get("x"));
+                let y = f32::from(coords.get("y"));
+    
+                path.line_to(point(x, y));
+            },
+            "line" => {
+                let coords = crate::parse::LinkedHashMap::from(map.get("point").clone());
+    
+                let x = f32::from(coords.get("x"));
+                let y = f32::from(coords.get("y"));
+    
+                path.line_to(point(x, y));
+            },
+            "arc" => {
+                // not sure if this works or not
+                let center = crate::parse::LinkedHashMap::from(map.get("center").clone());
+    
+                let x = f32::from(center.get("x"));
+                let y = f32::from(center.get("y"));
+    
+                let radius = f32::from(map.get("radius"));
+                let start_angle = f32::from(map.get("start_angle"));
+                let end_angle = f32::from(map.get("end_angle"));
+    
+                path.arc_to(point(x, y), radius, start_angle, end_angle);
+            }
+            _ => ()
+        };
+    }
+}
+
+impl SavableBlueprint for ShapePath {
+    fn from_save_blueprint(yaml: Yaml) -> Box<Self> where Self: Sized {
+        let yaml_movements = Vec::<Yaml>::from(yaml);
+
+        let mut path = ShapePath::new();
+
+        for movement in yaml_movements {
+            Self::decode_movement(movement, &mut path);
+        }
+
+        Box::new(path)
+    }
 }

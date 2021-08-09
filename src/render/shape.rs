@@ -2,11 +2,11 @@ pub mod primitive;
 pub mod shape_path;
 
 use shape_path::ShapePath;
-use crate::parse::{Yaml, SavableBlueprint};
 use crate::render::matrix::Matrix;
+use crate::parse::{Yaml, SavableBlueprint};
+
 use cgmath::Matrix4;
 use cgmath::Rad;
-
 use lyon::math::{point, Point};
 use lyon::path::Path;
 use lyon::tessellation::*;
@@ -274,15 +274,9 @@ impl Shape for PathShape {
 
 impl SavableBlueprint for PathShape {
     fn from_save_blueprint(yaml: Yaml) -> Box<Self> where Self: Sized {
-        let yaml_movements = Vec::<Yaml>::from(yaml);
+        let path = ShapePath::from_save_blueprint(yaml);
 
-        let mut path = ShapePath::new();
-
-        for movement in yaml_movements {
-            decode_movement(movement, &mut path);
-        }
-
-        Box::new(Self::new(path, 0))
+        Box::new(Self::new(*path, 0))
     }
 }
 
@@ -422,43 +416,3 @@ impl Shape for StrokeShape {
 pub fn draw<'a, U: glium::uniforms::Uniforms>(shape: &(&glium::VertexBuffer<Vertex>, &glium::IndexBuffer<u32>), frame: &mut impl glium::Surface, program: &glium::Program, uniforms: &U, draw_parameters: &glium::DrawParameters<'_>) {
     frame.draw(shape.0, shape.1, program, uniforms, draw_parameters).unwrap();
 }
-
-fn decode_movement(yaml: Yaml, path: &mut ShapePath) {
-    let map = crate::parse::LinkedHashMap::from(yaml);
-
-    let name = map.get("name").as_str().unwrap();
-
-    match name {
-        "move" => {
-            let coords = crate::parse::LinkedHashMap::from(map.get("point").clone());
-
-            let x = f32::from(coords.get("x"));
-            let y = f32::from(coords.get("y"));
-
-            path.line_to(point(x, y));
-        },
-        "line" => {
-            let coords = crate::parse::LinkedHashMap::from(map.get("point").clone());
-
-            let x = f32::from(coords.get("x"));
-            let y = f32::from(coords.get("y"));
-
-            path.line_to(point(x, y));
-        },
-        "arc" => {
-            // not sure if this works or not
-            let center = crate::parse::LinkedHashMap::from(map.get("center").clone());
-
-            let x = f32::from(center.get("x"));
-            let y = f32::from(center.get("y"));
-
-            let radius = f32::from(map.get("radius"));
-            let start_angle = f32::from(map.get("start_angle"));
-            let end_angle = f32::from(map.get("end_angle"));
-
-            path.arc_to(point(x, y), radius, start_angle, end_angle);
-        }
-        _ => ()
-    };
-}
-
