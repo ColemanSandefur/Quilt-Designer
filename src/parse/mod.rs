@@ -82,7 +82,7 @@ pub struct LinkedHashMap {
 
 impl LinkedHashMap {
     pub fn get(&self, key: &str) -> &Yaml {
-        self.linked_hash_map.get(&YamlRust::from_str(key).into()).unwrap()
+        self.linked_hash_map.get(&YamlRust::from_str(key).into()).expect(&format!("could not find key: {}", key))
     }
 
     pub fn create<T: Into<Yaml>>(data: Vec<(&str, T)>) -> Yaml {
@@ -157,6 +157,18 @@ impl From<&Yaml> for i64 {
 }
 
 impl From<Yaml> for i64 {
+    fn from(yaml: Yaml) -> Self {
+        yaml.into()
+    }
+}
+
+impl From<&Yaml> for usize {
+    fn from(yaml: &Yaml) -> Self {
+        i64::from(yaml) as usize
+    }
+}
+
+impl From<Yaml> for usize {
     fn from(yaml: Yaml) -> Self {
         yaml.into()
     }
@@ -262,6 +274,12 @@ impl From<i64> for Yaml {
     }
 }
 
+impl From<usize> for Yaml {
+    fn from(data: usize) -> Self {
+        (data as i64).into()
+    }
+}
+
 impl From<f32> for Yaml {
     fn from(data: f32) -> Self {
         Yaml::from(data as f64)
@@ -304,4 +322,9 @@ impl<T: Into<Yaml>> From<Vec<T>> for Yaml {
 pub trait SavableBlueprint {
     fn to_save_blueprint(&self) -> Yaml;
     fn from_save_blueprint(yaml: Yaml) -> Box<Self> where Self: Sized;
+}
+
+pub trait Savable {
+    fn to_save(&self) -> Yaml;
+    fn from_save(yaml: Yaml) -> Box<Self> where Self: Sized;
 }

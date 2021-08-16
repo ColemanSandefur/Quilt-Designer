@@ -54,12 +54,12 @@ impl MaterialManager {
     fn load_from_file(path: &std::path::Path, display: &dyn glium::backend::Facade) -> Rc<glium::Program>{
         use std::io::Read;
 
-        let mut fragment_file = std::fs::File::open(path.join("fragment.txt")).expect(
-            format!("unable to find file {}", std::env::current_dir().unwrap().join(path).join("fragment.txt").into_os_string().to_str().unwrap()).as_str()
+        let mut fragment_file = std::fs::File::open(path.join("fragment.glsl")).expect(
+            format!("unable to find file {}", std::env::current_dir().unwrap().join(path).join("fragment.glsl").into_os_string().to_str().unwrap()).as_str()
         );
         
-        let mut vertex_file = std::fs::File::open(path.join("vertex.txt")).expect(
-            format!("unable to find file {}", std::env::current_dir().unwrap().join(path).join("vertex.txt").into_os_string().to_str().unwrap()).as_str()
+        let mut vertex_file = std::fs::File::open(path.join("vertex.glsl")).expect(
+            format!("unable to find file {}", std::env::current_dir().unwrap().join(path).join("vertex.glsl").into_os_string().to_str().unwrap()).as_str()
         );
 
         let mut fragment_shader_src = String::new();

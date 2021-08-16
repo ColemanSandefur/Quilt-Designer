@@ -62,6 +62,7 @@ impl Quilt {
                 let r = -1.0 * r as f32 - 1.0;
 
                 let mut transform = square.get_model_transform();
+                
                 transform.translate(column - width as f32 / 2.0, r + height as f32 / 2.0, 0.0);
 
                 square.set_model_transform(transform);
@@ -95,6 +96,13 @@ impl Quilt {
             index_vec,  
             draw_stats: DrawStats::new(),  
         }
+    }
+
+    pub fn calc_offset(&self, row: usize, column: usize) -> (f32, f32) {
+        let column = column as f32;
+        let r = -1.0 * row as f32 - 1.0;
+
+        (column - self.width as f32 / 2.0, r + self.height as f32 / 2.0)
     }
     
     pub fn draw(&mut self, frame: &mut impl glium::Surface, world_transform: &WorldTransform, draw_parameters: &glium::DrawParameters<'_>, picker: &mut Picker) {

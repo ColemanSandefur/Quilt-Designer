@@ -6,10 +6,13 @@ use crate::render::shape_object::{ShapeDataStruct};
 use crate::render::matrix::{Matrix};
 use crate::render::shape::{Shape, Vertex};
 use crate::render::picker::{Picker};
+use crate::quilt::block::block_pattern::BlockPattern;
+use crate::parse::*;
 
 // The purpose of the "shape protector" is to call update_buffer whenever a shape has changed
 struct ShapeProtector {
     shapes: Vec<Box<ShapeDataStruct>>,
+    rotation: f32,
     model_transform: Matrix,
     vertex_buffer: Vec<Vertex>,
     index_buffer: Vec<u32>,
@@ -25,6 +28,7 @@ impl ShapeProtector {
     pub fn new() -> Self {
         let s = Self {
             shapes: Vec::with_capacity(10),
+            rotation: 0.0,
             model_transform: Matrix::new(),
             vertex_buffer: Vec::new(),
             index_buffer: Vec::new(),
@@ -35,9 +39,15 @@ impl ShapeProtector {
         s
     }
     
-    pub fn with_shapes(shapes: Vec<Box<ShapeDataStruct>>) -> Self {
+    pub fn with_shapes(mut shapes: Vec<Box<ShapeDataStruct>>, rotation: f32) -> Self {
+
+        for shape in &mut shapes {
+            shape.shape.set_rotation(rotation);
+        }
+
         let mut s = Self {
             shapes,
+            rotation,
             model_transform: Matrix::new(),
             vertex_buffer: Vec::new(),
             index_buffer: Vec::new(),
@@ -76,10 +86,11 @@ impl ShapeProtector {
         }
     }
 
-    pub fn set_shapes(&mut self, shapes: Vec<Box<ShapeDataStruct>>) {
+    pub fn set_shapes(&mut self, shapes: Vec<Box<ShapeDataStruct>>, rotation: f32) {
         self.shapes = shapes;
 
         self.set_model_transform(self.model_transform);
+        self.rotation = rotation;
 
         self.update_buffer();
     }
@@ -181,6 +192,69 @@ impl ShapeProtector {
         }
 
     }
+
+    pub fn set_rotation(&mut self, rotation: f32) {
+        for shape in &mut self.shapes {
+            shape.shape.set_rotation(rotation);
+        }
+    }
+
+    // serialization
+
+    pub fn from_save(yaml: &Yaml, picker: &mut Picker, row: usize, column: usize) -> Self {
+        let yaml_map = LinkedHashMap::from(yaml);
+
+        let yaml_vec: Vec<Yaml> = yaml_map.get("shape").into();
+        
+        let mut shapes: Vec<Box<ShapeDataStruct>> = yaml_vec.into_iter().map(|data| ShapeDataStruct::from_save(data)).collect();
+
+        for shape in &mut shapes {
+            shape.shape.set_id(picker.get_new_id(row, column));
+            shape.shape.set_color([1.0;4]);
+        }
+
+        BlockPattern::apply_background(&mut shapes);
+
+        shapes[0].shape.set_id(picker.get_new_id(row, column));
+        shapes[0].shape.set_color([1.0; 4]);
+
+        println!("shapes len: {}", shapes.len());
+        
+        let mut s = Self {
+            shapes,
+            rotation: 0.0,
+            model_transform: Matrix::new(),
+            vertex_buffer: Vec::new(),
+            index_buffer: Vec::new(),
+            index_count: 0,
+            vertex_count: 0,
+        };
+
+        // s.set_rotation(yaml_map.get("rotation").into());
+
+        s.update_buffer();
+
+        println!("Num indices: {}", s.index_count);
+
+        s
+    }
+
+    pub fn to_save(&self) -> Yaml {
+        // IMPORTANT: assuming that the first and last shapes are redundant (background square and border)
+
+        let mut vec: Vec<Yaml> = Vec::with_capacity(self.shapes.len());
+
+        if self.shapes.len() > 2 {
+            for shape in &self.shapes[1..self.shapes.len() - 1] {
+                vec.push(shape.to_save());
+            }
+        }
+
+        LinkedHashMap::create(vec![
+            ("shape", Yaml::from(vec)),
+            ("rotation", self.rotation.into())
+        ])
+    }
 }
 
 // Each square represents a block on the quilt
@@ -208,7 +282,8 @@ impl Block {
                 Box::new(ShapeDataStruct::new(
                     Box::new(crate::render::shape::StrokeShape::square(0.0, 0.0, 1.0, 1.0, 0, &lyon::tessellation::StrokeOptions::default().with_line_width(crate::quilt::block::Block::BLOCK_BORDER_WIDTH))),
                 )),
-            }
+            },
+            0.0
         );
 
         let s = Block {
@@ -238,7 +313,7 @@ impl Block {
 
         if brush.is_block_brush() {
             // change the block pattern
-            self.shape_protector.set_shapes(brush.get_block_brush().unwrap().get_pattern(picker, self.row, self.column).get_shapes().clone());
+            self.shape_protector.set_shapes(brush.get_block_brush().unwrap().get_pattern(picker, self.row, self.column).get_shapes().clone(), Brush::get_rotation());
             should_update = true;
         } else if brush.is_pattern_brush() {
             // change either the color or texture of a shape
@@ -269,5 +344,30 @@ impl Block {
 
     pub fn set_model_transform(&mut self, matrix: Matrix) {
         self.shape_protector.set_model_transform(matrix);
+    }
+
+    pub fn from_save(yaml:Yaml, picker: &mut Picker) -> Self {
+        let map = LinkedHashMap::from(yaml);
+
+        let row = usize::from(map.get("row"));
+        let column = usize::from(map.get("column"));
+
+        let shape_protector = ShapeProtector::from_save(map.get("shapes"), picker, row, column);
+
+        Self {
+            shape_protector,
+            row,
+            column
+        }
+    }
+
+    pub fn to_save(&self) -> Yaml {
+        let shapes = self.shape_protector.to_save();
+
+        LinkedHashMap::create(vec![
+            ("shapes", Yaml::from(shapes)),
+            ("row", self.row.into()),
+            ("column", self.column.into()),
+        ])
     }
 }

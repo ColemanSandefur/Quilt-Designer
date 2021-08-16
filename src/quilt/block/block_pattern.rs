@@ -10,10 +10,7 @@ pub struct BlockPattern {
 }
 
 impl BlockPattern {
-    pub fn new(mut shapes: Vec<Box<ShapeDataStruct>>, name: String) -> Self {
-
-        // add square to background and black outline to square pattern
-
+    pub fn apply_background(shapes: &mut Vec<Box<ShapeDataStruct>>) {
         shapes.insert(0, 
             Box::new(ShapeDataStruct::new(
                 Box::new(crate::render::shape::PathShape::square_with_line_width(0.0, 0.0, 1.0, 1.0, 0, 0.0)),
@@ -25,12 +22,23 @@ impl BlockPattern {
                 Box::new(crate::render::shape::StrokeShape::square(0.0, 0.0, 1.0, 1.0, 0, &lyon::lyon_tessellation::StrokeOptions::default().with_line_width(crate::quilt::block::Block::BLOCK_BORDER_WIDTH)),
             )),
         ));
+    }
+
+    pub fn new(mut shapes: Vec<Box<ShapeDataStruct>>, name: String) -> Self {
+
+        // add square to background and black outline to square pattern
+
+        Self::apply_background(&mut shapes);
 
         Self {
             shapes,
             texture_id: None,
             pattern_name: name,
         }
+    }
+
+    pub fn get_mut_shapes(&mut self) -> &mut Vec<Box<ShapeDataStruct>> {
+        &mut self.shapes
     }
 
     pub fn get_shapes(&self) -> &Vec<Box<ShapeDataStruct>> {

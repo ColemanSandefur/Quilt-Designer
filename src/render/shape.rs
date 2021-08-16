@@ -3,7 +3,7 @@ pub mod shape_path;
 
 use shape_path::ShapePath;
 use crate::render::matrix::Matrix;
-use crate::parse::{Yaml, SavableBlueprint};
+use crate::parse::{Yaml, SavableBlueprint, Savable, LinkedHashMap};
 
 use cgmath::Matrix4;
 use cgmath::Rad;
@@ -41,7 +41,7 @@ impl Vertex {
 
 implement_vertex!(Vertex, position, color, model, rotation, id, tex_id);
 
-pub trait Shape: Sync + Send + SavableBlueprint + PrimitiveShape {
+pub trait Shape: Sync + Send + SavableBlueprint + Savable + PrimitiveShape {
     fn clone_shape(&self) -> Box<dyn Shape>;
 }
 
@@ -72,6 +72,7 @@ pub struct PathShape {
     index_buffer: Vec<u32>,
     should_outline: bool,
     outline: StrokeShape,
+    rotation: f32,
 }
 
 impl PathShape {
@@ -106,6 +107,7 @@ impl PathShape {
             index_buffer,
             should_outline: true,
             outline,
+            rotation: 0.0,
         }
     }
 
@@ -140,6 +142,7 @@ impl PathShape {
             index_buffer,
             should_outline: true,
             outline,
+            rotation: 0.0
         }
     }
 
@@ -197,6 +200,33 @@ impl SavableBlueprint for PathShape {
         let path = ShapePath::from_save_blueprint(yaml);
 
         Box::new(Self::new(*path, 0))
+    }
+}
+
+impl Savable for PathShape {
+    // path: ShapePath,
+    // vertex_buffer: Vec<Vertex>,
+    // index_buffer: Vec<u32>,
+    // should_outline: bool,
+    // outline: StrokeShape,
+    // rotation: f32,
+
+    fn to_save(&self) -> Yaml {
+        LinkedHashMap::create(vec![
+            ("path", self.path.to_save_blueprint()),
+            ("rotation", self.rotation.into()),
+        ])
+    }
+    fn from_save(yaml: Yaml) -> Box<Self> where Self: Sized {
+        let map = LinkedHashMap::from(yaml);
+        let rotation = map.get("rotation").into();
+        let path = ShapePath::from_save_blueprint(map.get("path").clone());
+
+        let mut s = Self::new(*path, 0);
+
+        s.set_rotation(rotation);
+
+        Box::new(s)
     }
 }
 
@@ -274,6 +304,8 @@ impl PrimitiveShape for PathShape {
     }
 
     fn set_rotation(&mut self, rotation: f32) {
+        self.rotation = rotation;
+
         for vertex in &mut self.vertex_buffer {
             vertex.rotation = Matrix4::from_angle_z(cgmath::Rad(rotation)).into()
         }
@@ -366,6 +398,17 @@ impl SavableBlueprint for StrokeShape {
         self.path.to_save_blueprint()
     }
     fn from_save_blueprint(yaml: Yaml) -> Box<Self> where Self: Sized {
+        let path = ShapePath::from_save_blueprint(yaml);
+
+        Box::new(Self::new(*path, 0, &StrokeOptions::default().with_line_width(crate::quilt::block::Block::SHAPE_BORDER_WIDTH)))
+    }
+}
+
+impl Savable for StrokeShape {
+    fn to_save(&self) -> Yaml {
+        self.path.to_save_blueprint()
+    }
+    fn from_save(yaml: Yaml) -> Box<Self> where Self: Sized {
         let path = ShapePath::from_save_blueprint(yaml);
 
         Box::new(Self::new(*path, 0, &StrokeOptions::default().with_line_width(crate::quilt::block::Block::SHAPE_BORDER_WIDTH)))

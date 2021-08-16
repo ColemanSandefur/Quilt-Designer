@@ -128,6 +128,22 @@ impl Renderer {
         if key_code == VirtualKeyCode::R  && state == ElementState::Pressed {
             Brush::increase_rotation(-std::f32::consts::FRAC_PI_2);
         }
+
+        if key_code == VirtualKeyCode::T && state == ElementState::Pressed {
+            self.quilt.squares[0][0].to_save().save_to_file(std::path::Path::new("./saves/block.yaml"));
+        }
+
+        if key_code == VirtualKeyCode::Y && state == ElementState::Pressed {
+            self.quilt.squares[0][0] = crate::quilt::block::Block::from_save(crate::parse::Yaml::load_from_file(std::path::Path::new("./saves/block.yaml")), &mut self.picker);
+
+            let mut transform = self.quilt.squares[0][0].get_model_transform();
+
+            let translation = self.quilt.calc_offset(0, 0);
+                
+            transform.translate(translation.0, translation.1, 0.0);
+
+            self.quilt.squares[0][0].set_model_transform(transform);
+        }
     }
 
     pub fn clicked(&mut self) {

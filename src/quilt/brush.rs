@@ -13,6 +13,10 @@ impl Brush {
         unsafe {ROTATION = rotation % (2.0 * std::f32::consts::PI);}
     }
 
+    pub fn get_rotation() -> f32 {
+        unsafe {ROTATION}
+    }
+
     pub fn increase_rotation(rotation: f32) {
         unsafe {Self::set_rotation(rotation + ROTATION);}
     }
@@ -70,17 +74,20 @@ impl BlockBrush {
     }
 
     pub fn get_pattern(&self, picker: &mut crate::render::picker::Picker, row: usize, column: usize) -> BlockPattern {
-        let mut shapes = self.square_pattern.get_shapes().clone();
+        let mut block_pattern = self.square_pattern.clone();
 
-        for shape in &mut shapes {
-            let shape = &mut (*shape).shape;
+        let shapes = block_pattern.get_mut_shapes();
+
+        // skip last shape because it is just the block border, and I don't want it to have an id or change it's color
+        for index in 0..shapes.len()-1 {
+            let shape = &mut (*shapes[index]).shape;
 
             shape.set_id(picker.get_new_id(row, column));
             shape.set_color([1.0; 4]);
             unsafe {shape.set_rotation(ROTATION);}
         }
 
-        BlockPattern::new(shapes, self.square_pattern.get_pattern_name().clone())
+        block_pattern
     }
 }
 
