@@ -5,12 +5,15 @@ use crate::renderer::Renderer;
 use ui_manager::UiManager;
 use quilt::Quilt;
 use quilt::brush::{Brush, PatternBrush};
+use crate::renderer::util::keyboard_tracker::KeyboardTracker;
 
 use std::rc::Rc;
-use glium::glutin::event::WindowEvent;
+use glium::glutin::event::*;
 
+#[allow(dead_code)]
 pub struct Program {
     display: Rc<glium::Display>,
+    keyboard_tracker: KeyboardTracker,
     renderer: Renderer,
     quilt: Quilt,
     brush: Brush
@@ -28,6 +31,7 @@ impl Program {
             display: display.clone(),
             renderer,
             quilt,
+            keyboard_tracker: KeyboardTracker::new(),
             brush: Brush::new_pattern_brush(PatternBrush::new_color([1.0;4])),
         }
     }
@@ -40,14 +44,84 @@ impl Program {
 
         if UiManager::draw(self, frame, ui) {self.handle_click()};
 
+        self.handle_keys();
+
         self.renderer.end_frame();
     }
 
     pub fn window_event(&mut self, event: &WindowEvent) {
         // println!("{:?}", event);
 
-        if let WindowEvent::CursorMoved{position, ..} = &event {
+        if let WindowEvent::KeyboardInput{input, ..} = event {
+            self.key_pressed_event(&input);
+
+            if let Some(keycode) = input.virtual_keycode {
+                self.keyboard_tracker.set_pressed(keycode, input.state == ElementState::Pressed);
+            }
+        }
+
+        if let WindowEvent::CursorMoved{position, ..} = event {
             self.renderer.cursor_moved(position);
+        }
+
+        if let WindowEvent::Focused(is_focused) = event {
+            if !is_focused {
+                self.keyboard_tracker.release_all();
+            }
+        }
+    }
+
+    fn key_pressed_event(&mut self, event: &KeyboardInput) {
+        if let Some(virtual_keycode) = event.virtual_keycode {
+
+            if event.state == ElementState::Pressed {
+                match virtual_keycode {
+                    VirtualKeyCode::R => {
+                        if self.keyboard_tracker.is_shift_pressed() {
+                            Brush::increase_rotation(std::f32::consts::FRAC_PI_2);
+                        } else {
+                            Brush::increase_rotation(-std::f32::consts::FRAC_PI_2);
+                        }
+                    }
+                    _ => ()
+                }
+            }
+
+        }
+    }
+
+    fn handle_keys(&mut self) {
+        let keyboard_tracker = &mut self.keyboard_tracker;
+
+        let delta_time = self.renderer.frame_timing.delta_frame_time().num_microseconds().unwrap() as f32 / 1_000.0;
+        let movement_speed = 0.003;
+
+        if keyboard_tracker.is_key_pressed(&VirtualKeyCode::A) {
+            self.renderer.get_world_transform_mut().translate(delta_time * movement_speed, 0.0, 0.0);
+        }
+        if keyboard_tracker.is_key_pressed(&VirtualKeyCode::D) {
+            self.renderer.get_world_transform_mut().translate(delta_time * -movement_speed, 0.0, 0.0);
+        }
+        if keyboard_tracker.is_key_pressed(&VirtualKeyCode::W) {
+            self.renderer.get_world_transform_mut().translate(0.0, delta_time * -movement_speed, 0.0);
+        }
+        if keyboard_tracker.is_key_pressed(&VirtualKeyCode::S) {
+            self.renderer.get_world_transform_mut().translate(0.0, delta_time * movement_speed, 0.0);
+        }
+
+        let zoom_speed = 0.005;
+        let zoom_threshold = -0.7;
+
+        if keyboard_tracker.is_key_pressed(&VirtualKeyCode::Q) {
+            self.renderer.get_world_transform_mut().add_scale(0.0, 0.0, delta_time * zoom_speed);
+        }
+        if keyboard_tracker.is_key_pressed(&VirtualKeyCode::E) {
+            self.renderer.get_world_transform_mut().add_scale(0.0, 0.0, delta_time * -zoom_speed);
+
+            let translation = self.renderer.get_world_transform_mut().get_scale();
+            if translation.2 <= zoom_threshold {
+                self.renderer.get_world_transform_mut().set_scale(translation.0, translation.1, zoom_threshold);
+            }
         }
     }
 
