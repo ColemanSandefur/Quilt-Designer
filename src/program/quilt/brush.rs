@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use crate::quilt::block::block_pattern::BlockPattern;
+use crate::program::quilt::block::block_pattern::BlockPattern;
 
 static mut ROTATION: f32 = 0.0;
 
@@ -73,7 +73,7 @@ impl BlockBrush {
         }
     }
 
-    pub fn get_pattern(&self, picker: &mut crate::render::picker::Picker, row: usize, column: usize) -> BlockPattern {
+    pub fn get_pattern(&self, picker: &mut crate::renderer::picker::Picker, row: usize, column: usize) -> BlockPattern {
         let mut block_pattern = self.square_pattern.clone();
 
         let shapes = block_pattern.get_mut_shapes();
@@ -93,7 +93,7 @@ impl BlockBrush {
 
 pub struct PatternBrush {
     color: Option<[f32; 4]>,
-    texture: Option<crate::render::textures::Texture>,
+    texture: Option<crate::renderer::textures::Texture>,
 }
 
 impl PatternBrush {
@@ -104,7 +104,7 @@ impl PatternBrush {
         }
     }
 
-    pub fn new_texture(texture: crate::render::textures::Texture) -> Self {
+    pub fn new_texture(texture: crate::renderer::textures::Texture) -> Self {
         Self {
             color: None,
             texture: Some(texture),
@@ -115,11 +115,11 @@ impl PatternBrush {
         &self.color
     }
 
-    pub fn get_texture(&self) -> &Option<crate::render::textures::Texture> {
+    pub fn get_texture(&self) -> &Option<crate::renderer::textures::Texture> {
         &self.texture
     }
 
-    pub fn apply_to_shape(&self, shape: &mut crate::render::shape_object::ShapeDataStruct) {
+    pub fn apply_to_shape(&self, shape: &mut crate::renderer::shape_object::ShapeDataStruct) {
         if let Some(color) = self.color.as_ref() {
             shape.shape.set_color(*color);
         } else if let Some(texture) = self.texture.as_ref() {

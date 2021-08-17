@@ -1,5 +1,6 @@
-use crate::quilt::brush::*;
-use crate::render::renderer::Renderer;
+use crate::program::Program;
+use crate::program::quilt::brush::*;
+
 use lazy_static::lazy_static;
 use imgui::StyleVar;
 
@@ -34,7 +35,8 @@ impl UiManager {
 
     const BUTTON_SIZE: f32 = 64.0;
 
-    pub fn draw(renderer: &mut Renderer, frame: &mut glium::Frame, ui: &mut imgui::Ui) {
+    // returns if screen was clicked and an imgui window wasn't clicked
+    pub fn draw(program: &mut Program, frame: &mut glium::Frame, ui: &mut imgui::Ui) -> bool {
         use imgui::*;
         use glium::Surface;
 
@@ -57,7 +59,7 @@ impl UiManager {
             .collapsible(false)
             .build(ui, || {
                 // calculates how many columns can fit in the window
-                let num_buttons = 1 + crate::render::textures::get_texture_count() as i32; // will be the total of all textures (once they are added)
+                let num_buttons = 1 + crate::renderer::textures::get_texture_count() as i32; // will be the total of all textures (once they are added)
                 let num_rows = std::cmp::min(((ui.window_content_region_width() - current_style.window_padding[0]) / (Self::BUTTON_SIZE + 2.0 * current_style.window_padding[0])) as i32, num_buttons);
                 ui.columns(num_rows, im_str!("columns"), false);
 
@@ -74,7 +76,7 @@ impl UiManager {
                 was_color_clicked.double_clicked = ui.is_item_hovered() && ui.is_mouse_double_clicked(MouseButton::Left);
                 
                 if was_color_clicked.clicked {
-                    renderer.brush.set_pattern_brush(std::sync::Arc::new(PatternBrush::new_color(color)));
+                    program.get_brush_mut().set_pattern_brush(std::sync::Arc::new(PatternBrush::new_color(color)));
                 }
 
                 if was_color_clicked.double_clicked {
@@ -84,7 +86,7 @@ impl UiManager {
                 ui.unindent_by(indentation);
                 ui.next_column();
 
-                for id in crate::render::textures::get_textures() {
+                for id in crate::renderer::textures::get_textures() {
                     // create texture button
                     ui.indent_by(indentation);
                     if ImageButton::new(id.get_imgui_id(), [Self::BUTTON_SIZE, Self::BUTTON_SIZE]).frame_padding(0).build(&ui) {
@@ -92,7 +94,7 @@ impl UiManager {
                         // on button click
 
                         // change brush to apply texture on click
-                        renderer.brush.set_pattern_brush(std::sync::Arc::new(crate::quilt::brush::PatternBrush::new_texture(id.clone())));
+                        program.get_brush_mut().set_pattern_brush(std::sync::Arc::new(crate::program::quilt::brush::PatternBrush::new_texture(id.clone())));
                     }
                     ui.unindent_by(indentation);
                     ui.next_column();
@@ -117,7 +119,7 @@ impl UiManager {
                         let picker = ColorPicker::new(im_str!(""), &mut COLOR_PICKER_COLOR)
                             .alpha(false);
                         if picker.build(&ui) {
-                            renderer.brush.set_pattern_brush(std::sync::Arc::new(PatternBrush::new_color(COLOR_PICKER_COLOR)));
+                            program.get_brush_mut().set_pattern_brush(std::sync::Arc::new(PatternBrush::new_color(COLOR_PICKER_COLOR)));
                         }
 
                         if ui.button(im_str!("Close"), [ui.window_content_region_width(), 20.0]) {
@@ -133,11 +135,11 @@ impl UiManager {
             .collapsible(true)
             .position([100.0, 0.0], Condition::FirstUseEver)
             .build(ui, || {
-                ui.text(im_str!("{}ms", renderer.frame_timing.delta_frame_time().num_milliseconds()));
-                ui.text(im_str!("{:.0} fps", 1.0 / (renderer.frame_timing.delta_frame_time().num_microseconds().unwrap() as f64 / 1_000_000.0)));
-                ui.text(im_str!("{} draws", renderer.quilt.draw_stats.draws));
-                ui.text(im_str!("{} vertices", renderer.quilt.draw_stats.vertices));
-                ui.text(im_str!("{} indices", renderer.quilt.draw_stats.indices));
+                ui.text(im_str!("{}ms", program.get_renderer_mut().frame_timing.delta_frame_time().num_milliseconds()));
+                ui.text(im_str!("{:.0} fps", 1.0 / (program.get_renderer_mut().frame_timing.delta_frame_time().num_microseconds().unwrap() as f64 / 1_000_000.0)));
+                // ui.text(im_str!("{} draws", renderer.quilt.draw_stats.draws));
+                // ui.text(im_str!("{} vertices", renderer.quilt.draw_stats.vertices));
+                // ui.text(im_str!("{} indices", renderer.quilt.draw_stats.indices));
             });
         
         // Right side-bar
@@ -150,7 +152,7 @@ impl UiManager {
             .movable(false)
             .collapsible(false)
             .build(ui, || {
-                let block_list = crate::quilt::block::block_manager::BLOCK_LIST.lock().unwrap();
+                let block_list = crate::program::quilt::block::block_manager::BLOCK_LIST.lock().unwrap();
 
                 // calculates how many columns can fit in the window
                 let num_buttons = block_list.len() as i32;
@@ -168,7 +170,7 @@ impl UiManager {
 
                         // on button click
 
-                        renderer.brush.set_block_brush(std::sync::Arc::new(BlockBrush {square_pattern: block_pattern.clone()}));
+                        program.get_brush_mut().set_block_brush(std::sync::Arc::new(BlockBrush {square_pattern: block_pattern.clone()}));
                     }
                     ui.unindent_by(indentation);
                     ui.next_column();
@@ -185,14 +187,17 @@ impl UiManager {
                 }
             });
         
+            
+        style_colors.pop(&ui);
+        style_vars.pop(&ui);
+        
         // Checks if any imgui window was clicked, if not tell the renderer that it was clicked
         if ui.is_mouse_clicked(MouseButton::Left) {
             if !ui.is_window_hovered_with_flags(WindowHoveredFlags::all()) {
-                renderer.clicked();
+                return true;
             }
         }
 
-        style_colors.pop(&ui);
-        style_vars.pop(&ui);
+        false
     }
 }

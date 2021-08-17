@@ -1,6 +1,6 @@
 use crate::parse::{Yaml, SavableBlueprint, Savable};
-use crate::render::matrix::{Matrix};
-use crate::render::shape::{Shape, PathShape};
+use crate::renderer::matrix::{Matrix};
+use crate::renderer::shape::{Shape, PathShape};
 
 // Everything rendered will be a Shape Object, this will be added to the renderer's list
 // the renderer will then handle the drawing of the object

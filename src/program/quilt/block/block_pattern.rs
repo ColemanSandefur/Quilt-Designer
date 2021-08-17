@@ -1,4 +1,4 @@
-use crate::render::shape_object::{ShapeDataStruct};
+use crate::renderer::shape_object::{ShapeDataStruct};
 use crate::glium::Surface;
 use crate::parse::{Yaml, SavableBlueprint, LinkedHashMap};
 
@@ -13,13 +13,13 @@ impl BlockPattern {
     pub fn apply_background(shapes: &mut Vec<Box<ShapeDataStruct>>) {
         shapes.insert(0, 
             Box::new(ShapeDataStruct::new(
-                Box::new(crate::render::shape::PathShape::square_with_line_width(0.0, 0.0, 1.0, 1.0, 0, 0.0)),
+                Box::new(crate::renderer::shape::PathShape::square_with_line_width(0.0, 0.0, 1.0, 1.0, 0, 0.0)),
             )),
         );
 
         shapes.push(
             Box::new(ShapeDataStruct::new(
-                Box::new(crate::render::shape::StrokeShape::square(0.0, 0.0, 1.0, 1.0, 0, &lyon::lyon_tessellation::StrokeOptions::default().with_line_width(crate::quilt::block::Block::BLOCK_BORDER_WIDTH)),
+                Box::new(crate::renderer::shape::StrokeShape::square(0.0, 0.0, 1.0, 1.0, 0, &lyon::lyon_tessellation::StrokeOptions::default().with_line_width(crate::program::quilt::block::Block::BLOCK_BORDER_WIDTH)),
             )),
         ));
     }
@@ -74,7 +74,7 @@ impl BlockPattern {
             total_indices = shape.shape.get_num_indices();
         }
 
-        let mut vb_vec: Vec<crate::render::shape::Vertex> = Vec::with_capacity(total_vertices);
+        let mut vb_vec: Vec<crate::renderer::vertex::Vertex> = Vec::with_capacity(total_vertices);
         let mut ib_vec = Vec::with_capacity(total_indices);
 
         for shape in &self.shapes {
@@ -100,14 +100,14 @@ impl BlockPattern {
         let vb = glium::VertexBuffer::new(facade, &vb_vec).expect("Unable to initialize vb for square pattern");
         let ib = glium::IndexBuffer::new(facade, glium::index::PrimitiveType::TrianglesList, &ib_vec).expect("Unable to initialize ib for square pattern");
 
-        let material = crate::render::material::material_manager::get_material_manager().get_solid_color_material();
+        let material = crate::renderer::material::get_material_manager().get_solid_color_material();
 
-        let world_transform = crate::render::matrix::WorldTransform {
-            projection: crate::render::matrix::Matrix::new(),
-            world: crate::render::matrix::Matrix::new(),
+        let world_transform = crate::renderer::matrix::WorldTransform {
+            projection: crate::renderer::matrix::Matrix::new(),
+            world: crate::renderer::matrix::Matrix::new(),
         };
 
-        material.draw(&(&vb, &ib), surface, &world_transform, &crate::render::matrix::Matrix::new(), &Default::default());
+        material.draw(&(&vb, &ib), surface, &world_transform, &Default::default());
     }
 
     pub fn create_and_draw_texture(&mut self, display: &impl glium::backend::Facade, textures: &mut imgui::Textures<imgui_glium_renderer::Texture>) {

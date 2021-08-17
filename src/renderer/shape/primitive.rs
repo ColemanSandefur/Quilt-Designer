@@ -1,5 +1,6 @@
 use super::*;
-use crate::render::matrix::Matrix;
+use crate::renderer::matrix::Matrix;
+use crate::program::quilt::block::Block;
 use cgmath::Matrix4;
 
 use lyon::math::{point};
@@ -29,7 +30,7 @@ impl Triangle {
         outline.line_to(point(pos1.0, pos1.1));
         outline.close();
 
-        let stroke = StrokeShape::new(outline, 0, &StrokeOptions::default().with_line_width(crate::quilt::block::Block::SHAPE_BORDER_WIDTH));
+        let stroke = StrokeShape::new(outline, 0, &StrokeOptions::default().with_line_width(Block::SHAPE_BORDER_WIDTH));
 
         // Add generated ib and vb to current ib and vb
 
@@ -125,7 +126,7 @@ pub struct Square {
 
 impl Square {
     pub fn with_width_height(x: f32, y: f32, width: f32, height: f32, id: u32) -> Self {
-        Square::with_line_width(x, y, width, height, id, crate::quilt::block::Block::SHAPE_BORDER_WIDTH)
+        Square::with_line_width(x, y, width, height, id, Block::SHAPE_BORDER_WIDTH)
     }
 
     pub fn with_line_width(x: f32, y:f32, width: f32, height: f32, id: u32, outline_width: f32) -> Self {

@@ -1,5 +1,3 @@
-use crate::render::renderer::Renderer;
-
 use glium::glutin;
 use glium::glutin::event::{Event, WindowEvent};
 use glium::glutin::event_loop::{ControlFlow, EventLoop};
@@ -10,14 +8,14 @@ use imgui_glium_renderer::Renderer as GliumRenderer;
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
 use std::path::Path;
 use std::time::Instant;
+use std::rc::Rc;
 
 pub struct System {
     pub event_loop: EventLoop<()>,
-    pub display: glium::Display,
+    pub display: Rc<glium::Display>,
     pub imgui: Context,
     pub platform: WinitPlatform,
     pub glium_renderer: GliumRenderer,
-    pub renderer: Renderer,
     pub font_size: f32,
 }
 
@@ -38,8 +36,7 @@ pub fn init(title: &str) -> System {
     let builder = WindowBuilder::new()
     .with_title(title.to_owned())
     .with_inner_size(glutin::dpi::LogicalSize::new(1024f64, 768f64));
-    let display =
-    Display::new(builder, context, &event_loop).expect("Failed to initialize display");
+    let display = Rc::new(Display::new(builder, context, &event_loop).expect("Failed to initialize display"));
     
     //
     // IMGUI
@@ -79,13 +76,9 @@ pub fn init(title: &str) -> System {
     imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
     
     // connect imgui to glium
-    let mut glium_renderer = GliumRenderer::init(&mut imgui, &display).expect("Failed to initialize renderer");
+    let glium_renderer = GliumRenderer::init(&mut imgui, &*display).expect("Failed to initialize renderer");
     
     // my initializers
-    crate::render::textures::load_texture_array(&display, glium_renderer.textures());
-    crate::render::material::material_manager::initialize_material_manager(&display);
-    crate::quilt::block::block_manager::load_textures(&display, &mut glium_renderer);
-    let renderer = Renderer::new(&display, &glium_renderer);
 
     System {
         event_loop,
@@ -93,20 +86,21 @@ pub fn init(title: &str) -> System {
         imgui,
         platform,
         glium_renderer,
-        renderer,
         font_size,
     }
 }
     
 impl System {
-    pub fn main_loop<F: FnMut(&mut bool, &mut glium::Frame, &mut Renderer, &mut Ui, &mut imgui_glium_renderer::Renderer, &dyn glium::backend::Facade) + 'static>(self, mut run_ui: F) {
+    pub fn main_loop<
+        F: FnMut(&mut bool, &mut glium::Frame, &mut Ui, &mut imgui_glium_renderer::Renderer, &dyn glium::backend::Facade) + 'static,
+        T: Fn(&glutin::event::WindowEvent) + 'static,
+    >(self, mut run_ui: F, window_event_handler: T) {
         let System {
             event_loop,
             display,
             mut imgui,
             mut platform,
             mut glium_renderer,
-            mut renderer,
             ..
         } = self;
         let mut last_frame = Instant::now();
@@ -129,7 +123,7 @@ impl System {
                 let mut target = display.draw();
 
                 let mut run = true;
-                run_ui(&mut run, &mut target, &mut renderer, &mut ui, &mut glium_renderer, &display);
+                run_ui(&mut run, &mut target, &mut ui, &mut glium_renderer, &*display);
                 if !run {
                     *control_flow = ControlFlow::Exit;
                 }
@@ -148,22 +142,7 @@ impl System {
             } => *control_flow = ControlFlow::Exit,
             event => {
                 if let Event::WindowEvent {event, ..} = &event {
-                    if let WindowEvent::KeyboardInput {input, ..} = event {
-                        if let Some(keycode) = input.virtual_keycode {
-                            renderer.key_pressed(keycode, input.state);
-                            renderer.keyboard_tracker.set_pressed(keycode, input.state == glutin::event::ElementState::Pressed);
-                        }
-                    }
-
-                    if let WindowEvent::CursorMoved{position, ..} = &event {
-                        renderer.cursor_moved(position);
-                    }
-
-                    if let WindowEvent::Focused(is_focused) = event {
-                        if !is_focused {
-                            renderer.keyboard_tracker.release_all();
-                        }
-                    }
+                    window_event_handler(event);
                 }
                 let gl_window = display.gl_window();
                 platform.handle_event(imgui.io_mut(), gl_window.window(), &event);

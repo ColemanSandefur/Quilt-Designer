@@ -1,6 +1,6 @@
-use crate::render::shape::Vertex;
-use crate::render::material::{*};
-use crate::render::matrix::{WorldTransform, Matrix};
+use crate::renderer::vertex::Vertex;
+use crate::renderer::material::{*};
+use crate::renderer::matrix::{WorldTransform};
 
 use std::collections::HashMap;
 use rand::prelude::*;
@@ -25,7 +25,7 @@ pub struct Picker {
 impl Picker {
     pub fn new(display: &dyn glium::backend::Facade) -> Self {
 
-        let shader = crate::render::material::material_manager::get_material_manager().get_click_material();
+        let shader = crate::renderer::material::get_material_manager().get_click_material();
 
         Self {
             picking_pixel_buffer: glium::texture::pixel_buffer::PixelBuffer::new_empty(display, 1),
@@ -115,7 +115,7 @@ impl Picker {
             //clear picking texture
             let mut picking_target = glium::framebuffer::SimpleFrameBuffer::with_depth_buffer(facade, picking_texture, depth_buffer).unwrap();
 
-            self.shader.draw(&(&vertex_buffer, &index_buffer), &mut picking_target, global_transform, &Matrix::new(), draw_parameters);
+            self.shader.draw(&(&vertex_buffer, &index_buffer), &mut picking_target, global_transform, draw_parameters);
         }
     }
 

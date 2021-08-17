@@ -2,44 +2,14 @@ pub mod primitive;
 pub mod shape_path;
 
 use shape_path::ShapePath;
-use crate::render::matrix::Matrix;
+use crate::renderer::matrix::Matrix;
 use crate::parse::{Yaml, SavableBlueprint, Savable, LinkedHashMap};
+use crate::program::quilt::block::Block;
+use crate::renderer::vertex::Vertex;
 
 use cgmath::Matrix4;
-use cgmath::Rad;
 use lyon::math::{point, Point};
 use lyon::tessellation::*;
-
-#[derive(Copy, Clone, Debug)]
-pub struct Vertex {
-    pub position: [f32; 2],
-    pub color: [f32; 4],
-    pub model: [[f32;4]; 4],
-    pub rotation: [[f32;4]; 4],
-    pub id: u32,
-    pub tex_id: u32,
-}
-
-impl Default for Vertex {
-    fn default() -> Self {
-        Self {
-            position: [0.0; 2],
-            color: [1.0; 4],
-            model: Matrix::new().get_matrix(),
-            rotation: Matrix4::from_angle_z(Rad(0.0)).into(),
-            id: 0,
-            tex_id: 0,
-        }
-    }
-}
-
-impl Vertex {
-    pub fn to_point(&self) -> Point {
-        point(self.position[0], self.position[1])
-    }
-}
-
-implement_vertex!(Vertex, position, color, model, rotation, id, tex_id);
 
 pub trait Shape: Sync + Send + SavableBlueprint + Savable + PrimitiveShape {
     fn clone_shape(&self) -> Box<dyn Shape>;
@@ -99,7 +69,7 @@ impl PathShape {
 
         let index_buffer = geometry.indices.to_vec();
 
-        let outline = StrokeShape::new(path.clone(), 0, &StrokeOptions::default().with_line_width(crate::quilt::block::Block::SHAPE_BORDER_WIDTH));
+        let outline = StrokeShape::new(path.clone(), 0, &StrokeOptions::default().with_line_width(Block::SHAPE_BORDER_WIDTH));
 
         Self {
             path,
@@ -365,7 +335,7 @@ impl StrokeShape {
                 position: [vertex.x, vertex.y],
                 color: [0.0, 0.0, 0.0, 1.0],
                 id,
-                model: crate::render::matrix::Matrix::new().get_matrix(),
+                model: crate::renderer::matrix::Matrix::new().get_matrix(),
                 .. Default::default()
                 // tex_id: 1,
             })
@@ -400,7 +370,7 @@ impl SavableBlueprint for StrokeShape {
     fn from_save_blueprint(yaml: Yaml) -> Box<Self> where Self: Sized {
         let path = ShapePath::from_save_blueprint(yaml);
 
-        Box::new(Self::new(*path, 0, &StrokeOptions::default().with_line_width(crate::quilt::block::Block::SHAPE_BORDER_WIDTH)))
+        Box::new(Self::new(*path, 0, &StrokeOptions::default().with_line_width(Block::SHAPE_BORDER_WIDTH)))
     }
 }
 
@@ -411,7 +381,7 @@ impl Savable for StrokeShape {
     fn from_save(yaml: Yaml) -> Box<Self> where Self: Sized {
         let path = ShapePath::from_save_blueprint(yaml);
 
-        Box::new(Self::new(*path, 0, &StrokeOptions::default().with_line_width(crate::quilt::block::Block::SHAPE_BORDER_WIDTH)))
+        Box::new(Self::new(*path, 0, &StrokeOptions::default().with_line_width(Block::SHAPE_BORDER_WIDTH)))
     }
 }
 

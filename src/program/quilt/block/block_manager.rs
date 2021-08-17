@@ -1,7 +1,8 @@
-use crate::render::shape_object::ShapeDataStruct;
-use crate::quilt::block::block_pattern::BlockPattern;
+use crate::renderer::shape_object::ShapeDataStruct;
+use crate::program::quilt::block::block_pattern::BlockPattern;
 use crate::parse::Yaml;
 use crate::parse::SavableBlueprint;
+use crate::renderer::shape::{PathShape};
 
 use lazy_static::lazy_static;
 use std::io::Read;
@@ -50,11 +51,12 @@ lazy_static!{
     pub static ref BLOCK_LIST: Mutex<Vec<BlockPattern>> = Mutex::new(
         
         {
+            println!("loading block manager");
             let mut default_blocks = vec! {
                 BlockPattern::new(vec![
                     Box::new(
                         ShapeDataStruct::new(
-                            Box::new(crate::render::shape::PathShape::triangle((0.0, 0.0), (0.0, 1.0), (1.0, 0.0), 0)),
+                            Box::new(PathShape::triangle((0.0, 0.0), (0.0, 1.0), (1.0, 0.0), 0)),
                         )
                     ),
                 ], String::from("half-square triangle")),
@@ -64,17 +66,17 @@ lazy_static!{
         
                 BlockPattern::new(vec![
                     Box::new(ShapeDataStruct::new(
-                        Box::new(crate::render::shape::PathShape::square(0.25, 0.25, 0.5, 0.5, 0)),
+                        Box::new(PathShape::square(0.25, 0.25, 0.5, 0.5, 0)),
                     )),
                     Box::new(ShapeDataStruct::new(
-                        Box::new(crate::render::shape::PathShape::square(0.3, 0.3, 0.4, 0.4, 0)),
+                        Box::new(PathShape::square(0.3, 0.3, 0.4, 0.4, 0)),
                     )),
                     Box::new(ShapeDataStruct::new(
-                        Box::new(crate::render::shape::PathShape::square(0.35, 0.35, 0.3, 0.3, 0)),
+                        Box::new(PathShape::square(0.35, 0.35, 0.3, 0.3, 0)),
                     )),
                     Box::new(ShapeDataStruct::new(
                         Box::new(
-                            crate::render::shape::PathShape::circle(lyon::math::point(0.5, 0.5), 0.25, -0.5 * std::f32::consts::PI, 0.5 * std::f32::consts::PI, 0),
+                            PathShape::circle(lyon::math::point(0.5, 0.5), 0.25, -0.5 * std::f32::consts::PI, 0.5 * std::f32::consts::PI, 0),
                         ),
                     )),
                 ], String::from("test shape")),

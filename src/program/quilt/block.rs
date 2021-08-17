@@ -1,15 +1,18 @@
 pub mod block_pattern;
 pub mod block_manager;
 
-use crate::quilt::brush::*;
-use crate::render::shape_object::{ShapeDataStruct};
-use crate::render::matrix::{Matrix};
-use crate::render::shape::{Shape, Vertex};
-use crate::render::picker::{Picker};
-use crate::quilt::block::block_pattern::BlockPattern;
+use crate::program::quilt::brush::*;
+use crate::program::quilt::block::block_pattern::BlockPattern;
+use crate::renderer::shape_object::{ShapeDataStruct};
+use crate::renderer::matrix::{Matrix};
+use crate::renderer::shape::{Shape};
+use crate::renderer::vertex::Vertex;
+use crate::renderer::picker::{Picker};
+use crate::renderer::Renderable;
 use crate::parse::*;
 
 // The purpose of the "shape protector" is to call update_buffer whenever a shape has changed
+#[derive(Clone)]
 struct ShapeProtector {
     shapes: Vec<Box<ShapeDataStruct>>,
     rotation: f32,
@@ -157,7 +160,7 @@ impl ShapeProtector {
 
     // copying local buffer to passed buffers
 
-    pub fn add_to_vb_vec(&self, vertex_buffer: &mut Vec<crate::render::shape::Vertex>) {
+    pub fn add_to_vb_vec(&self, vertex_buffer: &mut Vec<Vertex>) {
         for i in 0..self.vertex_buffer.len() {
             vertex_buffer.push(self.vertex_buffer[i]);
         }
@@ -183,7 +186,7 @@ impl ShapeProtector {
         }
     }
 
-    pub fn apply_brush(&mut self, index: usize, pattern_brush: &crate::quilt::brush::PatternBrush) {
+    pub fn apply_brush(&mut self, index: usize, pattern_brush: &crate::program::quilt::brush::PatternBrush) {
 
         if let Some(shape) = self.shapes.get_mut(index) {
             pattern_brush.apply_to_shape(shape);
@@ -260,6 +263,7 @@ impl ShapeProtector {
 // Each square represents a block on the quilt
 
 #[allow(dead_code)]
+#[derive(Clone)]
 pub struct Block {
     shape_protector: ShapeProtector,
     row: usize,
@@ -277,10 +281,10 @@ impl Block {
         let shape_protector = ShapeProtector::with_shapes(
             vec!{
                 Box::new(ShapeDataStruct::new(
-                    Box::new(crate::render::shape::PathShape::square_with_line_width(0.0, 0.0, 1.0, 1.0, picker.get_new_id(row, column), 0.0)),
+                    Box::new(crate::renderer::shape::PathShape::square_with_line_width(0.0, 0.0, 1.0, 1.0, picker.get_new_id(row, column), 0.0)),
                 )),
                 Box::new(ShapeDataStruct::new(
-                    Box::new(crate::render::shape::StrokeShape::square(0.0, 0.0, 1.0, 1.0, 0, &lyon::tessellation::StrokeOptions::default().with_line_width(crate::quilt::block::Block::BLOCK_BORDER_WIDTH))),
+                    Box::new(crate::renderer::shape::StrokeShape::square(0.0, 0.0, 1.0, 1.0, 0, &lyon::tessellation::StrokeOptions::default().with_line_width(Block::BLOCK_BORDER_WIDTH))),
                 )),
             },
             0.0
@@ -295,7 +299,7 @@ impl Block {
         s
     }
 
-    pub fn add_to_vb_vec(&self, vertex_buffer: &mut Vec<crate::render::shape::Vertex>) {
+    pub fn add_to_vb_vec(&self, vertex_buffer: &mut Vec<Vertex>) {
         self.shape_protector.add_to_vb_vec(vertex_buffer);
     }
 
@@ -369,5 +373,23 @@ impl Block {
             ("row", self.row.into()),
             ("column", self.column.into()),
         ])
+    }
+}
+
+impl Renderable for Block {
+    fn get_index_count(&self) -> usize {
+        self.shape_protector.get_index_count()
+    }
+
+    fn get_vertex_count(&self) -> usize {
+        self.shape_protector.get_vertex_count()
+    }
+
+    fn get_vb(&self) -> &Vec<Vertex> {
+        self.shape_protector.get_vb()
+    }
+
+    fn get_ib(&self) -> &Vec<u32> {
+        self.shape_protector.get_ib()
     }
 }
