@@ -228,7 +228,10 @@ impl PrimitiveShape for PathShape {
     fn set_color(&mut self, color: [f32; 4]) {
         for vertex in &mut self.vertex_buffer {
             vertex.color = color;
+            vertex.tex_id = 0;
         }
+
+
     }
 
     fn set_model_matrix(&mut self, matrix: Matrix) {

@@ -232,6 +232,14 @@ impl Renderer {
     pub fn cursor_moved(&mut self, position: &glium::glutin::dpi::PhysicalPosition<f64>) {
         self.cursor_pos = Some(position.cast::<i32>().into());
     }
+
+    pub fn get_index_count(&self) -> usize {
+        self.index_len
+    }
+
+    pub fn get_vertex_count(&self) -> usize {
+        self.vertex_len
+    }
 }
 
 pub trait Renderable {

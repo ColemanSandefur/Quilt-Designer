@@ -138,8 +138,8 @@ impl UiManager {
                 ui.text(im_str!("{}ms", program.get_renderer_mut().frame_timing.delta_frame_time().num_milliseconds()));
                 ui.text(im_str!("{:.0} fps", 1.0 / (program.get_renderer_mut().frame_timing.delta_frame_time().num_microseconds().unwrap() as f64 / 1_000_000.0)));
                 // ui.text(im_str!("{} draws", renderer.quilt.draw_stats.draws));
-                // ui.text(im_str!("{} vertices", renderer.quilt.draw_stats.vertices));
-                // ui.text(im_str!("{} indices", renderer.quilt.draw_stats.indices));
+                ui.text(im_str!("{} vertices", program.get_renderer_mut().get_vertex_count()));
+                ui.text(im_str!("{} indices", program.get_renderer_mut().get_index_count()));
             });
         
         // Right side-bar
