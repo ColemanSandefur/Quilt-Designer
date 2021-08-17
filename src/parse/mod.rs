@@ -324,7 +324,13 @@ pub trait SavableBlueprint {
     fn from_save_blueprint(yaml: Yaml) -> Box<Self> where Self: Sized;
 }
 
+pub struct SaveData {
+    pub writer: Option<zip::ZipWriter<std::fs::File>>,
+    pub reader: Option<zip::ZipArchive<std::fs::File>>,
+    pub files_written: Vec<String>,
+}
+
 pub trait Savable {
-    fn to_save(&self) -> Yaml;
-    fn from_save(yaml: Yaml) -> Box<Self> where Self: Sized;
+    fn to_save(&self, save_data: &mut SaveData) -> Yaml;
+    fn from_save(yaml: Yaml, save_data: &mut SaveData) -> Box<Self> where Self: Sized;
 }

@@ -1,4 +1,4 @@
-use crate::parse::{Yaml, SavableBlueprint, Savable};
+use crate::parse::{Yaml, SavableBlueprint, Savable, SaveData}; 
 use crate::renderer::matrix::{Matrix};
 use crate::renderer::shape::{Shape, PathShape};
 
@@ -45,11 +45,11 @@ impl SavableBlueprint for ShapeDataStruct {
 }
 
 impl Savable for ShapeDataStruct {
-    fn to_save(&self) -> Yaml {
+    fn to_save(&self, _save_data: &mut SaveData) -> Yaml {
         self.shape.to_save_blueprint()
     }
 
-    fn from_save(yaml: Yaml) -> Box<Self> where Self: Sized {
+    fn from_save(yaml: Yaml, _save_data: &mut SaveData) -> Box<Self> where Self: Sized {
         Box::new(Self {
             shape: PathShape::from_save_blueprint(yaml)
         })

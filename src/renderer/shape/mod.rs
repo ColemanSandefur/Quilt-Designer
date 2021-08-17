@@ -3,7 +3,7 @@ pub mod shape_path;
 
 use shape_path::ShapePath;
 use crate::renderer::matrix::Matrix;
-use crate::parse::{Yaml, SavableBlueprint, Savable, LinkedHashMap};
+use crate::parse::{Yaml, SavableBlueprint, Savable, LinkedHashMap, SaveData};
 use crate::program::quilt::block::Block;
 use crate::renderer::vertex::Vertex;
 
@@ -184,13 +184,13 @@ impl Savable for PathShape {
     // outline: StrokeShape,
     // rotation: f32,
 
-    fn to_save(&self) -> Yaml {
+    fn to_save(&self, _save_data: &mut SaveData) -> Yaml {
         LinkedHashMap::create(vec![
             ("path", self.path.to_save_blueprint()),
             ("rotation", self.rotation.into()),
         ])
     }
-    fn from_save(yaml: Yaml) -> Box<Self> where Self: Sized {
+    fn from_save(yaml: Yaml, _save_data: &mut SaveData) -> Box<Self> where Self: Sized {
         let map = LinkedHashMap::from(yaml);
         let rotation = map.get("rotation").into();
         let path = ShapePath::from_save_blueprint(map.get("path").clone());
@@ -381,10 +381,10 @@ impl SavableBlueprint for StrokeShape {
 }
 
 impl Savable for StrokeShape {
-    fn to_save(&self) -> Yaml {
+    fn to_save(&self, _save_data: &mut SaveData) -> Yaml {
         self.path.to_save_blueprint()
     }
-    fn from_save(yaml: Yaml) -> Box<Self> where Self: Sized {
+    fn from_save(yaml: Yaml, _save_data: &mut SaveData) -> Box<Self> where Self: Sized {
         let path = ShapePath::from_save_blueprint(yaml);
 
         Box::new(Self::new(*path, 0, &StrokeOptions::default().with_line_width(Block::SHAPE_BORDER_WIDTH)))

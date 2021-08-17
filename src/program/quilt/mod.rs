@@ -1,6 +1,7 @@
 pub mod brush;
 pub mod block;
 
+use crate::parse::*;
 use crate::program::quilt::brush::*;
 use crate::renderer::picker::{Picker, PickerEntry};
 use crate::renderer::{Renderable, Renderer, RenderToken};
@@ -111,5 +112,39 @@ impl Quilt {
 
     pub fn get_block(&self, row: usize, column: usize) -> &Block {
         &self.blocks[row][column]
+    }
+
+    pub fn to_save(&self, save_data: &mut SaveData) -> Yaml {
+        let mut output_vec: Vec<Yaml> = Vec::with_capacity(self.width * self.height);
+
+        for row in &self.blocks {
+            for block in row {
+                output_vec.push(block.to_save(save_data));
+            }
+        }
+
+        LinkedHashMap::create(vec![
+            ("quilt", Yaml::from(output_vec)),
+            ("width", self.width.into()),
+            ("height", self.height.into()),
+        ])
+    }
+
+    pub fn from_save(&self, yaml: Yaml, picker: &mut Picker, save_data: &mut SaveData) -> Self {
+        let yaml_map = LinkedHashMap::from(yaml);
+
+        let quilt_yaml = Vec::<Yaml>::from(yaml_map.get("quilt"));
+
+        let (width, height) = (yaml_map.get("width").into(), yaml_map.get("height").into());
+
+        let mut quilt = Self::new(width, height, picker);
+
+        for block_yaml in quilt_yaml {
+            let block = Block::from_save(block_yaml, picker, save_data);
+
+            quilt.set_block(block);
+        }
+
+        quilt
     }
 }

@@ -1,16 +1,16 @@
 pub mod quilt;
 pub mod ui_manager;
 
-use crate::parse::Yaml;
+use crate::parse::{SaveData};
 use crate::renderer::Renderer;
 use crate::renderer::util::keyboard_tracker::KeyboardTracker;
 use ui_manager::UiManager;
 use quilt::Quilt;
-use quilt::block::Block;
 use quilt::brush::{Brush, PatternBrush};
 
 use std::rc::Rc;
 use glium::glutin::event::*;
+use std::io::Write;
 
 #[allow(dead_code)]
 pub struct Program {
@@ -85,13 +85,9 @@ impl Program {
                             Brush::increase_rotation(-std::f32::consts::FRAC_PI_2);
                         }
                     },
-                    VirtualKeyCode::T => {
-                        self.quilt.get_block(0, 0).to_save().save_to_file(std::path::Path::new("./saves/block.yaml"));
-                    },
-                    VirtualKeyCode::Y => {
-                        let block = Block::from_save(Yaml::load_from_file(std::path::Path::new("./saves/block.yaml")), self.renderer.get_picker_mut());
 
-                        self.quilt.set_block(block);
+                    VirtualKeyCode::T => {
+                        self.save_quilt("test.quilt");
                     }
                     _ => ()
                 }
@@ -149,5 +145,32 @@ impl Program {
 
     pub fn get_brush_mut(&mut self) -> &mut Brush {
         &mut self.brush
+    }
+
+    fn save_quilt(&self, name: &str) {
+        let path_name = format!("./saves/{}", name);
+        let path = std::path::Path::new(&path_name);
+        let file = std::fs::File::create(path).unwrap();
+        let zip = zip::ZipWriter::new(file);
+
+        let mut save_data = SaveData {
+            writer: Some(zip),
+            reader: None,
+            files_written: Vec::new(),
+        };
+
+        println!("Started saving");
+
+        let yaml = self.quilt.to_save(&mut save_data);
+
+        let output = yaml.dump_to_string();
+        let mut zip = save_data.writer.unwrap();
+
+        zip.start_file("save.yaml", Default::default()).unwrap();
+        write!(zip, "{}", output).unwrap();
+
+        zip.finish().unwrap();
+
+        println!("Finished saving");
     }
 }

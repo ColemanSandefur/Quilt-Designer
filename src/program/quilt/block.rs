@@ -204,12 +204,12 @@ impl ShapeProtector {
 
     // serialization
 
-    pub fn from_save(yaml: &Yaml, picker: &mut Picker, row: usize, column: usize) -> Self {
+    pub fn from_save(yaml: &Yaml, picker: &mut Picker, row: usize, column: usize, save_data: &mut SaveData) -> Self {
         let yaml_map = LinkedHashMap::from(yaml);
 
         let yaml_vec: Vec<Yaml> = yaml_map.get("shape").into();
         
-        let mut shapes: Vec<Box<ShapeDataStruct>> = yaml_vec.into_iter().map(|data| ShapeDataStruct::from_save(data)).collect();
+        let mut shapes: Vec<Box<ShapeDataStruct>> = yaml_vec.into_iter().map(|data| ShapeDataStruct::from_save(data, save_data)).collect();
 
         for shape in &mut shapes {
             shape.shape.set_id(picker.get_new_id(row, column));
@@ -242,14 +242,14 @@ impl ShapeProtector {
         s
     }
 
-    pub fn to_save(&self) -> Yaml {
+    pub fn to_save(&self, save_data: &mut SaveData) -> Yaml {
         // IMPORTANT: assuming that the first and last shapes are redundant (background square and border)
 
         let mut vec: Vec<Yaml> = Vec::with_capacity(self.shapes.len());
 
         if self.shapes.len() > 2 {
             for shape in &self.shapes[1..self.shapes.len() - 1] {
-                vec.push(shape.to_save());
+                vec.push(shape.to_save(save_data));
             }
         }
 
@@ -350,13 +350,13 @@ impl Block {
         self.shape_protector.set_model_transform(matrix);
     }
 
-    pub fn from_save(yaml:Yaml, picker: &mut Picker) -> Self {
+    pub fn from_save(yaml:Yaml, picker: &mut Picker, save_data: &mut SaveData) -> Self {
         let map = LinkedHashMap::from(yaml);
 
         let row = usize::from(map.get("row"));
         let column = usize::from(map.get("column"));
 
-        let shape_protector = ShapeProtector::from_save(map.get("shapes"), picker, row, column);
+        let shape_protector = ShapeProtector::from_save(map.get("shapes"), picker, row, column, save_data);
 
         Self {
             shape_protector,
@@ -365,8 +365,8 @@ impl Block {
         }
     }
 
-    pub fn to_save(&self) -> Yaml {
-        let shapes = self.shape_protector.to_save();
+    pub fn to_save(&self, save_data: &mut SaveData) -> Yaml {
+        let shapes = self.shape_protector.to_save(save_data);
 
         LinkedHashMap::create(vec![
             ("shapes", Yaml::from(shapes)),
