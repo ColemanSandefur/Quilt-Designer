@@ -10,18 +10,14 @@ use block::Block;
 pub struct Quilt {
     pub width: usize,
     pub height: usize,
-    pub squares: Vec<Vec<Block>>,
+    blocks: Vec<Vec<Block>>,
     needs_updated: bool,
     renderer_id: Option<RenderToken>,
 }
 
 impl Quilt {
-
-    pub const INIT_VERTICES: usize = 6000;
-    pub const INIT_INDICES: usize = Self::INIT_VERTICES * 4;
-
     pub fn new(width: usize, height: usize, picker: &mut Picker) -> Self {
-        let mut squares = Vec::with_capacity(height);
+        let mut blocks = Vec::with_capacity(height);
 
         for r in 0..height {
             let mut row = Vec::with_capacity(width);
@@ -40,7 +36,7 @@ impl Quilt {
                 row.push(square);
             }
 
-            squares.push(row);
+            blocks.push(row);
         }
 
         println!("Finished loading squares");
@@ -48,7 +44,7 @@ impl Quilt {
         Self {
             width,
             height,
-            squares,
+            blocks,
             needs_updated: true,
             renderer_id: None,
         }
@@ -67,7 +63,7 @@ impl Quilt {
         if self.needs_updated {
             let mut render_items: Vec<Box<dyn Renderable>> = Vec::with_capacity(self.width * self.height);
 
-            for row in &mut self.squares {
+            for row in &mut self.blocks {
                 for block in row {
                     render_items.push(Box::new(block.clone()))
                 }
@@ -89,7 +85,7 @@ impl Quilt {
 
     pub fn click(&mut self, entry: &PickerEntry, brush: &Brush, picker: &mut Picker) -> bool {
 
-        if self.squares[entry.row][entry.column].click(entry.id, brush, picker) {
+        if self.blocks[entry.row][entry.column].click(entry.id, brush, picker) {
             self.needs_updated = true;
 
             return true;
@@ -97,5 +93,23 @@ impl Quilt {
 
 
         false
+    }
+
+    // automatically gets the row and column from Block
+    pub fn set_block(&mut self, block: Block) {
+        let (row, column) = (block.get_row(), block.get_column());
+        let offset = self.calc_offset(row, column);
+        
+        let mut model_transform = block.get_model_transform();
+        model_transform.translate(offset.0, offset.1, 0.0);
+        
+        self.blocks[row][column] = block;
+        self.blocks[row][column].set_model_transform(model_transform);
+
+        self.needs_updated = true;
+    }
+
+    pub fn get_block(&self, row: usize, column: usize) -> &Block {
+        &self.blocks[row][column]
     }
 }

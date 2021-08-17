@@ -1,21 +1,34 @@
 use glium::texture::SrgbTexture2dArray;
+use image::{RgbaImage, DynamicImage};
+
+use std::sync::Arc;
+use std::sync::Mutex;
+use std::io::Write;
+use sha2::Digest;
+use lazy_static::lazy_static;
 
 static mut TEXTURE_ARRAY: Option<SrgbTexture2dArray> = None;
 static mut TEXTURE_COUNT: u32 = 0;
 static mut TEXTURES: Option<Vec<Texture>> = None;
 static IMAGE_SIZE: u32 = 2048;
 
+lazy_static!{
+    pub static ref HASHER: Mutex<sha2::Sha256> = Mutex::new(sha2::Sha256::new());
+}
+
 #[derive(Clone)]
 pub struct Texture {
-    texture_index: usize,
-    imgui_id: imgui::TextureId,
+    texture_index: usize, // id for using with renderer
+    imgui_id: imgui::TextureId, // id for using in imgui
+    texture_data: Arc<DynamicImage> // Reference to original image object, used for saving
 }
 
 impl Texture {
-    pub fn new(texture_index: usize, imgui_id: imgui::TextureId) -> Self {
+    pub fn new(texture_index: usize, imgui_id: imgui::TextureId, texture_data: Arc<DynamicImage>) -> Self {
         Self {
             texture_index,
-            imgui_id
+            imgui_id,
+            texture_data
         }
     }
 
@@ -25,6 +38,29 @@ impl Texture {
 
     pub fn get_imgui_id(&self) -> imgui::TextureId {
         self.imgui_id
+    }
+
+    pub fn write_to<W: Write, F: Into<image::ImageOutputFormat>>(&self, destination: &mut W, format: F) -> image::ImageResult<()>{
+        self.texture_data.write_to(destination, format)
+    }
+
+    pub fn generate_name(&self) -> String {
+
+        let mut buffer = Vec::new();
+
+        self.write_to(&mut buffer, image::ImageOutputFormat::Png).expect("Error writing to buffer");
+
+        self.generate_name_from_buffer(&buffer)
+    }
+
+    pub fn generate_name_from_buffer(&self, buffer: &Vec<u8>) -> String {
+        let mut hasher = HASHER.lock().unwrap();
+        hasher.update(&buffer);
+
+        let result: Vec<u8> = hasher.finalize_reset().to_vec();
+        
+        // convert result to a string
+        format!("{}.png", result.into_iter().map(|i| i.to_string()).collect::<String>())
     }
 }
 
@@ -45,10 +81,11 @@ pub fn load_texture_array(facade: &impl glium::backend::Facade, textures: &mut i
                 println!("Loading {}/{}", TEXTURES.as_ref().unwrap().len() + 1, TEXTURE_COUNT);
 
                 // load texture
-                let image = image::open(dir_entry.path()).unwrap().to_rgba8();
+                let dynamic_image = image::open(dir_entry.path()).unwrap();
+                let rgba_image: RgbaImage = dynamic_image.to_rgba8();
                 
-                let image_dimensions = image.dimensions();
-                let raw_image = glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
+                let image_dimensions = rgba_image.dimensions();
+                let raw_image = glium::texture::RawImage2d::from_raw_rgba_reversed(&rgba_image.as_raw(), image_dimensions);
                 
                 // shrink/expand image to fit into IMAGE_SIZE texture
                 let image = glium::texture::Texture2d::new(facade, raw_image).unwrap();
@@ -79,6 +116,8 @@ pub fn load_texture_array(facade: &impl glium::backend::Facade, textures: &mut i
                 }
                 
                 let source:glium::texture::RawImage2d<u8> = target_image.read();
+
+                let data: Arc<DynamicImage> = Arc::new(dynamic_image);
                 
                 let texture_id = textures.insert(imgui_glium_renderer::Texture
                     {
@@ -86,8 +125,10 @@ pub fn load_texture_array(facade: &impl glium::backend::Facade, textures: &mut i
                         sampler: Default::default()
                     }
                 );
+
+                let texture = Texture::new(raw_images.len(), texture_id, data);
     
-                TEXTURES.as_mut().unwrap().push(Texture::new(raw_images.len(), texture_id));
+                TEXTURES.as_mut().unwrap().push(texture);
     
                 raw_images.push(source);
             }

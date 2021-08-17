@@ -233,7 +233,7 @@ impl ShapeProtector {
             vertex_count: 0,
         };
 
-        // s.set_rotation(yaml_map.get("rotation").into());
+        s.set_rotation(yaml_map.get("rotation").into());
 
         s.update_buffer();
 
@@ -373,6 +373,14 @@ impl Block {
             ("row", self.row.into()),
             ("column", self.column.into()),
         ])
+    }
+
+    pub fn get_row(&self) -> usize {
+        self.row
+    }
+
+    pub fn get_column(&self) -> usize {
+        self.column
     }
 }
 

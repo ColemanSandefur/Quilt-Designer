@@ -1,11 +1,13 @@
 pub mod quilt;
 pub mod ui_manager;
 
+use crate::parse::Yaml;
 use crate::renderer::Renderer;
+use crate::renderer::util::keyboard_tracker::KeyboardTracker;
 use ui_manager::UiManager;
 use quilt::Quilt;
+use quilt::block::Block;
 use quilt::brush::{Brush, PatternBrush};
-use crate::renderer::util::keyboard_tracker::KeyboardTracker;
 
 use std::rc::Rc;
 use glium::glutin::event::*;
@@ -82,6 +84,14 @@ impl Program {
                         } else {
                             Brush::increase_rotation(-std::f32::consts::FRAC_PI_2);
                         }
+                    },
+                    VirtualKeyCode::T => {
+                        self.quilt.get_block(0, 0).to_save().save_to_file(std::path::Path::new("./saves/block.yaml"));
+                    },
+                    VirtualKeyCode::Y => {
+                        let block = Block::from_save(Yaml::load_from_file(std::path::Path::new("./saves/block.yaml")), self.renderer.get_picker_mut());
+
+                        self.quilt.set_block(block);
                     }
                     _ => ()
                 }

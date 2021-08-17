@@ -133,6 +133,7 @@ impl PathShape {
         shape_path.line_to(pos2.into());
         shape_path.line_to(pos3.into());
         shape_path.line_to(pos1.into());
+        shape_path.close();
 
         Self::new(shape_path, id)
     }
@@ -145,6 +146,7 @@ impl PathShape {
         shape_path.line_to(point(x + width, y + height));
         shape_path.line_to(point(x, y + height));
         shape_path.line_to(point(x, y));
+        shape_path.close();
 
         Self::new(shape_path, id)
     }
@@ -157,6 +159,7 @@ impl PathShape {
         shape_path.line_to(point(x + width, y + height));
         shape_path.line_to(point(x, y + height));
         shape_path.line_to(point(x, y));
+        shape_path.close();
 
         Self::new_with_line_width(shape_path, id, line_width)
     }
