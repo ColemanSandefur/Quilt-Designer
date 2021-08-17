@@ -89,7 +89,7 @@ impl UiManager {
                 for id in crate::renderer::textures::get_textures() {
                     // create texture button
                     ui.indent_by(indentation);
-                    if ImageButton::new(id.get_imgui_id(), [Self::BUTTON_SIZE, Self::BUTTON_SIZE]).frame_padding(0).build(&ui) {
+                    if ImageButton::new(id.get_imgui_id(), [Self::BUTTON_SIZE, Self::BUTTON_SIZE]).frame_padding(0).uv0([0.0, 1.0]).uv1([1.0, 0.0]).build(&ui) {
 
                         // on button click
 
@@ -102,7 +102,7 @@ impl UiManager {
                     // tooltip setup
                     if ui.is_item_hovered() {
                         ui.tooltip(|| {
-                            Image::new(id.get_imgui_id(), [128.0, 128.0]).build(&ui);
+                            Image::new(id.get_imgui_id(), [128.0, 128.0]).uv0([0.0, 1.0]).uv1([1.0, 0.0]).build(&ui);
                         });
                     }
                 }

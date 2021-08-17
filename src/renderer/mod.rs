@@ -18,7 +18,6 @@ use std::rc::Rc;
 use glium::{VertexBuffer, IndexBuffer};
 use glium::Surface;
 
-
 pub struct Renderer {
     world_transform: Matrix,
     random_gen: ThreadRng,
@@ -40,6 +39,7 @@ pub struct Renderer {
 }
 
 impl Renderer {
+    // Initial sizes of the vertex and index buffers
     pub const INIT_VERTICES: usize = 6000;
     pub const INIT_INDICES: usize = Self::INIT_VERTICES * 4;
 
@@ -70,7 +70,8 @@ impl Renderer {
         }
     }
 
-    pub fn add_render_items(&mut self, render_items: Vec<Box<dyn Renderable>>) -> u32 {
+    // Subscribes items to be rendered
+    pub fn add_render_items(&mut self, render_items: Vec<Box<dyn Renderable>>) -> RenderToken {
         let id = self.get_new_id();
 
         for item in &render_items {
@@ -81,16 +82,31 @@ impl Renderer {
 
         self.buffers_need_updated = true;
 
-        id
+        id.into()
     }
 
-    pub fn set_render_items(&mut self, render_items: Vec<Box<dyn Renderable>>, render_id: u32) {
+    // Modify an existing render subscription
+    pub fn set_render_items(&mut self, render_items: Vec<Box<dyn Renderable>>, render_id: RenderToken) {
         for item in &render_items {
             self.vertex_len += item.get_vertex_count();
             self.index_len += item.get_index_count();
         }
 
-        let old_render_items = self.render_items.insert(render_id, render_items);
+        let old_render_items = self.render_items.insert(render_id.into(), render_items);
+
+        if let Some(render_items) = old_render_items {
+            for item in &render_items {
+                self.vertex_len -= item.get_vertex_count();
+                self.index_len -= item.get_index_count();
+            }
+        }
+
+        self.buffers_need_updated = true;
+    }
+
+    // Remove a subscription
+    pub fn remove_id(&mut self, token: RenderToken) {
+        let old_render_items = self.render_items.remove(&token.into());
 
         if let Some(render_items) = old_render_items {
             for item in &render_items {
@@ -112,20 +128,10 @@ impl Renderer {
         num
     }
 
-    pub fn remove_id(&mut self, id: u32) {
-        let old_render_items = self.render_items.remove(&id);
-
-        if let Some(render_items) = old_render_items {
-            for item in &render_items {
-                self.vertex_len -= item.get_vertex_count();
-                self.index_len -= item.get_index_count();
-            }
-        }
-
-        self.buffers_need_updated = true;
-    }
-
+    // When a render subscription has changed we should rebuild the buffers
     pub fn rebuild_buffers(&mut self) {
+        // check if we should resize the buffers
+
         if self.vertex_len > self.vertex_buffer.len() {
             self.vertex_buffer = VertexBuffer::empty_dynamic(&*self.display, (self.vertex_len as f32 * 1.1) as usize).unwrap();
             self.vertex_vec = Vec::with_capacity((self.vertex_len as f32 * 1.1) as usize);
@@ -135,6 +141,8 @@ impl Renderer {
             self.index_buffer = IndexBuffer::empty_dynamic(&*self.display, glium::index::PrimitiveType::TrianglesList, (self.index_len as f32 * 1.1) as usize).unwrap();
             self.index_vec = Vec::with_capacity((self.index_len as f32 * 1.1) as usize);
         }
+
+        // Fill the buffers
 
         self.index_vec.clear();
         self.vertex_vec.clear();
@@ -161,9 +169,11 @@ impl Renderer {
     }
 
     pub fn start_frame(&mut self) {
+        // put any code that should be ran at the beginning of a frame here
     }
 
     pub fn end_frame(&mut self) {
+        // any code that runs at the end of a frame
         self.frame_timing.update_frame_time();
     }
 
@@ -199,15 +209,9 @@ impl Renderer {
             world: self.world_transform,
         };
 
-        // self.draw_stats.indices += self.index_vec.len();
-        // self.draw_stats.vertices += self.vert_vec.len();
-        // self.draw_stats.draws += 1;
-
         material::get_material_manager().get_solid_color_material().draw(&(&self.vertex_buffer, &self.index_buffer), target, &global_transform, &Default::default());
 
-        // if picker.is_some() {
         self.picker.draw(self.vertex_buffer.get_context(), &global_transform, &self.vertex_buffer, &self.index_buffer, &Default::default());
-        // }
     }
 
 
@@ -267,5 +271,21 @@ pub trait Renderable {
 
     fn can_fit_in_buffers(&self, vb_capacity: usize, ib_capacity: usize, vb_index: usize, ib_index: usize) -> bool {
         vb_index + self.get_vertex_count() <= vb_capacity && ib_index + self.get_index_count() <= ib_capacity
+    }
+}
+
+#[must_use]
+#[derive(Clone, Copy)]
+pub struct RenderToken(u32);
+
+impl From<u32> for RenderToken {
+    fn from(number: u32) -> Self {
+        RenderToken(number)
+    }
+}
+
+impl From<RenderToken> for u32 {
+    fn from(token: RenderToken) -> Self {
+        token.0
     }
 }

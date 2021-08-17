@@ -3,7 +3,7 @@ pub mod block;
 
 use crate::program::quilt::brush::*;
 use crate::renderer::picker::{Picker, PickerEntry};
-use crate::renderer::{Renderable, Renderer};
+use crate::renderer::{Renderable, Renderer, RenderToken};
 use block::Block;
 
 #[allow(dead_code)]
@@ -12,7 +12,7 @@ pub struct Quilt {
     pub height: usize,
     pub squares: Vec<Vec<Block>>,
     needs_updated: bool,
-    renderer_id: Option<u32>,
+    renderer_id: Option<RenderToken>,
 }
 
 impl Quilt {
