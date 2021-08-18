@@ -14,7 +14,7 @@ use util::frame_timing::FrameTiming;
 
 use std::collections::HashMap;
 use rand::prelude::*;
-use std::rc::Rc;
+use std::rc::{Weak, Rc};
 use glium::{VertexBuffer, IndexBuffer};
 use glium::Surface;
 
@@ -27,7 +27,7 @@ pub struct Renderer {
     pub cursor_pos: Option<(i32, i32)>,
     
     // Holds all items that will be rendered
-    render_items: HashMap<u32, Vec<Box<dyn Renderable>>>,
+    render_items: HashMap<u32, RenderItem>,
 
     buffers_need_updated: bool,
     vertex_vec: Vec<Vertex>,
@@ -71,31 +71,41 @@ impl Renderer {
     }
 
     // Subscribes items to be rendered
-    pub fn add_render_items(&mut self, render_items: Vec<Box<dyn Renderable>>) -> RenderToken {
+    // Tokens must be used or else the item will be removed from the render queue
+    pub fn add_render_items(&mut self, render_items: Vec<Box<dyn Renderable>>) -> Rc<RenderToken> {
         let id = self.get_new_id();
 
         for item in &render_items {
             self.vertex_len += item.get_vertex_count();
             self.index_len += item.get_index_count();
         }
-        self.render_items.insert(id, render_items);
+
+        let token: Rc<RenderToken> = Rc::new(id.into());
+
+        self.render_items.insert(id, RenderItem {
+            render_item: render_items,
+            token: Rc::downgrade(&token),
+        });
 
         self.buffers_need_updated = true;
 
-        id.into()
+        token
     }
 
     // Modify an existing render subscription
-    pub fn set_render_items(&mut self, render_items: Vec<Box<dyn Renderable>>, render_id: RenderToken) {
+    pub fn set_render_items(&mut self, render_items: Vec<Box<dyn Renderable>>, render_id: Rc<RenderToken>) {
         for item in &render_items {
             self.vertex_len += item.get_vertex_count();
             self.index_len += item.get_index_count();
         }
 
-        let old_render_items = self.render_items.insert(render_id.into(), render_items);
+        let old_render_items = self.render_items.insert((*render_id).into(), RenderItem {
+            render_item: render_items,
+            token: Rc::downgrade(&render_id)
+        });
 
         if let Some(render_items) = old_render_items {
-            for item in &render_items {
+            for item in &render_items.render_item {
                 self.vertex_len -= item.get_vertex_count();
                 self.index_len -= item.get_index_count();
             }
@@ -109,7 +119,7 @@ impl Renderer {
         let old_render_items = self.render_items.remove(&token.into());
 
         if let Some(render_items) = old_render_items {
-            for item in &render_items {
+            for item in &render_items.render_item {
                 self.vertex_len -= item.get_vertex_count();
                 self.index_len -= item.get_index_count();
             }
@@ -147,10 +157,27 @@ impl Renderer {
         self.index_vec.clear();
         self.vertex_vec.clear();
 
-        for val in self.render_items.values() {
-            for item in val {
-                item.add_to_ib_vec(&mut self.index_vec, self.vertex_vec.len());
-                item.add_to_vb_vec(&mut self.vertex_vec);
+        let mut invalid_keys: Vec<u32> = Vec::with_capacity(10);
+
+        for (key, val) in self.render_items.iter() {
+            // checks if there are no references to the token; if it is, we can assume that it is dead and should be removed from render storage
+            if val.token.strong_count() == 0 {
+                invalid_keys.push(*key);
+            } else {
+                for item in &val.render_item {
+                    item.add_to_ib_vec(&mut self.index_vec, self.vertex_vec.len());
+                    item.add_to_vb_vec(&mut self.vertex_vec);
+                }
+            }
+        }
+
+        for key in invalid_keys {
+            println!("Removing render entry");
+            if let Some(entry) = self.render_items.remove(&key) {
+                for item in &entry.render_item {
+                    self.vertex_len -= item.get_vertex_count();
+                    self.index_len -= item.get_index_count();
+                }
             }
         }
 
@@ -288,4 +315,10 @@ impl From<RenderToken> for u32 {
     fn from(token: RenderToken) -> Self {
         token.0
     }
+}
+
+// The entry holds a weak reference to the RenderToken so we can check if there are any strong references to RenderToken
+struct RenderItem {
+    render_item: Vec<Box<dyn Renderable>>,
+    token: Weak<RenderToken>
 }

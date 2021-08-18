@@ -89,6 +89,10 @@ impl Program {
                     VirtualKeyCode::T => {
                         self.save_quilt("test.quilt");
                     }
+
+                    VirtualKeyCode::U => {
+                        self.quilt = Quilt::new(1, 1, self.renderer.get_picker_mut());
+                    }
                     _ => ()
                 }
             }
