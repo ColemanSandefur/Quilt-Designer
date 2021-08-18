@@ -3,6 +3,7 @@ use crate::renderer::material::{*};
 use crate::renderer::matrix::{WorldTransform};
 
 use std::collections::HashMap;
+use std::ops::{Deref, DerefMut};
 use rand::prelude::*;
 use glium::{VertexBuffer, IndexBuffer, Surface};
 
@@ -13,11 +14,37 @@ pub struct PickerEntry {
     pub id: u32,
 }
 
+pub struct PickerTable {
+    table: HashMap<u32, PickerEntry>,
+}
+
+impl From<HashMap<u32, PickerEntry>> for PickerTable {
+    fn from(table: HashMap<u32, PickerEntry>) -> Self {
+        Self {
+            table,
+        }
+    }
+}
+
+impl Deref for PickerTable {
+    type Target = HashMap<u32, PickerEntry>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.table
+    }
+}
+
+impl DerefMut for PickerTable {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.table
+    }
+}
+
 pub struct Picker {
     pub picking_pixel_buffer: glium::texture::pixel_buffer::PixelBuffer<u32>,
     pub picking_attachments: Option<(glium::texture::UnsignedTexture2d, glium::framebuffer::DepthRenderBuffer)>,
 
-    table: HashMap<u32, PickerEntry>,
+    table: PickerTable,
     random_gen: ThreadRng,
     shader: ClickMaterial,
 }
@@ -30,7 +57,7 @@ impl Picker {
         Self {
             picking_pixel_buffer: glium::texture::pixel_buffer::PixelBuffer::new_empty(display, 1),
             picking_attachments: None,
-            table: HashMap::with_capacity(512),
+            table: HashMap::with_capacity(512).into(),
             random_gen: rand::thread_rng(),
             shader,
         }

@@ -15,27 +15,140 @@ use util::frame_timing::FrameTiming;
 use std::collections::HashMap;
 use rand::prelude::*;
 use std::rc::{Weak, Rc};
+use std::cell::RefCell;
 use glium::{VertexBuffer, IndexBuffer};
 use glium::Surface;
+use std::ops::Deref;
+
+pub struct RenderTable {
+    random_gen: ThreadRng,
+    render_items: HashMap<u32, RenderItem>,
+    was_updated: bool,
+    vertex_len: usize,
+    index_len: usize,
+
+    self_rc: Option<Rc<RefCell<Self>>>,
+}
+
+impl RenderTable {
+    pub fn new() -> Rc<RefCell<Self>> {
+        let s = Self {
+            render_items: HashMap::with_capacity(10),
+            random_gen: rand::thread_rng(),
+            was_updated: false,
+            vertex_len: 0,
+            index_len:0,
+            self_rc: None,
+        };
+
+        let s = Rc::new(RefCell::new(s));
+
+        s.borrow_mut().self_rc = Some(s.clone());
+
+        s
+    }
+
+    // Subscribes items to be rendered
+    // Tokens must be used or else the item will be removed from the render queue
+    pub fn add_render_items(&mut self, render_items: Vec<Box<dyn Renderable>>) -> RenderToken {
+        let token = self.get_new_token();
+
+        for item in &render_items {
+            self.vertex_len += item.get_vertex_count();
+            self.index_len += item.get_index_count();
+        }
+
+        let token: RenderToken = token;
+
+        self.render_items.insert(*token.0, RenderItem {
+            render_item: render_items,
+        });
+
+        self.was_updated = true;
+
+        token
+    }
+
+    // Modify an existing render subscription
+    pub fn set_render_items(&mut self, render_items: Vec<Box<dyn Renderable>>, render_id: RenderToken) {
+        for item in &render_items {
+            self.vertex_len += item.get_vertex_count();
+            self.index_len += item.get_index_count();
+        }
+
+        let old_render_items = self.render_items.insert(*render_id.0, RenderItem {
+            render_item: render_items,
+        });
+
+        if let Some(render_items) = old_render_items {
+            for item in &render_items.render_item {
+                self.vertex_len -= item.get_vertex_count();
+                self.index_len -= item.get_index_count();
+            }
+        }
+
+        self.was_updated = true;
+    }
+
+    // Remove a subscription
+    pub fn remove_id(&mut self, token: RenderToken) {
+        let old_render_items = self.render_items.remove(&token.0);
+
+        if let Some(render_items) = old_render_items {
+            for item in &render_items.render_item {
+                self.vertex_len -= item.get_vertex_count();
+                self.index_len -= item.get_index_count();
+            }
+        }
+
+        self.was_updated = true;
+    }
+
+    pub fn get_new_token(&mut self) -> RenderToken {
+        let mut num: u32 = self.random_gen.gen();
+
+        while self.render_items.contains_key(&num) {
+            num = self.random_gen.gen()
+        }
+
+        RenderToken::new(Rc::new(num), Rc::downgrade(&self.self_rc.as_ref().unwrap().clone()))
+    }
+
+    pub fn get_num_indices(&self) -> usize {
+        self.index_len
+    }
+
+    pub fn get_num_vertices(&self) -> usize {
+        self.vertex_len
+    }
+
+    pub fn needs_updated(&self) -> bool {
+        self.was_updated
+    }
+
+    pub fn reset_needs_updated(&mut self) {
+        self.was_updated = false;
+    }
+
+    fn iter(&self) -> std::collections::hash_map::Iter<'_, u32, RenderItem> {
+        self.render_items.iter()
+    }
+}
 
 pub struct Renderer {
     world_transform: Matrix,
-    random_gen: ThreadRng,
     display: Rc<glium::Display>,
     picker: Picker,
     pub frame_timing: FrameTiming,
     pub cursor_pos: Option<(i32, i32)>,
     
     // Holds all items that will be rendered
-    render_items: HashMap<u32, RenderItem>,
+    render_items: Rc<RefCell<RenderTable>>,
 
-    buffers_need_updated: bool,
     vertex_vec: Vec<Vertex>,
     index_vec: Vec<u32>,
     vertex_buffer: VertexBuffer<Vertex>,
     index_buffer: IndexBuffer<u32>,
-    vertex_len: usize,
-    index_len: usize,
 }
 
 impl Renderer {
@@ -53,9 +166,7 @@ impl Renderer {
 
         Self {
             world_transform,
-            render_items: HashMap::with_capacity(10),
-            random_gen: rand::thread_rng(),
-            buffers_need_updated: false,
+            render_items: RenderTable::new(),
             display: display.clone(),
             picker: Picker::new(&*display),
             frame_timing: FrameTiming::new(),
@@ -65,91 +176,21 @@ impl Renderer {
             index_buffer: IndexBuffer::empty_dynamic(&*display, glium::index::PrimitiveType::TrianglesList, Self::INIT_INDICES).unwrap(),
             vertex_vec: Vec::with_capacity(Self::INIT_VERTICES),
             index_vec: Vec::with_capacity(Self::INIT_INDICES),
-            vertex_len: 0,
-            index_len:0,
         }
-    }
-
-    // Subscribes items to be rendered
-    // Tokens must be used or else the item will be removed from the render queue
-    pub fn add_render_items(&mut self, render_items: Vec<Box<dyn Renderable>>) -> Rc<RenderToken> {
-        let id = self.get_new_id();
-
-        for item in &render_items {
-            self.vertex_len += item.get_vertex_count();
-            self.index_len += item.get_index_count();
-        }
-
-        let token: Rc<RenderToken> = Rc::new(id.into());
-
-        self.render_items.insert(id, RenderItem {
-            render_item: render_items,
-            token: Rc::downgrade(&token),
-        });
-
-        self.buffers_need_updated = true;
-
-        token
-    }
-
-    // Modify an existing render subscription
-    pub fn set_render_items(&mut self, render_items: Vec<Box<dyn Renderable>>, render_id: Rc<RenderToken>) {
-        for item in &render_items {
-            self.vertex_len += item.get_vertex_count();
-            self.index_len += item.get_index_count();
-        }
-
-        let old_render_items = self.render_items.insert((*render_id).into(), RenderItem {
-            render_item: render_items,
-            token: Rc::downgrade(&render_id)
-        });
-
-        if let Some(render_items) = old_render_items {
-            for item in &render_items.render_item {
-                self.vertex_len -= item.get_vertex_count();
-                self.index_len -= item.get_index_count();
-            }
-        }
-
-        self.buffers_need_updated = true;
-    }
-
-    // Remove a subscription
-    pub fn remove_id(&mut self, token: RenderToken) {
-        let old_render_items = self.render_items.remove(&token.into());
-
-        if let Some(render_items) = old_render_items {
-            for item in &render_items.render_item {
-                self.vertex_len -= item.get_vertex_count();
-                self.index_len -= item.get_index_count();
-            }
-        }
-
-        self.buffers_need_updated = true;
-    }
-
-    pub fn get_new_id(&mut self) -> u32{
-        let mut num: u32 = self.random_gen.gen();
-
-        while self.render_items.contains_key(&num) {
-            num = self.random_gen.gen()
-        }
-
-        num
     }
 
     // When a render subscription has changed we should rebuild the buffers
     pub fn rebuild_buffers(&mut self) {
         // check if we should resize the buffers
 
-        if self.vertex_len > self.vertex_buffer.len() {
-            self.vertex_buffer = VertexBuffer::empty_dynamic(&*self.display, (self.vertex_len as f32 * 1.1) as usize).unwrap();
-            self.vertex_vec = Vec::with_capacity((self.vertex_len as f32 * 1.1) as usize);
+        if self.render_items.borrow().get_num_vertices() > self.vertex_buffer.len() {
+            self.vertex_buffer = VertexBuffer::empty_dynamic(&*self.display, (self.render_items.borrow().get_num_vertices() as f32 * 1.1) as usize).unwrap();
+            self.vertex_vec = Vec::with_capacity((self.render_items.borrow().get_num_vertices() as f32 * 1.1) as usize);
         }
 
-        if self.index_len > self.index_buffer.len() {
-            self.index_buffer = IndexBuffer::empty_dynamic(&*self.display, glium::index::PrimitiveType::TrianglesList, (self.index_len as f32 * 1.1) as usize).unwrap();
-            self.index_vec = Vec::with_capacity((self.index_len as f32 * 1.1) as usize);
+        if self.render_items.borrow().get_num_indices() > self.index_buffer.len() {
+            self.index_buffer = IndexBuffer::empty_dynamic(&*self.display, glium::index::PrimitiveType::TrianglesList, (self.render_items.borrow().get_num_indices() as f32 * 1.1) as usize).unwrap();
+            self.index_vec = Vec::with_capacity((self.render_items.borrow().get_num_indices() as f32 * 1.1) as usize);
         }
 
         // Fill the buffers
@@ -157,27 +198,10 @@ impl Renderer {
         self.index_vec.clear();
         self.vertex_vec.clear();
 
-        let mut invalid_keys: Vec<u32> = Vec::with_capacity(10);
-
-        for (key, val) in self.render_items.iter() {
-            // checks if there are no references to the token; if it is, we can assume that it is dead and should be removed from render storage
-            if val.token.strong_count() == 0 {
-                invalid_keys.push(*key);
-            } else {
-                for item in &val.render_item {
-                    item.add_to_ib_vec(&mut self.index_vec, self.vertex_vec.len());
-                    item.add_to_vb_vec(&mut self.vertex_vec);
-                }
-            }
-        }
-
-        for key in invalid_keys {
-            println!("Removing render entry");
-            if let Some(entry) = self.render_items.remove(&key) {
-                for item in &entry.render_item {
-                    self.vertex_len -= item.get_vertex_count();
-                    self.index_len -= item.get_index_count();
-                }
+        for (_, val) in self.render_items.borrow().iter() {
+            for item in &val.render_item {
+                item.add_to_ib_vec(&mut self.index_vec, self.vertex_vec.len());
+                item.add_to_vb_vec(&mut self.vertex_vec);
             }
         }
 
@@ -205,9 +229,9 @@ impl Renderer {
     }
 
     pub fn render(&mut self, target: &mut glium::Frame) {
-        if self.buffers_need_updated {
+        if self.render_items.borrow().needs_updated() {
             self.rebuild_buffers();
-            self.buffers_need_updated = false;
+            self.render_items.borrow_mut().reset_needs_updated();
         }
 
         target.clear_color(0.02, 0.02, 0.02, 1.0);
@@ -265,11 +289,15 @@ impl Renderer {
     }
 
     pub fn get_index_count(&self) -> usize {
-        self.index_len
+        self.render_items.borrow().get_num_indices()
     }
 
     pub fn get_vertex_count(&self) -> usize {
-        self.vertex_len
+        self.render_items.borrow().get_num_vertices()
+    }
+
+    pub fn get_render_items_mut(&mut self) -> Rc<RefCell<RenderTable>> {
+        self.render_items.clone()
     }
 }
 
@@ -302,23 +330,34 @@ pub trait Renderable {
 }
 
 #[must_use]
-#[derive(Clone, Copy)]
-pub struct RenderToken(u32);
+#[derive(Clone)]
+// Keeps a reference to both the id and render table, once the id has no more references we will remove it from the table
+pub struct RenderToken(Rc<u32>, Weak<RefCell<RenderTable>>);
 
-impl From<u32> for RenderToken {
-    fn from(number: u32) -> Self {
-        RenderToken(number)
+impl Deref for RenderToken {
+    type Target = Rc<u32>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
-impl From<RenderToken> for u32 {
-    fn from(token: RenderToken) -> Self {
-        token.0
+impl RenderToken {
+    pub fn new(id: Rc<u32>, render_table: Weak<RefCell<RenderTable>>) -> Self {
+        RenderToken(id, render_table)
     }
 }
 
-// The entry holds a weak reference to the RenderToken so we can check if there are any strong references to RenderToken
+impl Drop for RenderToken {
+    fn drop(&mut self) {
+        // this is the last token alive and we should remove the token from the table
+        if Rc::strong_count(&self.0) <= 1 {
+            if let Some(render_table) = Weak::upgrade(&self.1) {
+                render_table.borrow_mut().remove_id(self.clone());
+            }
+        }
+    }
+}
+
 struct RenderItem {
     render_item: Vec<Box<dyn Renderable>>,
-    token: Weak<RenderToken>
 }

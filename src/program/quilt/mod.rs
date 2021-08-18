@@ -7,15 +7,13 @@ use crate::renderer::picker::{Picker, PickerEntry};
 use crate::renderer::{Renderable, Renderer, RenderToken};
 use block::Block;
 
-use std::rc::Rc;
-
 #[allow(dead_code)]
 pub struct Quilt {
     pub width: usize,
     pub height: usize,
     blocks: Vec<Vec<Block>>,
     needs_updated: bool,
-    renderer_id: Option<Rc<RenderToken>>,
+    renderer_id: Option<RenderToken>,
 }
 
 impl Quilt {
@@ -73,9 +71,9 @@ impl Quilt {
             }
             
             if self.renderer_id.is_none() {
-                self.renderer_id = Some(renderer.add_render_items(render_items));
+                self.renderer_id = Some(renderer.get_render_items_mut().borrow_mut().add_render_items(render_items));
             } else {
-                renderer.set_render_items(render_items, self.renderer_id.as_ref().unwrap().clone());
+                renderer.get_render_items_mut().borrow_mut().set_render_items(render_items, self.renderer_id.as_ref().unwrap().clone());
             }
 
             self.needs_updated = false;
