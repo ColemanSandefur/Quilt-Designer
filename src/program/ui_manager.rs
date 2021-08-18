@@ -20,12 +20,14 @@ lazy_static! {
         (imgui::StyleColor::Text, [1.0, 1.0, 1.0, 1.0]),
         (imgui::StyleColor::TitleBg, [0.2, 0.2, 0.2, 1.0]),
         (imgui::StyleColor::TitleBgActive, [0.2, 0.2, 0.2, 1.0]),
+        (imgui::StyleColor::MenuBarBg, [0.15, 0.15, 0.15, 1.0]),
         (imgui::StyleColor::WindowBg, [0.05, 0.05, 0.05, 1.0]),
     };
 
     pub static ref UI_STYLE_VAR: Vec<imgui::StyleVar> = vec! {
         StyleVar::WindowPadding([5.0, 5.0]),
         StyleVar::ItemSpacing([5.0, 5.0]),
+        StyleVar::WindowBorderSize(0.0)
     };
 }
 
@@ -36,9 +38,8 @@ impl UiManager {
     const BUTTON_SIZE: f32 = 64.0;
 
     // returns if screen was clicked and an imgui window wasn't clicked
-    pub fn draw(program: &mut Program, frame: &mut glium::Frame, ui: &mut imgui::Ui) -> bool {
+    pub fn draw(program: &mut Program, frame: &mut impl glium::Surface, ui: &mut imgui::Ui) -> bool {
         use imgui::*;
-        use glium::Surface;
 
         let style_colors = ui.push_style_colors(UI_STYLE_COLOR.iter());
         let style_vars = ui.push_style_vars(UI_STYLE_VAR.iter());
@@ -49,11 +50,22 @@ impl UiManager {
         let mut was_color_clicked = ClickState{ clicked: false, double_clicked: false };
         let color = unsafe {COLOR_PICKER_COLOR};
 
+        let mut main_menu_bar_size = [0.0; 2];
+
+        let style = ui.push_style_var(StyleVar::WindowBorderSize(1.0));
+        ui.main_menu_bar(|| {
+            ui.menu(im_str!("File"), true, || {
+
+            });
+            main_menu_bar_size = ui.window_size();
+        });
+        style.pop(ui);
+            
         // Left side-bar
         Window::new(im_str!("Textures"))
-            .size([100.0, dimensions.1 as f32], Condition::Appearing)
-            .size_constraints([100.0, dimensions.1 as f32], [dimensions.0 as f32, dimensions.1 as f32])
-            .position([0.0, 0.0], Condition::Always)
+            .size([100.0, dimensions.1 as f32 - main_menu_bar_size[1]], Condition::Appearing)
+            .size_constraints([100.0, dimensions.1 as f32 - main_menu_bar_size[1]], [dimensions.0 as f32, dimensions.1 as f32 - main_menu_bar_size[1]])
+            .position([0.0, main_menu_bar_size[1]], Condition::Always)
             .bg_alpha(1.0)
             .movable(false)
             .collapsible(false)
@@ -133,7 +145,7 @@ impl UiManager {
         Window::new(im_str!("Performance"))
             .always_auto_resize(true)
             .collapsible(true)
-            .position([100.0, 0.0], Condition::FirstUseEver)
+            .position([100.0, main_menu_bar_size[1]], Condition::FirstUseEver)
             .build(ui, || {
                 ui.text(im_str!("{}ms", program.get_renderer_mut().frame_timing.delta_frame_time().num_milliseconds()));
                 ui.text(im_str!("{:.0} fps", 1.0 / (program.get_renderer_mut().frame_timing.delta_frame_time().num_microseconds().unwrap() as f64 / 1_000_000.0)));
@@ -144,9 +156,9 @@ impl UiManager {
         
         // Right side-bar
         Window::new(im_str!("Block Designs"))
-            .size([100.0, dimensions.1 as f32], Condition::Appearing)
-            .size_constraints([100.0, dimensions.1 as f32], [dimensions.0 as f32, dimensions.1 as f32])
-            .position([dimensions.0 as f32, 0.0], Condition::Always)
+            .size([100.0, dimensions.1 as f32 - main_menu_bar_size[1]], Condition::Appearing)
+            .size_constraints([100.0, dimensions.1 as f32 - main_menu_bar_size[1]], [dimensions.0 as f32, dimensions.1 as f32 - main_menu_bar_size[1]])
+            .position([dimensions.0 as f32, main_menu_bar_size[1]], Condition::Always)
             .position_pivot([1.0, 0.0])
             .bg_alpha(1.0)
             .movable(false)

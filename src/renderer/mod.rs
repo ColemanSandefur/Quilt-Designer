@@ -17,7 +17,6 @@ use rand::prelude::*;
 use std::rc::{Weak, Rc};
 use std::cell::RefCell;
 use glium::{VertexBuffer, IndexBuffer};
-use glium::Surface;
 use std::ops::Deref;
 
 pub struct RenderTable {
@@ -228,7 +227,7 @@ impl Renderer {
         self.frame_timing.update_frame_time();
     }
 
-    pub fn render(&mut self, target: &mut glium::Frame) {
+    pub fn render(&mut self, target: &mut impl glium::Surface) {
         if self.render_items.borrow().needs_updated() {
             self.rebuild_buffers();
             self.render_items.borrow_mut().reset_needs_updated();
