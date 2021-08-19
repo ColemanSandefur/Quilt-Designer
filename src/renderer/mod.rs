@@ -6,8 +6,9 @@ pub mod picker;
 pub mod textures;
 pub mod vertex;
 pub mod shape_object;
+pub mod new_picker;
 
-use picker::{Picker, PickerEntry};
+use new_picker::{Picker};
 use vertex::Vertex;
 use matrix::{Matrix, WorldTransform};
 use util::frame_timing::FrameTiming;
@@ -273,14 +274,9 @@ impl Renderer {
         &mut self.world_transform
     }
 
-    pub fn clicked(&mut self) -> Option<&PickerEntry>{
-        if let Some(cursor) = self.cursor_pos {
-            self.picker.click(cursor);
-
-            return self.picker.get_clicked();
-        }
-
-        None
+    pub fn clicked(&mut self) {
+        println!("Clicked");
+        self.picker.click(self.cursor_pos.unwrap());
     }
 
     pub fn cursor_moved(&mut self, position: &glium::glutin::dpi::PhysicalPosition<f64>) {

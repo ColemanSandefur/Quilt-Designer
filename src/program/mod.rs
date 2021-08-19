@@ -9,6 +9,7 @@ use quilt::Quilt;
 use quilt::brush::{Brush, PatternBrush};
 
 use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 use glium::glutin::event::*;
 use std::io::Write;
 
@@ -18,13 +19,14 @@ pub struct Program {
     keyboard_tracker: KeyboardTracker,
     renderer: Renderer,
     quilt: Quilt,
-    brush: Brush
+    brush: Arc<Mutex<Brush>>,
 }
 
 impl Program {
     pub fn new(display: Rc<glium::Display>) -> Self {
+        let brush = Arc::new(Mutex::new(Brush::new_pattern_brush(PatternBrush::new_color([1.0;4]))));
         let mut renderer = Renderer::new(display.clone());
-        let quilt = Quilt::new(6, 8, renderer.get_picker_mut());
+        let quilt = Quilt::new(6, 8, renderer.get_picker_mut(), brush.clone());
 
         let dimensions = quilt.get_dimensions();
         renderer.get_world_transform_mut().set_scale(1.0, 1.0, std::cmp::max(dimensions.0, dimensions.1) as f32 * 1.0);
@@ -34,7 +36,7 @@ impl Program {
             renderer,
             quilt,
             keyboard_tracker: KeyboardTracker::new(),
-            brush: Brush::new_pattern_brush(PatternBrush::new_color([1.0;4])),
+            brush,
         }
     }
 
@@ -91,7 +93,7 @@ impl Program {
                     }
 
                     VirtualKeyCode::U => {
-                        self.quilt = Quilt::new(1, 1, self.renderer.get_picker_mut());
+                        self.quilt = Quilt::new(1, 1, self.renderer.get_picker_mut(), self.brush.clone());
                     }
                     _ => ()
                 }
@@ -136,18 +138,18 @@ impl Program {
     }
 
     fn handle_click(&mut self) {
-
-        if let Some(picker_entry) = self.renderer.clicked() {
-            let picker_entry = picker_entry.clone();
-            self.quilt.click(&picker_entry, &self.brush, &mut self.renderer.get_picker_mut());
-        }
+        self.renderer.clicked();
+        // if let Some(picker_entry) = self.renderer.clicked() {
+        //     let picker_entry = picker_entry.clone();
+        //     self.quilt.click(&picker_entry, &self.brush, &mut self.renderer.get_picker_mut());
+        // }
     }
 
     pub fn get_renderer_mut(&mut self) -> &mut Renderer {
         &mut self.renderer
     }
 
-    pub fn get_brush_mut(&mut self) -> &mut Brush {
+    pub fn get_brush_mut(&mut self) -> &mut Arc<Mutex<Brush>> {
         &mut self.brush
     }
 

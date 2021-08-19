@@ -88,7 +88,7 @@ impl UiManager {
                 was_color_clicked.double_clicked = ui.is_item_hovered() && ui.is_mouse_double_clicked(MouseButton::Left);
                 
                 if was_color_clicked.clicked {
-                    program.get_brush_mut().set_pattern_brush(std::sync::Arc::new(PatternBrush::new_color(color)));
+                    program.get_brush_mut().lock().unwrap().set_pattern_brush(std::sync::Arc::new(PatternBrush::new_color(color)));
                 }
 
                 if was_color_clicked.double_clicked {
@@ -106,7 +106,7 @@ impl UiManager {
                         // on button click
 
                         // change brush to apply texture on click
-                        program.get_brush_mut().set_pattern_brush(std::sync::Arc::new(crate::program::quilt::brush::PatternBrush::new_texture(id.clone())));
+                        program.get_brush_mut().lock().unwrap().set_pattern_brush(std::sync::Arc::new(crate::program::quilt::brush::PatternBrush::new_texture(id.clone())));
                     }
                     ui.unindent_by(indentation);
                     ui.next_column();
@@ -131,7 +131,7 @@ impl UiManager {
                         let picker = ColorPicker::new(im_str!(""), &mut COLOR_PICKER_COLOR)
                             .alpha(false);
                         if picker.build(&ui) {
-                            program.get_brush_mut().set_pattern_brush(std::sync::Arc::new(PatternBrush::new_color(COLOR_PICKER_COLOR)));
+                            program.get_brush_mut().lock().unwrap().set_pattern_brush(std::sync::Arc::new(PatternBrush::new_color(COLOR_PICKER_COLOR)));
                         }
 
                         if ui.button(im_str!("Close"), [ui.window_content_region_width(), 20.0]) {
@@ -182,7 +182,7 @@ impl UiManager {
 
                         // on button click
 
-                        program.get_brush_mut().set_block_brush(std::sync::Arc::new(BlockBrush {square_pattern: block_pattern.clone()}));
+                        program.get_brush_mut().lock().unwrap().set_block_brush(std::sync::Arc::new(BlockBrush {square_pattern: block_pattern.clone()}));
                     }
                     ui.unindent_by(indentation);
                     ui.next_column();

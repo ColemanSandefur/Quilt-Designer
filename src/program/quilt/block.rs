@@ -7,45 +7,50 @@ use crate::renderer::shape_object::{ShapeDataStruct};
 use crate::renderer::matrix::{Matrix};
 use crate::renderer::shape::{Shape};
 use crate::renderer::vertex::Vertex;
-use crate::renderer::picker::{Picker};
+// use crate::renderer::picker::{Picker};
+use crate::renderer::new_picker::*;
 use crate::renderer::Renderable;
 use crate::parse::*;
+
+use std::sync::{Arc, Mutex};
 
 // The purpose of the "shape protector" is to call update_buffer whenever a shape has changed
 #[derive(Clone)]
 struct ShapeProtector {
-    shapes: Vec<Box<ShapeDataStruct>>,
+    shapes: Vec<Arc<Mutex<ShapeDataStruct>>>,
     rotation: f32,
     model_transform: Matrix,
     vertex_buffer: Vec<Vertex>,
     index_buffer: Vec<u32>,
     index_count: usize,
     vertex_count: usize,
+    brush: Arc<Mutex<Brush>>,
+    needs_updated: Arc<Mutex<bool>>,
+    quilt_needs_updated: Arc<Mutex<bool>>
 }
 
 #[allow(dead_code)]
 impl ShapeProtector {
 
     // constructors
-
-    pub fn new() -> Self {
-        let s = Self {
-            shapes: Vec::with_capacity(10),
-            rotation: 0.0,
-            model_transform: Matrix::new(),
-            vertex_buffer: Vec::new(),
-            index_buffer: Vec::new(),
-            index_count: 0,
-            vertex_count: 0,
-        };
-        
-        s
-    }
     
-    pub fn with_shapes(mut shapes: Vec<Box<ShapeDataStruct>>, rotation: f32) -> Self {
+    pub fn with_shapes(mut shapes: Vec<Arc<Mutex<ShapeDataStruct>>>, rotation: f32, picker: &mut Picker, quilt_needs_updated: Arc<Mutex<bool>>, brush: Arc<Mutex<Brush>>) -> Self {
+        let needs_updated = Arc::new(Mutex::new(false));
 
         for shape in &mut shapes {
-            shape.shape.set_rotation(rotation);
+            shape.lock().unwrap().shape.set_rotation(rotation);
+
+            let shape_clone = shape.clone();
+            let update_clone = needs_updated.clone();
+            let q_needs_updated = quilt_needs_updated.clone();
+            let token = picker.subscribe(Arc::new(Mutex::new(move |_| {
+                println!("square clicked");
+                shape_clone.lock().unwrap().shape.set_color([1.0, 0.0, 0.0, 1.0]);
+                *update_clone.lock().unwrap() = true;
+                *q_needs_updated.lock().unwrap() = true;
+            })));
+
+            shape.lock().unwrap().set_picker_token(Some(token));
         }
 
         let mut s = Self {
@@ -56,6 +61,9 @@ impl ShapeProtector {
             index_buffer: Vec::new(),
             index_count: 0,
             vertex_count: 0,
+            brush,
+            needs_updated,
+            quilt_needs_updated,
         };
 
         s.update_buffer();
@@ -65,23 +73,23 @@ impl ShapeProtector {
 
     // shape accessors
 
-    pub fn get_shapes(&self) -> &Vec<Box<ShapeDataStruct>> {
+    pub fn get_shapes(&self) -> &Vec<Arc<Mutex<ShapeDataStruct>>> {
         &self.shapes
     }
 
-    pub fn get_shape(&self, index: usize) -> Option<&Box<ShapeDataStruct>> {
+    pub fn get_shape(&self, index: usize) -> Option<&Arc<Mutex<ShapeDataStruct>>> {
         self.shapes.get(index)
     }
 
     pub fn add_shape(&mut self, shape: Box<dyn Shape>) {
-        self.shapes.push(Box::new(ShapeDataStruct::new(shape)));
+        self.shapes.push(Arc::new(Mutex::new(ShapeDataStruct::new(shape))));
 
         self.update_buffer();
     }
 
     pub fn remove_shape(&mut self, index: usize, picker: &mut Picker) {
         if let Some(shape_data) = self.shapes.get(index) {
-            picker.remove_id(shape_data.shape.get_id());
+            // picker.remove_id(shape_data.lock().unwrap().shape.get_id());
 
             self.shapes.remove(index);
 
@@ -89,7 +97,7 @@ impl ShapeProtector {
         }
     }
 
-    pub fn set_shapes(&mut self, shapes: Vec<Box<ShapeDataStruct>>, rotation: f32) {
+    pub fn set_shapes(&mut self, shapes: Vec<Arc<Mutex<ShapeDataStruct>>>, rotation: f32) {
         self.shapes = shapes;
 
         self.set_model_transform(self.model_transform);
@@ -108,7 +116,7 @@ impl ShapeProtector {
         self.model_transform = matrix;
 
         for shape in &mut self.shapes {
-            shape.shape.set_model_matrix(self.model_transform.clone());
+            shape.lock().unwrap().shape.set_model_matrix(self.model_transform.clone());
         }
 
         self.update_buffer();
@@ -136,8 +144,8 @@ impl ShapeProtector {
         self.index_count = 0;
         self.vertex_count = 0;
         for shape in &mut self.shapes {
-            self.index_count += shape.shape.get_num_indices();
-            self.vertex_count += shape.shape.get_num_vertices();
+            self.index_count += shape.lock().unwrap().shape.get_num_indices();
+            self.vertex_count += shape.lock().unwrap().shape.get_num_vertices();
         }
     }
 
@@ -148,9 +156,9 @@ impl ShapeProtector {
         let mut index_vec = Vec::with_capacity(self.index_count);
 
         for shape in &mut self.shapes {
-            let mut index: Vec<u32> = shape.shape.get_indices().into_iter().map(|value| value + vert_vec.len() as u32).collect();
+            let mut index: Vec<u32> = shape.lock().unwrap().shape.get_indices().into_iter().map(|value| value + vert_vec.len() as u32).collect();
             index_vec.append(&mut index);
-            let mut vert = shape.shape.get_vertices();
+            let mut vert = shape.lock().unwrap().shape.get_vertices();
             vert_vec.append(&mut vert);
         }
 
@@ -180,7 +188,7 @@ impl ShapeProtector {
 
     pub fn set_shape_color(&mut self, index: usize, color: [f32; 4]) {
         if let Some(shape) = self.shapes.get_mut(index) {
-            shape.shape.set_color(color);
+            shape.lock().unwrap().shape.set_color(color);
 
             self.update_buffer();
         }
@@ -189,7 +197,7 @@ impl ShapeProtector {
     pub fn apply_brush(&mut self, index: usize, pattern_brush: &crate::program::quilt::brush::PatternBrush) {
 
         if let Some(shape) = self.shapes.get_mut(index) {
-            pattern_brush.apply_to_shape(shape);
+            // pattern_brush.apply_to_shape(shape);
 
             self.update_buffer();
         }
@@ -198,39 +206,44 @@ impl ShapeProtector {
 
     pub fn set_rotation(&mut self, rotation: f32) {
         for shape in &mut self.shapes {
-            shape.shape.set_rotation(rotation);
+            shape.lock().unwrap().shape.set_rotation(rotation);
         }
     }
 
     // serialization
 
-    pub fn from_save(yaml: &Yaml, picker: &mut Picker, row: usize, column: usize, save_data: &mut SaveData) -> Self {
+    pub fn from_save(yaml: &Yaml, picker: &mut Picker, row: usize, column: usize, quilt_needs_updated: Arc<Mutex<bool>>, brush: Arc<Mutex<Brush>>, save_data: &mut SaveData) -> Self {
         let yaml_map = LinkedHashMap::from(yaml);
 
         let yaml_vec: Vec<Yaml> = yaml_map.get("shape").into();
+
+        let needs_updated = Arc::new(Mutex::new(false));
         
         let mut shapes: Vec<Box<ShapeDataStruct>> = yaml_vec.into_iter().map(|data| ShapeDataStruct::from_save(data, save_data)).collect();
 
         for shape in &mut shapes {
-            shape.shape.set_id(picker.get_new_id(row, column));
+            // shape.shape.set_id(picker.get_new_id(row, column));
             shape.shape.set_color([1.0;4]);
         }
 
         BlockPattern::apply_background(&mut shapes);
 
-        shapes[0].shape.set_id(picker.get_new_id(row, column));
+        // shapes[0].shape.set_id(picker.get_new_id(row, column));
         shapes[0].shape.set_color([1.0; 4]);
 
         println!("shapes len: {}", shapes.len());
         
         let mut s = Self {
-            shapes,
+            shapes: Vec::new(),
             rotation: 0.0,
             model_transform: Matrix::new(),
             vertex_buffer: Vec::new(),
             index_buffer: Vec::new(),
             index_count: 0,
             vertex_count: 0,
+            brush,
+            needs_updated,
+            quilt_needs_updated,
         };
 
         s.set_rotation(yaml_map.get("rotation").into());
@@ -249,7 +262,7 @@ impl ShapeProtector {
 
         if self.shapes.len() > 2 {
             for shape in &self.shapes[1..self.shapes.len() - 1] {
-                vec.push(shape.to_save(save_data));
+                vec.push(shape.lock().unwrap().to_save(save_data));
             }
         }
 
@@ -257,6 +270,15 @@ impl ShapeProtector {
             ("shape", Yaml::from(vec)),
             ("rotation", self.rotation.into())
         ])
+    }
+
+    pub fn update(&mut self) {
+        if *self.needs_updated.lock().unwrap() == true {
+            println!("Update");
+            self.update_buffer();
+
+            *self.needs_updated.lock().unwrap() = false;
+        }
     }
 }
 
@@ -275,19 +297,22 @@ impl Block {
     pub const BLOCK_BORDER_WIDTH: f32 = 0.05;
     pub const SHAPE_BORDER_WIDTH: f32 = 0.02;
 
-    pub fn new(row: usize, column: usize, picker: &mut Picker) -> Self {
+    pub fn new(row: usize, column: usize, picker: &mut Picker, needs_updated: Arc<Mutex<bool>>, brush: Arc<Mutex<Brush>>) -> Self {
 
         // the default pattern for the block
         let shape_protector = ShapeProtector::with_shapes(
             vec!{
-                Box::new(ShapeDataStruct::new(
-                    Box::new(crate::renderer::shape::PathShape::square_with_line_width(0.0, 0.0, 1.0, 1.0, picker.get_new_id(row, column), 0.0)),
-                )),
-                Box::new(ShapeDataStruct::new(
+                Arc::new(Mutex::new(ShapeDataStruct::new(
+                    Box::new(crate::renderer::shape::PathShape::square_with_line_width(0.0, 0.0, 1.0, 1.0, 0, 0.0)),
+                ))),
+                Arc::new(Mutex::new(ShapeDataStruct::new(
                     Box::new(crate::renderer::shape::StrokeShape::square(0.0, 0.0, 1.0, 1.0, 0, &lyon::tessellation::StrokeOptions::default().with_line_width(Block::BLOCK_BORDER_WIDTH))),
-                )),
+                ))),
             },
-            0.0
+            0.0,
+            picker,
+            needs_updated,
+            brush,
         );
 
         let s = Block {
@@ -317,14 +342,14 @@ impl Block {
 
         if brush.is_block_brush() {
             // change the block pattern
-            self.shape_protector.set_shapes(brush.get_block_brush().unwrap().get_pattern(picker, self.row, self.column).get_shapes().clone(), Brush::get_rotation());
+            // self.shape_protector.set_shapes(brush.get_block_brush().unwrap().get_pattern(picker, self.row, self.column).get_shapes().clone(), Brush::get_rotation());
             should_update = true;
         } else if brush.is_pattern_brush() {
             // change either the color or texture of a shape
 
             // find which shape was clicked
             for index in 0..self.shape_protector.get_shapes().len() {
-                if self.shape_protector.get_shape(index).unwrap().shape.was_clicked(id) {
+                if self.shape_protector.get_shape(index).unwrap().lock().unwrap().shape.was_clicked(id) {
                     self.shape_protector.apply_brush(index, &brush.get_pattern_brush().unwrap());
     
                     should_update = true;
@@ -350,13 +375,13 @@ impl Block {
         self.shape_protector.set_model_transform(matrix);
     }
 
-    pub fn from_save(yaml:Yaml, picker: &mut Picker, save_data: &mut SaveData) -> Self {
+    pub fn from_save(yaml:Yaml, picker: &mut Picker, quilt_needs_updated: Arc<Mutex<bool>>, brush: Arc<Mutex<Brush>>, save_data: &mut SaveData) -> Self {
         let map = LinkedHashMap::from(yaml);
 
         let row = usize::from(map.get("row"));
         let column = usize::from(map.get("column"));
 
-        let shape_protector = ShapeProtector::from_save(map.get("shapes"), picker, row, column, save_data);
+        let shape_protector = ShapeProtector::from_save(map.get("shapes"), picker, row, column, quilt_needs_updated, brush, save_data);
 
         Self {
             shape_protector,
@@ -381,6 +406,10 @@ impl Block {
 
     pub fn get_column(&self) -> usize {
         self.column
+    }
+
+    pub fn update(&mut self) {
+        self.shape_protector.update();
     }
 }
 
