@@ -20,15 +20,23 @@ lazy_static!{
 pub struct Texture {
     texture_index: usize, // id for using with renderer
     imgui_id: imgui::TextureId, // id for using in imgui
-    texture_data: Arc<DynamicImage> // Reference to original image object, used for saving
+    texture_data: Arc<DynamicImage>, // Reference to original image object, used for saving
+    hash_name: Arc<String>, // Cache the hash name for efficiency
 }
 
 impl Texture {
     pub fn new(texture_index: usize, imgui_id: imgui::TextureId, texture_data: Arc<DynamicImage>) -> Self {
+        let mut buffer = Vec::new();
+
+        texture_data.write_to(&mut buffer, image::ImageOutputFormat::Png).expect("Error writing to buffer");
+
+        let hash_name = Arc::new(Self::generate_name_from_buffer(&buffer));
+
         Self {
             texture_index,
             imgui_id,
-            texture_data
+            texture_data,
+            hash_name,
         }
     }
 
@@ -44,16 +52,7 @@ impl Texture {
         self.texture_data.write_to(destination, format)
     }
 
-    pub fn generate_name(&self) -> String {
-
-        let mut buffer = Vec::new();
-
-        self.write_to(&mut buffer, image::ImageOutputFormat::Png).expect("Error writing to buffer");
-
-        self.generate_name_from_buffer(&buffer)
-    }
-
-    pub fn generate_name_from_buffer(&self, buffer: &Vec<u8>) -> String {
+    pub fn generate_name_from_buffer(buffer: &Vec<u8>) -> String {
         let mut hasher = HASHER.lock().unwrap();
         hasher.update(&buffer);
 
@@ -61,6 +60,10 @@ impl Texture {
         
         // convert result to a string
         format!("{}.png", result.into_iter().map(|i| i.to_string()).collect::<String>())
+    }
+
+    pub fn get_name(&self) -> &String {
+        &self.hash_name
     }
 }
 

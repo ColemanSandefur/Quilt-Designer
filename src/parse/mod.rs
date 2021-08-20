@@ -252,6 +252,14 @@ impl From<&Yaml> for Point {
     }
 }
 
+impl From<&Yaml> for [f32; 4] {
+    fn from(yaml: &Yaml) -> Self {
+        let map = LinkedHashMap::from(yaml);
+
+        [map.get("x").into(), map.get("y").into(), map.get("z").into(), map.get("w").into()]
+    }
+}
+
 //
 // converting to yaml
 //
@@ -310,6 +318,23 @@ impl From<Point> for Yaml {
             ("x", data.x),
             ("y", data.y)
         ])
+    }
+}
+
+impl From<&[f32; 4]> for Yaml {
+    fn from(data: &[f32; 4]) -> Self {
+        LinkedHashMap::create(vec![
+            ("x", data[0]),
+            ("y", data[1]),
+            ("z", data[2]),
+            ("w", data[3]),
+        ])
+    }
+}
+
+impl From<[f32; 4]> for Yaml {
+    fn from(data: [f32; 4]) -> Self {
+        data.into()
     }
 }
 

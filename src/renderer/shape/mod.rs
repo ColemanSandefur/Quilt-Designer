@@ -6,10 +6,12 @@ use crate::renderer::matrix::Matrix;
 use crate::parse::{Yaml, SavableBlueprint, Savable, LinkedHashMap, SaveData};
 use crate::program::quilt::block::Block;
 use crate::renderer::vertex::Vertex;
+use crate::renderer::textures;
 
 use cgmath::Matrix4;
 use lyon::math::{point, Point};
 use lyon::tessellation::*;
+use std::io::Write;
 
 pub trait Shape: Sync + Send + SavableBlueprint + Savable + PrimitiveShape {
     fn clone_shape(&self) -> Box<dyn Shape>;
@@ -185,10 +187,40 @@ impl Savable for PathShape {
     // outline: StrokeShape,
     // rotation: f32,
 
-    fn to_save(&self, _save_data: &mut SaveData) -> Yaml {
+    fn to_save(&self, save_data: &mut SaveData) -> Yaml {
+
+        if self.get_tex_id() > 0 {
+
+            let texture = &textures::get_textures().get((self.get_tex_id() - 1) as usize).unwrap();
+
+            // let file_name = texture.generate_name_from_buffer(&buffer);
+            let file_name = texture.get_name();
+            
+            if !save_data.files_written.contains(texture.get_name()) {
+                let mut buffer = Vec::new();
+                texture.write_to(&mut buffer, image::ImageOutputFormat::Png).unwrap();
+                save_data.files_written.push(file_name.clone());
+                let writer = save_data.writer.as_mut().unwrap();
+                
+                let options = zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Stored);
+                writer.start_file(file_name.clone(), options).unwrap();
+        
+                writer.write(&buffer).unwrap();
+            }
+
+            return LinkedHashMap::create(vec![
+                ("path", self.path.to_save_blueprint()),
+                ("color", (&self.vertex_buffer[0].color).into()),
+                ("texture", file_name.as_str().into())
+            ])
+        } 
+
         LinkedHashMap::create(vec![
             ("path", self.path.to_save_blueprint()),
+            ("color", (&self.vertex_buffer[0].color).into()),
+            ("texture", "".into()),
         ])
+
     }
     fn from_save(yaml: Yaml, _save_data: &mut SaveData) -> Box<Self> where Self: Sized {
         let map = LinkedHashMap::from(yaml);
