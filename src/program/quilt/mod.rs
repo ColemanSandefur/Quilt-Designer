@@ -128,7 +128,7 @@ impl Quilt {
 
         for row in &self.blocks {
             for block in row {
-                // output_vec.push(block.to_save(save_data));
+                output_vec.push(block.to_save(save_data));
             }
         }
 
@@ -147,12 +147,13 @@ impl Quilt {
         let (width, height) = (yaml_map.get("width").into(), yaml_map.get("height").into());
 
         let mut quilt = Self::new(width, height, picker, brush.clone());
-        let needs_updated = Arc::new(Mutex::new(true));
+        let needs_updated = SyncUpdateStatus::new();
+        needs_updated.needs_updated();
 
         for block_yaml in quilt_yaml {
-            // let block = Block::from_save(block_yaml, picker, needs_updated.clone(), brush.clone(), save_data);
+            let block = Block::from_save(block_yaml, picker, needs_updated.weak(), brush.clone(), save_data);
 
-            // quilt.set_block(block);
+            quilt.set_block(block);
         }
 
         quilt

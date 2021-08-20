@@ -49,7 +49,7 @@ impl RenderTable {
     }
 
     // Subscribes items to be rendered
-    // Tokens must be used or else the item will be removed from the render queue
+    // Tokens must be kept alive or else the item will be removed from the render queue
     pub fn add_render_items(&mut self, render_items: Vec<Box<dyn Renderable>>) -> RenderToken {
         let token = self.get_new_token();
 

@@ -188,17 +188,13 @@ impl Savable for PathShape {
     fn to_save(&self, _save_data: &mut SaveData) -> Yaml {
         LinkedHashMap::create(vec![
             ("path", self.path.to_save_blueprint()),
-            ("rotation", self.rotation.into()),
         ])
     }
     fn from_save(yaml: Yaml, _save_data: &mut SaveData) -> Box<Self> where Self: Sized {
         let map = LinkedHashMap::from(yaml);
-        let rotation = map.get("rotation").into();
         let path = ShapePath::from_save_blueprint(map.get("path").clone());
 
-        let mut s = Self::new(*path, 0);
-
-        s.set_rotation(rotation);
+        let s = Self::new(*path, 0);
 
         Box::new(s)
     }

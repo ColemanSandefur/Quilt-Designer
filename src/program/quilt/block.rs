@@ -2,10 +2,8 @@ pub mod block_pattern;
 pub mod block_manager;
 
 use crate::program::quilt::brush::*;
-use crate::program::quilt::block::block_pattern::BlockPattern;
 use crate::renderer::shape_object::{ShapeDataStruct};
 use crate::renderer::matrix::{Matrix};
-use crate::renderer::shape::{Shape};
 use crate::renderer::vertex::Vertex;
 use crate::program::update_status::{SyncUpdateStatus, WeakUpdateStatus};
 use crate::renderer::new_picker::*;
@@ -25,6 +23,9 @@ struct ShapeProtector {
 }
 
 impl ShapeProtector {
+    pub fn get_num_shapes(&self) -> usize {
+        self.shapes.len()
+    }
 
     fn new() -> Self {
         Self {
@@ -90,8 +91,6 @@ impl Renderable for ShapeProtector {
         self.vertex_count
     }
 }
-
-
 
 #[derive(Clone)]
 pub struct Block {
@@ -235,30 +234,67 @@ impl Block {
         self.column
     }
 
-    // pub fn from_save(yaml:Yaml, picker: &mut Picker, quilt_needs_updated: Arc<Mutex<bool>>, brush: Arc<Mutex<Brush>>, save_data: &mut SaveData) -> Self {
-    //     let map = LinkedHashMap::from(yaml);
+    pub fn from_save(yaml:Yaml, picker: &mut Picker, quilt_needs_updated: WeakUpdateStatus, brush: Arc<Mutex<Brush>>, save_data: &mut SaveData) -> Self {
+        let map = LinkedHashMap::from(yaml);
 
-    //     let row = usize::from(map.get("row"));
-    //     let column = usize::from(map.get("column"));
+        let row = usize::from(map.get("row"));
+        let column = usize::from(map.get("column"));
 
-    //     let shape_protector = ShapeProtector::from_save(map.get("shapes"), picker, row, column, quilt_needs_updated, brush, save_data);
+        let shape_protector = Arc::new(Mutex::new(ShapeProtector::new()));
 
-    //     Self {
-    //         shape_protector,
-    //         row,
-    //         column
-    //     }
-    // }
+        let yaml_vec: Vec<Yaml> = map.get("shapes").into();
+        let shape_protector_weak = Arc::downgrade(&shape_protector.clone());
+        let weak_brush = Arc::downgrade(&brush);
+        let quilt_needs_updated = quilt_needs_updated.upgrade().unwrap();
+        let rotation = map.get("rotation").into();
+        shape_protector.lock().modify(|vec| {
+            let new_shapes: Vec<Arc<Mutex<ShapeDataStruct>>> = yaml_vec.into_iter().map(|data| {
+                let mut shape = ShapeDataStruct::from_save(data, save_data);
 
-    // pub fn to_save(&self, save_data: &mut SaveData) -> Yaml {
-    //     let shapes = self.shape_protector.to_save(save_data);
+                shape.shape.set_rotation(rotation);
 
-    //     LinkedHashMap::create(vec![
-    //         ("shapes", Yaml::from(shapes)),
-    //         ("row", self.row.into()),
-    //         ("column", self.column.into()),
-    //     ])
-    // }
+                Arc::new(Mutex::new(*shape))
+            }).collect();
+            
+            let picker_table = Arc::downgrade(&picker.get_table());
+
+            for shape in new_shapes {
+                shape.lock().subscribe(picker, Self::configure_click(shape_protector_weak.clone(), Arc::downgrade(&shape), weak_brush.clone(), quilt_needs_updated.weak(), picker_table.clone()));
+
+                vec.push(shape);
+            }
+
+            vec.last().unwrap().lock().set_picker_token(None);
+        });
+
+        Self {
+            shape_protector: shape_protector,
+            row,
+            column,
+            rotation,
+            model_transform: Matrix::new(),
+            brush: Arc::downgrade(&brush)
+        }
+    }
+
+    pub fn to_save(&self, save_data: &mut SaveData) -> Yaml {
+        // let shapes = self.shape_protector.to_save(save_data);
+
+        let mut vec: Vec<Yaml> = Vec::with_capacity(self.shape_protector.lock().get_num_shapes());
+
+        self.shape_protector.lock().modify(|shapes| {
+            for shape in &shapes[..shapes.len() - 1] {
+                vec.push(shape.lock().to_save(save_data));
+            }
+        });
+
+        LinkedHashMap::create(vec![
+            ("shapes", Yaml::from(vec)),
+            ("row", self.row.into()),
+            ("column", self.column.into()),
+            ("rotation", self.rotation.into()),
+        ])
+    }
 }
 
 impl Renderable for Block {

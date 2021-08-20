@@ -67,8 +67,8 @@ impl SavableBlueprint for ShapeDataStruct {
 }
 
 impl Savable for ShapeDataStruct {
-    fn to_save(&self, _save_data: &mut SaveData) -> Yaml {
-        self.shape.to_save_blueprint()
+    fn to_save(&self, save_data: &mut SaveData) -> Yaml {
+        self.shape.to_save(save_data)
     }
 
     fn from_save(yaml: Yaml, _save_data: &mut SaveData) -> Box<Self> where Self: Sized {
