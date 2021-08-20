@@ -1,5 +1,6 @@
 pub mod brush;
 pub mod block;
+pub mod protective_struct;
 
 use crate::parse::*;
 use crate::program::quilt::brush::*;
@@ -7,28 +8,31 @@ use crate::program::quilt::brush::*;
 use crate::renderer::new_picker::*;
 use crate::renderer::{Renderable, Renderer, RenderToken};
 use block::Block;
+use crate::program::update_status::SyncUpdateStatus;
 
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc};
+use parking_lot::Mutex;
 
 #[allow(dead_code)]
 pub struct Quilt {
     pub width: usize,
     pub height: usize,
     blocks: Vec<Vec<Block>>,
-    needs_updated: Arc<Mutex<bool>>,
+    needs_updated: SyncUpdateStatus,
     renderer_id: Option<RenderToken>,
 }
 
 impl Quilt {
     pub fn new(width: usize, height: usize, picker: &mut Picker, brush: Arc<Mutex<Brush>>) -> Self {
         let mut blocks = Vec::with_capacity(height);
-        let needs_updated = Arc::new(Mutex::new(true));
+        let needs_updated = SyncUpdateStatus::new();
+        needs_updated.needs_updated();
 
         for r in 0..height {
             let mut row = Vec::with_capacity(width);
 
             for c in 0..width {
-                let mut square = Block::new(r, c, picker, needs_updated.clone(), brush.clone());
+                let mut square = Block::new(r, c, picker, brush.clone(), needs_updated.clone());
 
                 let column = c as f32;
                 let r = -1.0 * r as f32 - 1.0;
@@ -65,13 +69,12 @@ impl Quilt {
     pub fn draw(&mut self, renderer: &mut Renderer) {
 
         // Whenever we change the shape's data, we need to give the renderer the new information for it to render
-        if *self.needs_updated.lock().unwrap() {
-            println!("Updating");
+        if self.needs_updated.get_needs_updated() {
             let mut render_items: Vec<Box<dyn Renderable>> = Vec::with_capacity(self.width * self.height);
 
             for row in &mut self.blocks {
                 for block in row {
-                    block.update();
+                    // block.update();
                     render_items.push(Box::new(block.clone()))
                 }
             }
@@ -82,7 +85,7 @@ impl Quilt {
                 renderer.get_render_items_mut().borrow_mut().set_render_items(render_items, self.renderer_id.as_ref().unwrap().clone());
             }
 
-            *self.needs_updated.lock().unwrap() = false;
+            self.needs_updated.reset_updated();
         }
     }
 
@@ -113,7 +116,7 @@ impl Quilt {
         self.blocks[row][column] = block;
         self.blocks[row][column].set_model_transform(model_transform);
 
-        *self.needs_updated.lock().unwrap() = true;
+        self.needs_updated.get_needs_updated();
     }
 
     pub fn get_block(&self, row: usize, column: usize) -> &Block {
@@ -125,7 +128,7 @@ impl Quilt {
 
         for row in &self.blocks {
             for block in row {
-                output_vec.push(block.to_save(save_data));
+                // output_vec.push(block.to_save(save_data));
             }
         }
 
@@ -147,9 +150,9 @@ impl Quilt {
         let needs_updated = Arc::new(Mutex::new(true));
 
         for block_yaml in quilt_yaml {
-            let block = Block::from_save(block_yaml, picker, needs_updated.clone(), brush.clone(), save_data);
+            // let block = Block::from_save(block_yaml, picker, needs_updated.clone(), brush.clone(), save_data);
 
-            quilt.set_block(block);
+            // quilt.set_block(block);
         }
 
         quilt

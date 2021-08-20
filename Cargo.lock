@@ -705,6 +705,7 @@ dependencies = [
  "lazy_static",
  "linked-hash-map",
  "lyon",
+ "parking_lot",
  "rand",
  "sha2",
  "winit 0.25.0",

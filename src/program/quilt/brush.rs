@@ -73,7 +73,7 @@ impl BlockBrush {
         }
     }
 
-    pub fn get_pattern(&self, picker: &mut crate::renderer::picker::Picker, row: usize, column: usize) -> BlockPattern {
+    pub fn get_pattern(&self) -> BlockPattern {
         let mut block_pattern = self.square_pattern.clone();
 
         let shapes = block_pattern.get_mut_shapes();
@@ -82,7 +82,6 @@ impl BlockBrush {
         for index in 0..shapes.len()-1 {
             let shape = &mut (*shapes[index]).shape;
 
-            shape.set_id(picker.get_new_id(row, column));
             shape.set_color([1.0; 4]);
             unsafe {shape.set_rotation(ROTATION);}
         }

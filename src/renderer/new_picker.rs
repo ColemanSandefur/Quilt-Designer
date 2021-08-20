@@ -1,48 +1,95 @@
 use crate::renderer::vertex::Vertex;
 use crate::renderer::material::{*};
 use crate::renderer::matrix::{WorldTransform};
+use picker_token::*;
 
 use std::collections::{HashMap};
 use glium::{VertexBuffer, IndexBuffer, Surface};
-use std::sync::{Arc, Mutex, Weak};
+use std::sync::{Arc, Weak};
+use parking_lot::Mutex;
 
 pub type PickerTrait = dyn Fn(u32) + Send + Sync;
 
-#[must_use]
-#[derive(Clone)]
-pub struct PickerToken {
-    picker: Arc<Mutex<PickerTrait>>,
-    table: Weak<Mutex<PickerTable>>,
-    pub id: u32,
-}
+pub mod picker_token {
+    use super::*;
 
-impl Drop for PickerToken {
-    fn drop(&mut self) {
-        if Arc::strong_count(&self.picker) <= 1 {
-            self.unsubscribe();
+    #[must_use]
+    #[derive(Clone)]
+    pub struct PickerToken {
+        picker: Arc<Mutex<PickerTrait>>, //You should never have access to the picker, can easily have leaks that way
+        table: Weak<Mutex<PickerTable>>,
+        pub id: u32,
+    }
+    
+    impl Drop for PickerToken {
+        fn drop(&mut self) {
+            if Arc::strong_count(&self.picker) <= 1 {
+                self.unsubscribe();
+            }
         }
+    }
+    
+    impl PickerToken {
+        // automatically unsubscribes when all tokens have been dropped
+        fn unsubscribe(&self) {
+            if let Some(table) = Weak::upgrade(&self.table) {
+                table.lock().table.remove(&self.id);
+            }
+        }
+
+        pub fn run(&self) {
+            self.picker.lock()(self.id);
+        }
+
+        pub fn new(picker: Arc<Mutex<PickerTrait>>, table: Weak<Mutex<PickerTable>>, id: u32) -> Self {
+            Self {
+                picker,
+                table,
+                id,
+            }
+        }
+    }
+    
+    #[derive(Clone)]
+    pub struct WeakPickerToken {
+        picker: Weak<Mutex<PickerTrait>>, //You should never have access to the picker, can easily have leaks
+        table: Weak<Mutex<PickerTable>>,
+        pub id: u32,
+    }
+    
+    impl WeakPickerToken {
+        pub fn upgrade(&self) -> Option<PickerToken> {
+            if let Some(picker) = Weak::upgrade(&self.picker) {
+                return Some(PickerToken {
+                    picker,
+                    table: self.table.clone(),
+                    id: self.id,
+                })
+            }
+    
+            None
+        }
+
+        pub fn new(picker: Weak<Mutex<PickerTrait>>, table: Weak<Mutex<PickerTable>>, id: u32) -> Self {
+            Self {
+                picker,
+                table,
+                id,
+            }
+        }
+
+        // pub fn run(&self) {
+        //     if let Some(picker) = Weak::upgrade(&self.picker) {
+        //         picker.lock()(self.id);
+        //     }
+        // }
     }
 }
 
-impl PickerToken {
-    // automatically unsubscribes when all tokens have been dropped
-    fn unsubscribe(&self) {
-        if let Some(table) = Weak::upgrade(&self.table) {
-            table.lock().unwrap().table.remove(&self.id);
-        }
-    }
-}
-
-struct PickerItem {
-    picker: Weak<Mutex<PickerTrait>>,
-}
-
-struct PickerTable {
-    table: HashMap<u32, PickerItem>,
+pub struct PickerTable {
+    table: HashMap<u32, WeakPickerToken>,
 
     self_ref: Option<Arc<Mutex<Self>>>,
-
-    // random_gen: IsaacRng,
 }
 
 impl PickerTable {
@@ -52,29 +99,37 @@ impl PickerTable {
             self_ref: None,
         }));
 
-        s.lock().unwrap().self_ref = Some(s.clone());
+        s.lock().self_ref = Some(s.clone());
 
         s
     }
 
-    fn subscribe(&mut self, picker: Arc<Mutex<PickerTrait>>) -> PickerToken {
+    pub fn subscribe(&mut self, picker: impl Fn(u32) + Send + Sync + 'static) -> PickerToken {
+        let picker: Arc<Mutex<PickerTrait>> = Arc::new(Mutex::new(picker));
+
         let mut num: u32 = rand::random();
 
         while self.table.contains_key(&num) {
             num = rand::random();
         }
 
-        let token = PickerToken {
-            picker: picker.clone(),
-            table: Arc::downgrade(&self.self_ref.as_ref().unwrap().clone()),
-            id: num,
-        };
+        let token = PickerToken::new(
+            picker.clone(),
+            Arc::downgrade(&self.self_ref.as_ref().unwrap().clone()),
+            num,
+        );
         
-        self.table.insert(num, PickerItem {
-            picker: Arc::downgrade(&picker),
-        });
+        self.table.insert(num, WeakPickerToken::new(
+            Arc::downgrade(&picker),
+            Arc::downgrade(&self.self_ref.as_ref().unwrap().clone()),
+            num,
+        ));
 
         token
+    }
+
+    pub fn num_keys(&self) -> usize {
+        self.table.keys().len()
     }
 }
 
@@ -99,10 +154,10 @@ impl Picker {
         }
     }
 
-    pub fn subscribe(&mut self, picker: Arc<Mutex<PickerTrait>>) -> PickerToken {
+    pub fn subscribe(&mut self, picker: impl Fn(u32) + Send + Sync + 'static) -> PickerToken {
         // self.table.lock().unwrap()
-
-        let token = self.table.lock().unwrap().subscribe(picker);
+        
+        let token = self.table.lock().subscribe(picker);
 
         token
     }
@@ -176,13 +231,26 @@ impl Picker {
         
         let id = self.picking_pixel_buffer.read().map(|d| d[0]).unwrap_or(0);
 
-        if id != 0 && self.table.lock().unwrap().table.contains_key(&id) {
-            if let Some(entry) = self.table.lock().unwrap().table.get(&id) {
-                if let Some(token) = Weak::upgrade(&entry.picker) {
-                    token.lock().unwrap()(id);
-                }
+        if id != 0 && self.table.lock().table.contains_key(&id) {
+            let picker = self.get_picker(&id);
+
+            if let Some(callback) = &picker {
+                callback.run();
             }
         }
+    }
+
+    pub fn get_table(&self) -> Arc<Mutex<PickerTable>> {
+        self.table.clone()
+    }
+
+    fn get_picker(&self, id: &u32) -> std::option::Option<PickerToken> {
+        if let Some(entry) = self.table.lock().table.get(id) {
+
+            return entry.upgrade();
+        }
+
+        None
     }
 }
 

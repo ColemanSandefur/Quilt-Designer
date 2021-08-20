@@ -1,8 +1,7 @@
 use crate::parse::{Yaml, SavableBlueprint, Savable, SaveData}; 
 use crate::renderer::matrix::{Matrix};
 use crate::renderer::shape::{Shape, PathShape};
-use crate::renderer::new_picker::PickerToken;
-
+use crate::renderer::new_picker::{Picker, picker_token::PickerToken};
 
 
 // Everything rendered will be a Shape Object, this will be added to the renderer's list
@@ -25,6 +24,16 @@ impl ShapeDataStruct {
         if picker_token.is_some() {self.shape.set_id(picker_token.as_ref().unwrap().id)} else {self.shape.set_id(0)};
         
         self.picker = picker_token;
+    }
+
+    pub fn has_picker_token(&self) -> bool {
+        self.picker.is_some()
+    }
+
+    pub fn subscribe(&mut self, picker: &mut Picker, callback: impl Fn(u32) + Send + Sync + 'static) {
+        self.picker = Some(picker.subscribe(callback));
+
+        self.shape.set_id(self.picker.as_ref().unwrap().id);
     }
 }
 

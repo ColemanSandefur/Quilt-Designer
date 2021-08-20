@@ -1,5 +1,6 @@
 pub mod quilt;
 pub mod ui_manager;
+pub mod update_status;
 
 use crate::parse::{SaveData};
 use crate::renderer::Renderer;
@@ -9,9 +10,10 @@ use quilt::Quilt;
 use quilt::brush::{Brush, PatternBrush};
 
 use std::rc::Rc;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc};
 use glium::glutin::event::*;
 use std::io::Write;
+use parking_lot::Mutex;
 
 #[allow(dead_code)]
 pub struct Program {

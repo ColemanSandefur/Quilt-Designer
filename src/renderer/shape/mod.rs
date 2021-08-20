@@ -20,6 +20,7 @@ pub trait PrimitiveShape: Sync + Send {
     fn get_indices(&self) -> Vec<u32>;
     fn set_color(&mut self, color: [f32; 4]);
     fn set_model_matrix(&mut self, matrix: Matrix);
+    fn get_model_matrix(&self) -> Matrix;
     fn get_num_vertices(&self) -> usize;
     fn get_num_indices(&self) -> usize;
     fn get_id(&self) -> u32;
@@ -245,6 +246,10 @@ impl PrimitiveShape for PathShape {
         self.outline.set_model_matrix(matrix);
     }
 
+    fn get_model_matrix(&self) -> Matrix {
+        Matrix::new_with_data(self.vertex_buffer[0].model)
+    }
+
     fn get_num_vertices(&self) -> usize {
         self.vertex_buffer.len() + self.outline.get_num_vertices()
     }
@@ -416,6 +421,10 @@ impl PrimitiveShape for StrokeShape {
         for vertex in &mut self.vertex_buffer {
             vertex.model = matrix.get_matrix();
         }
+    }
+
+    fn get_model_matrix(&self) -> Matrix {
+        Matrix::new_with_data(self.vertex_buffer[0].model)
     }
 
     fn get_num_vertices(&self) -> usize {

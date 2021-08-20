@@ -71,6 +71,10 @@ impl PrimitiveShape for Triangle {
         }
     }
 
+    fn get_model_matrix(&self) -> Matrix {
+        Matrix::new_with_data(self.vertex_buffer[0].model)
+    }
+
     fn get_num_vertices(&self) -> usize {
         self.vertex_buffer.len()
     }
@@ -180,6 +184,10 @@ impl PrimitiveShape for Square {
         for vertex in &mut self.vertex_buffer {
             vertex.model = matrix.get_matrix();
         }
+    }
+
+    fn get_model_matrix(&self) -> Matrix {
+        Matrix::new_with_data(self.vertex_buffer[0].model)
     }
 
     fn get_num_vertices(&self) -> usize {

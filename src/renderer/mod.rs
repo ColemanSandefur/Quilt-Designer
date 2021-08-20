@@ -275,7 +275,6 @@ impl Renderer {
     }
 
     pub fn clicked(&mut self) {
-        println!("Clicked");
         self.picker.click(self.cursor_pos.unwrap());
     }
 
@@ -294,6 +293,10 @@ impl Renderer {
     pub fn get_render_items_mut(&mut self) -> Rc<RefCell<RenderTable>> {
         self.render_items.clone()
     }
+
+    pub fn get_num_entries(&self) -> usize {
+        self.render_items.borrow().iter().len()
+    }
 }
 
 pub trait Renderable {
@@ -301,9 +304,9 @@ pub trait Renderable {
 
     fn get_vertex_count(&self) -> usize;
 
-    fn get_vb(&self) -> &Vec<Vertex>;
+    fn get_vb(&self) -> Vec<Vertex>;
 
-    fn get_ib(&self) -> &Vec<u32>;
+    fn get_ib(&self) -> Vec<u32>;
 
     fn add_to_vb_vec(&self, vertex_buffer: &mut Vec<Vertex>) {
         let vb = self.get_vb();
