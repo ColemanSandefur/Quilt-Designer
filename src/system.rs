@@ -9,13 +9,14 @@ use imgui_winit_support::{HiDpiMode, WinitPlatform};
 use std::path::Path;
 use std::time::Instant;
 use std::rc::Rc;
+use std::cell::RefCell;
 
 pub struct System {
     pub event_loop: EventLoop<()>,
     pub display: Rc<glium::Display>,
     pub imgui: Context,
     pub platform: WinitPlatform,
-    pub glium_renderer: GliumRenderer,
+    pub glium_renderer: Rc<RefCell<GliumRenderer>>,
     pub font_size: f32,
 }
 
@@ -85,14 +86,14 @@ pub fn init(title: &str) -> System {
         display,
         imgui,
         platform,
-        glium_renderer,
+        glium_renderer: Rc::new(RefCell::new(glium_renderer)),
         font_size,
     }
 }
     
 impl System {
     pub fn main_loop<
-        F: FnMut(&mut bool, &mut glium::Frame, &mut Ui, &mut imgui_glium_renderer::Renderer, &dyn glium::backend::Facade) + 'static,
+        F: FnMut(&mut bool, &mut glium::Frame, &mut Ui, Rc<RefCell<imgui_glium_renderer::Renderer>>, &dyn glium::backend::Facade) + 'static,
         T: Fn(&glutin::event::WindowEvent) + 'static,
     >(self, mut run_ui: F, window_event_handler: T) {
         let System {
@@ -100,7 +101,7 @@ impl System {
             display,
             mut imgui,
             mut platform,
-            mut glium_renderer,
+            glium_renderer,
             ..
         } = self;
         let mut last_frame = Instant::now();
@@ -123,7 +124,7 @@ impl System {
                 let mut target = display.draw();
 
                 let mut run = true;
-                run_ui(&mut run, &mut target, &mut ui, &mut glium_renderer, &*display);
+                run_ui(&mut run, &mut target, &mut ui, glium_renderer.clone(), &*display);
                 if !run {
                     *control_flow = ControlFlow::Exit;
                 }
@@ -132,6 +133,7 @@ impl System {
                 platform.prepare_render(&ui, gl_window.window());
                 let draw_data = ui.render();
                 glium_renderer
+                    .borrow_mut()
                     .render(&mut target, draw_data)
                     .expect("Rendering failed");
                 target.finish().expect("Failed to swap buffers");

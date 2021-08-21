@@ -26,7 +26,7 @@ pub struct RenderTable {
     vertex_len: usize,
     index_len: usize,
 
-    self_rc: Option<Rc<RefCell<Self>>>,
+    self_rc: Option<Weak<RefCell<Self>>>,
 }
 
 impl RenderTable {
@@ -42,7 +42,7 @@ impl RenderTable {
 
         let s = Rc::new(RefCell::new(s));
 
-        s.borrow_mut().self_rc = Some(s.clone());
+        s.borrow_mut().self_rc = Some(Rc::downgrade(&s));
 
         s
     }
@@ -110,7 +110,7 @@ impl RenderTable {
             num = self.random_gen.gen()
         }
 
-        RenderToken::new(Rc::new(num), Rc::downgrade(&self.self_rc.as_ref().unwrap().clone()))
+        RenderToken::new(Rc::new(num), self.self_rc.as_ref().unwrap().clone())
     }
 
     pub fn get_num_indices(&self) -> usize {

@@ -9,13 +9,13 @@ use std::rc::Rc;
 use std::cell::RefCell;
 
 fn main() {
-    let mut system = system::init("Quilt Designer");
+    let system = system::init("Quilt Designer");
 
     crate::renderer::material::initialize_material_manager(&*system.display);
-    crate::renderer::textures::load_texture_array(&*system.display, &mut system.glium_renderer.textures());
-    crate::program::quilt::block::block_manager::load_textures(&*system.display, &mut system.glium_renderer);
+    crate::renderer::textures::load_texture_array(&*system.display, system.glium_renderer.borrow_mut().textures());
+    crate::program::quilt::block::block_manager::load_textures(&*system.display, &mut *system.glium_renderer.borrow_mut());
 
-    let draw_program = Rc::new(RefCell::new(crate::program::Program::new(system.display.clone())));
+    let draw_program = Rc::new(RefCell::new(crate::program::Program::new(system.display.clone(), system.glium_renderer.clone())));
     let window_program = draw_program.clone();
 
     system.main_loop(move |_, frame, ui, _glium_renderer, _facade| {

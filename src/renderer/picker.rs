@@ -108,7 +108,7 @@ pub mod picker_token {
 pub struct PickerTable {
     table: HashMap<u32, WeakPickerToken>,
 
-    self_ref: Option<Arc<Mutex<Self>>>,
+    self_ref: Option<Weak<Mutex<Self>>>,
 }
 
 impl PickerTable {
@@ -118,7 +118,7 @@ impl PickerTable {
             self_ref: None,
         }));
 
-        s.lock().self_ref = Some(s.clone());
+        s.lock().self_ref = Some(Arc::downgrade(&s));
 
         s
     }
@@ -134,13 +134,13 @@ impl PickerTable {
 
         let token = PickerToken::new(
             picker.clone(),
-            Arc::downgrade(&self.self_ref.as_ref().unwrap().clone()),
+            self.self_ref.as_ref().unwrap().clone(),
             num,
         );
         
         self.table.insert(num, WeakPickerToken::new(
             Arc::downgrade(&picker),
-            Arc::downgrade(&self.self_ref.as_ref().unwrap().clone()),
+            self.self_ref.as_ref().unwrap().clone(),
             num,
         ));
 

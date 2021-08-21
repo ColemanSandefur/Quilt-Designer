@@ -5,15 +5,22 @@ pub mod update_status;
 use crate::parse::{SaveData};
 use crate::renderer::Renderer;
 use crate::renderer::util::keyboard_tracker::KeyboardTracker;
+use crate::renderer::textures;
 use ui_manager::UiManager;
 use quilt::Quilt;
 use quilt::brush::{Brush, PatternBrush};
 
 use std::rc::Rc;
 use std::sync::{Arc};
+use std::cell::RefCell;
 use glium::glutin::event::*;
 use std::io::Write;
+use std::io::Read;
+use std::io::Cursor;
 use parking_lot::Mutex;
+use image::DynamicImage;
+use image::io::Reader as ImageReader;
+use imgui_glium_renderer::Renderer as GliumRenderer;
 
 //
 // Program
@@ -27,12 +34,13 @@ pub struct Program {
     display: Rc<glium::Display>,
     keyboard_tracker: KeyboardTracker, // Keeps track of which keys are pressed, doesn't handle any listeners
     renderer: Renderer, // Main renderer instance
+    glium_renderer: Rc<RefCell<GliumRenderer>>,
     quilt: Quilt,
     brush: Arc<Mutex<Brush>>, // reference to brush (what the mouse will do on click)
 }
 
 impl Program {
-    pub fn new(display: Rc<glium::Display>) -> Self {
+    pub fn new(display: Rc<glium::Display>, glium_renderer: Rc<RefCell<GliumRenderer>>) -> Self {
         let brush = Arc::new(Mutex::new(Brush::new_pattern_brush(PatternBrush::new_color([1.0;4]))));
         let mut renderer = Renderer::new(display.clone());
         let quilt = Quilt::new(6, 8, renderer.get_picker_mut(), brush.clone());
@@ -42,9 +50,10 @@ impl Program {
 
         Self {
             display: display.clone(),
-            renderer,
-            quilt,
             keyboard_tracker: KeyboardTracker::new(),
+            renderer,
+            glium_renderer,
+            quilt,
             brush,
         }
     }
@@ -114,6 +123,10 @@ impl Program {
 
                     VirtualKeyCode::T => {
                         self.save_quilt("test.quilt");
+                    }
+
+                    VirtualKeyCode::Y => {
+                        self.load_quilt("test.quilt");
                     }
 
                     VirtualKeyCode::U => {
@@ -198,5 +211,36 @@ impl Program {
         zip.finish().unwrap();
 
         println!("Finished saving");
+    }
+
+    fn load_quilt(&self, name: &str) {
+        let path_name = format!("./saves/{}", name);
+        let path = std::path::Path::new(&path_name);
+        let file = std::fs::File::open(path).unwrap();
+        let mut archive = zip::ZipArchive::new(file).unwrap();
+        
+        println!("Loaded archive");
+        
+        let mut contents = String::new();
+        archive.by_name("save.yaml").unwrap().read_to_string(&mut contents).unwrap();
+
+
+        let mut archive_texture_paths = Vec::with_capacity(archive.file_names().count());
+
+        for path in archive.file_names() {
+            if path.contains(".png") {
+                archive_texture_paths.push(path.to_string());
+            }
+        }
+
+        let textures: Vec<DynamicImage> = archive_texture_paths.iter().map(|path| {
+            let mut bytes = Vec::new();
+            archive.by_name(path).unwrap().read_to_end(&mut bytes).unwrap();
+            let mut reader = ImageReader::new(Cursor::new(&mut bytes));
+            reader.set_format(image::ImageFormat::Png);
+            reader.decode().unwrap()
+        }).collect();
+
+        textures::add_textures(textures, &*self.display, self.glium_renderer.borrow_mut().textures());
     }
 }

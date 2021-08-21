@@ -193,10 +193,9 @@ impl Savable for PathShape {
 
             let texture = &textures::get_textures().get((self.get_tex_id() - 1) as usize).unwrap();
 
-            // let file_name = texture.generate_name_from_buffer(&buffer);
-            let file_name = texture.get_name();
+            let file_name = format!{"{}.png", texture.get_hash()};
             
-            if !save_data.files_written.contains(texture.get_name()) {
+            if !save_data.files_written.contains(&file_name) {
                 let mut buffer = Vec::new();
                 texture.write_to(&mut buffer, image::ImageOutputFormat::Png).unwrap();
                 save_data.files_written.push(file_name.clone());
@@ -222,7 +221,10 @@ impl Savable for PathShape {
         ])
 
     }
+
     fn from_save(yaml: Yaml, _save_data: &mut SaveData) -> Box<Self> where Self: Sized {
+        // TODO[epic=parsing] load textures and set color
+
         let map = LinkedHashMap::from(yaml);
         let path = ShapePath::from_save_blueprint(map.get("path").clone());
 
@@ -262,8 +264,6 @@ impl PrimitiveShape for PathShape {
             vertex.color = color;
             vertex.tex_id = 0;
         }
-
-
     }
 
     fn set_model_matrix(&mut self, matrix: Matrix) {
@@ -415,9 +415,11 @@ impl SavableBlueprint for StrokeShape {
 
 impl Savable for StrokeShape {
     fn to_save(&self, _save_data: &mut SaveData) -> Yaml {
+        // NOTE doesn't actually work
         self.path.to_save_blueprint()
     }
     fn from_save(yaml: Yaml, _save_data: &mut SaveData) -> Box<Self> where Self: Sized {
+        // NOTE doesn't actually work
         let path = ShapePath::from_save_blueprint(yaml);
 
         Box::new(Self::new(*path, 0, &StrokeOptions::default().with_line_width(Block::SHAPE_BORDER_WIDTH)))
