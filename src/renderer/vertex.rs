@@ -1,5 +1,3 @@
-
-
 use cgmath::Matrix4;
 use cgmath::Rad;
 use cgmath::prelude::*;

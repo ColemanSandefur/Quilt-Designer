@@ -74,7 +74,11 @@ impl DerefMut for Yaml {
     }
 }
 
-// hash map wrapper
+//
+// LinkedHashMap
+//
+// A linked hash map wrapper with some 'nice to have' functions
+//
 
 pub struct LinkedHashMap {
     pub linked_hash_map: LinkedHashMapRust<Yaml, Yaml>
@@ -123,8 +127,36 @@ impl From<LinkedHashMap> for LinkedHashMapRust<Yaml, Yaml> {
 }
 
 //
-// converting from yaml
+// Saving traits
 //
+// defines the way to save to or from yaml files
+//
+
+pub trait SavableBlueprint {
+    fn to_save_blueprint(&self) -> Yaml;
+    fn from_save_blueprint(yaml: Yaml) -> Box<Self> where Self: Sized;
+}
+
+pub trait Savable {
+    fn to_save(&self, save_data: &mut SaveData) -> Yaml;
+    fn from_save(yaml: Yaml, save_data: &mut SaveData) -> Box<Self> where Self: Sized;
+}
+
+//
+// SaveData
+//
+// used to keep track of the zip structs necessary for reading or writing to a save
+//
+
+pub struct SaveData {
+    pub writer: Option<zip::ZipWriter<std::fs::File>>,
+    pub reader: Option<zip::ZipArchive<std::fs::File>>,
+    pub files_written: Vec<String>,
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// converting FROM yaml ///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 impl From<&Yaml> for bool {
     fn from(yaml: &Yaml) -> Self {
@@ -260,9 +292,9 @@ impl From<&Yaml> for [f32; 4] {
     }
 }
 
-//
-// converting to yaml
-//
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// converting TO yaml ///////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 impl From<bool> for Yaml {
     fn from(data: bool) -> Self {
@@ -342,20 +374,4 @@ impl<T: Into<Yaml>> From<Vec<T>> for Yaml {
     fn from(data: Vec<T>) -> Self {
         YamlRust::Array(data.into_iter().map(|data| {Into::<Yaml>::into(data).0}).collect()).into()
     }
-}
-
-pub trait SavableBlueprint {
-    fn to_save_blueprint(&self) -> Yaml;
-    fn from_save_blueprint(yaml: Yaml) -> Box<Self> where Self: Sized;
-}
-
-pub struct SaveData {
-    pub writer: Option<zip::ZipWriter<std::fs::File>>,
-    pub reader: Option<zip::ZipArchive<std::fs::File>>,
-    pub files_written: Vec<String>,
-}
-
-pub trait Savable {
-    fn to_save(&self, save_data: &mut SaveData) -> Yaml;
-    fn from_save(yaml: Yaml, save_data: &mut SaveData) -> Box<Self> where Self: Sized;
 }

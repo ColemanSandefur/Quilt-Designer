@@ -3,6 +3,12 @@ use crate::program::quilt::block::block_pattern::BlockPattern;
 
 static mut ROTATION: f32 = 0.0;
 
+//
+// Brush
+//
+// Keeps track of what should happen when the mouse clicks (should it change the color, pattern, etc. of the quilt)
+//
+
 pub struct Brush {
     block_brush: Option<Arc<BlockBrush>>,
     pattern_brush: Option<Arc<PatternBrush>>,

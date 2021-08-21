@@ -1,7 +1,7 @@
 use crate::parse::{Yaml, SavableBlueprint, Savable, SaveData}; 
 use crate::renderer::matrix::{Matrix};
 use crate::renderer::shape::{Shape, PathShape};
-use crate::renderer::new_picker::{Picker, picker_token::PickerToken};
+use crate::renderer::picker::{Picker, PickerToken};
 
 
 // Everything rendered will be a Shape Object, this will be added to the renderer's list

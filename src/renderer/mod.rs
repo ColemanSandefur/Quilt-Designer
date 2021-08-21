@@ -1,14 +1,13 @@
-pub mod util;
 pub mod material;
 pub mod matrix;
 pub mod shape;
 pub mod picker;
-pub mod textures;
-pub mod vertex;
 pub mod shape_object;
-pub mod new_picker;
+pub mod textures;
+pub mod util;
+pub mod vertex;
 
-use new_picker::{Picker};
+use picker::{Picker};
 use vertex::Vertex;
 use matrix::{Matrix, WorldTransform};
 use util::frame_timing::FrameTiming;

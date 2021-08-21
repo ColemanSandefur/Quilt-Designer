@@ -2,15 +2,15 @@ use glium::texture::SrgbTexture2dArray;
 use image::{RgbaImage, DynamicImage};
 
 use std::sync::Arc;
-use std::sync::Mutex;
+use parking_lot::Mutex;
 use std::io::Write;
 use sha2::Digest;
 use lazy_static::lazy_static;
 
-static mut TEXTURE_ARRAY: Option<SrgbTexture2dArray> = None;
+static mut TEXTURE_ARRAY: Option<SrgbTexture2dArray> = None; // Given to renderer
 static mut TEXTURE_COUNT: u32 = 0;
 static mut TEXTURES: Option<Vec<Texture>> = None;
-static IMAGE_SIZE: u32 = 2048;
+static IMAGE_SIZE: u32 = 2048; // Import image size, images will either upscale, or downscale to meet the size
 
 lazy_static!{
     pub static ref HASHER: Mutex<sha2::Sha256> = Mutex::new(sha2::Sha256::new());
@@ -53,7 +53,7 @@ impl Texture {
     }
 
     pub fn generate_name_from_buffer(buffer: &Vec<u8>) -> String {
-        let mut hasher = HASHER.lock().unwrap();
+        let mut hasher = HASHER.lock();
         hasher.update(&buffer);
 
         let result: Vec<u8> = hasher.finalize_reset().to_vec();

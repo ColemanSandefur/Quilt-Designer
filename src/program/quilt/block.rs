@@ -6,7 +6,7 @@ use crate::renderer::shape_object::{ShapeDataStruct};
 use crate::renderer::matrix::{Matrix};
 use crate::renderer::vertex::Vertex;
 use crate::program::update_status::{SyncUpdateStatus, WeakUpdateStatus};
-use crate::renderer::new_picker::*;
+use crate::renderer::picker::*;
 use crate::renderer::Renderable;
 use crate::parse::*;
 use crate::program::quilt::protective_struct::ProtectiveStructure;

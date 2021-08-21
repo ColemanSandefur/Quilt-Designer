@@ -4,14 +4,19 @@ pub mod protective_struct;
 
 use crate::parse::*;
 use crate::program::quilt::brush::*;
-// use crate::renderer::picker::{Picker, PickerEntry};
-use crate::renderer::new_picker::*;
+use crate::renderer::picker::*;
 use crate::renderer::{Renderable, Renderer, RenderToken};
 use block::Block;
 use crate::program::update_status::SyncUpdateStatus;
 
 use std::sync::{Arc};
 use parking_lot::Mutex;
+
+//
+// Quilt
+//
+// Holds all the blocks of a quilt and will update the renderer's information as needed
+//
 
 #[allow(dead_code)]
 pub struct Quilt {
@@ -92,18 +97,6 @@ impl Quilt {
     pub fn get_dimensions(&self) -> (usize, usize) {
         (self.width, self.height)
     }
-
-    // pub fn click(&mut self, entry: &PickerEntry, brush: &Brush, picker: &mut Picker) -> bool {
-
-    //     if self.blocks[entry.row][entry.column].click(entry.id, brush, picker) {
-    //         self.needs_updated = true;
-
-    //         return true;
-    //     }
-
-
-    //     false
-    // }
 
     // automatically gets the row and column from Block
     pub fn set_block(&mut self, block: Block) {

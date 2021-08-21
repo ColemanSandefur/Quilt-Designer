@@ -15,13 +15,20 @@ use glium::glutin::event::*;
 use std::io::Write;
 use parking_lot::Mutex;
 
+//
+// Program
+//
+// Main entry point to the program (after main initializes the renderer etc.)
+// Basically just manages things that are needed to function (who would've guessed)
+//
+
 #[allow(dead_code)]
 pub struct Program {
     display: Rc<glium::Display>,
-    keyboard_tracker: KeyboardTracker,
-    renderer: Renderer,
+    keyboard_tracker: KeyboardTracker, // Keeps track of which keys are pressed, doesn't handle any listeners
+    renderer: Renderer, // Main renderer instance
     quilt: Quilt,
-    brush: Arc<Mutex<Brush>>,
+    brush: Arc<Mutex<Brush>>, // reference to brush (what the mouse will do on click)
 }
 
 impl Program {
@@ -156,10 +163,6 @@ impl Program {
 
     fn handle_click(&mut self) {
         self.renderer.clicked();
-        // if let Some(picker_entry) = self.renderer.clicked() {
-        //     let picker_entry = picker_entry.clone();
-        //     self.quilt.click(&picker_entry, &self.brush, &mut self.renderer.get_picker_mut());
-        // }
     }
 
     pub fn get_renderer_mut(&mut self) -> &mut Renderer {

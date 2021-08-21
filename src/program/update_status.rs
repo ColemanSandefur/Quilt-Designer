@@ -3,6 +3,15 @@ use std::ops::Deref;
 
 pub type Update = Arc<Mutex<bool>>;
 
+//
+// UpdateStatus
+//
+// Used as a helper for chaining update flags
+// Whenever it is set to update, it will set the parent to true also
+// Setting it to false, it will not set its children to false (obviously since it doesn't have a ref anyway)
+// This was initially used to help a quilt block tell the quilt that the quilt needs to update its buffers/update the renderer
+//
+
 #[derive(Clone)]
 pub struct UpdateStatus {
     update: Update,
