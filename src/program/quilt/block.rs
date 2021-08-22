@@ -1,6 +1,7 @@
 pub mod block_pattern;
 pub mod block_manager;
 
+use block_pattern::BlockPattern;
 use crate::program::quilt::brush::*;
 use crate::renderer::shape_object::{ShapeDataStruct};
 use crate::renderer::matrix::{Matrix};
@@ -239,22 +240,32 @@ impl Block {
 
         let row = usize::from(map.get("row"));
         let column = usize::from(map.get("column"));
+        let yaml_vec: Vec<Yaml> = map.get("shapes").into();
+        let rotation: f32 = map.get("rotation").into();
 
         let shape_protector = Arc::new(Mutex::new(ShapeProtector::new()));
-
-        let yaml_vec: Vec<Yaml> = map.get("shapes").into();
         let shape_protector_weak = Arc::downgrade(&shape_protector.clone());
         let weak_brush = Arc::downgrade(&brush);
         let quilt_needs_updated = quilt_needs_updated.upgrade().unwrap();
-        let rotation = map.get("rotation").into();
+
         shape_protector.lock().modify(|vec| {
-            let new_shapes: Vec<Arc<Mutex<ShapeDataStruct>>> = yaml_vec.into_iter().map(|data| {
+            // the save just contains the main shapes, it doesn't contain the border
+            let mut new_shapes: Vec<Arc<Mutex<ShapeDataStruct>>> = yaml_vec.into_iter().map(|data| {
                 let mut shape = ShapeDataStruct::from_save(data, save_data);
 
                 shape.shape.set_rotation(rotation);
 
                 Arc::new(Mutex::new(*shape))
             }).collect();
+
+            // add the border to shapes
+            new_shapes.push({
+                let mut border = BlockPattern::get_border();
+
+                border.shape.set_rotation(rotation);
+
+                Arc::new(Mutex::new(*border))
+            });
             
             let picker_table = Arc::downgrade(&picker.get_table());
 
@@ -264,6 +275,7 @@ impl Block {
                 vec.push(shape);
             }
 
+            // remove the picker token from the border
             vec.last().unwrap().lock().set_picker_token(None);
         });
 

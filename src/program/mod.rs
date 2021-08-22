@@ -223,6 +223,8 @@ impl Program {
         // Load textures
         //
         
+        println!("Loading textures");
+
         let mut archive_texture_paths = Vec::with_capacity(archive.file_names().count());
         
         for path in archive.file_names() {
@@ -244,6 +246,8 @@ impl Program {
         //
         // Start loading the save
         //
+
+        println!("Loading save");
 
         let mut contents = String::new();
         archive.by_name("save.yaml").unwrap().read_to_string(&mut contents).unwrap();

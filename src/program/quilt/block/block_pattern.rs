@@ -18,10 +18,14 @@ impl BlockPattern {
         );
 
         shapes.push(
-            Box::new(ShapeDataStruct::new(
-                Box::new(crate::renderer::shape::StrokeShape::square(0.0, 0.0, 1.0, 1.0, 0, &lyon::lyon_tessellation::StrokeOptions::default().with_line_width(crate::program::quilt::block::Block::BLOCK_BORDER_WIDTH)),
-            )),
-        ));
+            Self::get_border()
+        );
+    }
+
+    pub fn get_border() -> Box<ShapeDataStruct> {
+        Box::new(ShapeDataStruct::new(
+            Box::new(crate::renderer::shape::StrokeShape::square(0.0, 0.0, 1.0, 1.0, 0, &lyon::lyon_tessellation::StrokeOptions::default().with_line_width(crate::program::quilt::block::Block::BLOCK_BORDER_WIDTH)))
+        ))
     }
 
     pub fn new(mut shapes: Vec<Box<ShapeDataStruct>>, name: String) -> Self {

@@ -79,7 +79,6 @@ impl Quilt {
 
             for row in &mut self.blocks {
                 for block in row {
-                    // block.update();
                     render_items.push(Box::new(block.clone()))
                 }
             }
@@ -140,8 +139,7 @@ impl Quilt {
         let (width, height) = (yaml_map.get("width").into(), yaml_map.get("height").into());
 
         let mut quilt = Self::new(width, height, picker, brush.clone());
-        let needs_updated = SyncUpdateStatus::new();
-        needs_updated.needs_updated();
+        let needs_updated = quilt.needs_updated.clone();
 
         for block_yaml in quilt_yaml {
             let block = Block::from_save(block_yaml, picker, needs_updated.weak(), brush.clone(), save_data);
