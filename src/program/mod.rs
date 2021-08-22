@@ -21,6 +21,9 @@ use parking_lot::Mutex;
 use image::DynamicImage;
 use image::io::Reader as ImageReader;
 use imgui_glium_renderer::Renderer as GliumRenderer;
+use rfd::FileDialog;
+// use native_dialog::{FileDialog, MessageDialog, MessageType};
+
 
 //
 // Program
@@ -122,11 +125,11 @@ impl Program {
                     },
 
                     VirtualKeyCode::T => {
-                        self.save_quilt("test.quilt");
+                        
                     }
 
                     VirtualKeyCode::Y => {
-                        self.load_quilt("test.quilt");
+                        
                     }
 
                     VirtualKeyCode::U => {
@@ -186,9 +189,31 @@ impl Program {
         &mut self.brush
     }
 
-    fn save_quilt(&self, name: &str) {
-        let path_name = format!("./saves/{}", name);
-        let path = std::path::Path::new(&path_name);
+    pub fn save_quilt(&self) {
+        let file_result = FileDialog::new()
+            .add_filter("Quilt", &["quilt"])
+            .set_directory("./saves")
+            .set_file_name("Unknown.quilt")
+            .save_file();
+
+        if let Some(mut file) = file_result {
+            file.set_extension("quilt");
+            self.save_quilt_to_path(&file);
+        }
+    }
+
+    pub fn load_quilt(&mut self) {
+        let file_result = FileDialog::new()
+            .add_filter("Quilt", &["quilt"])
+            .set_directory("./saves")
+            .pick_file();
+
+        if let Some(file) = file_result {
+            self.load_quilt_from_path(&file);
+        }
+    }
+
+    fn save_quilt_to_path(&self, path: impl AsRef<std::path::Path>) {
         let file = std::fs::File::create(path).unwrap();
         let zip = zip::ZipWriter::new(file);
 
@@ -213,9 +238,7 @@ impl Program {
         println!("Finished saving");
     }
 
-    fn load_quilt(&mut self, name: &str) {
-        let path_name = format!("./saves/{}", name);
-        let path = std::path::Path::new(&path_name);
+    fn load_quilt_from_path(&mut self, path: impl AsRef<std::path::Path>) {
         let file = std::fs::File::open(path).unwrap();
         let mut archive = zip::ZipArchive::new(file).unwrap();
 

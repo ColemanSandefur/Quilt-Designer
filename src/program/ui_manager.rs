@@ -55,7 +55,13 @@ impl UiManager {
         let style = ui.push_style_var(StyleVar::WindowBorderSize(1.0));
         ui.main_menu_bar(|| {
             ui.menu(im_str!("File"), true, || {
+                if ui.small_button(im_str!("Save")) {
+                    program.save_quilt();
+                }
 
+                if ui.small_button(im_str!("Open")) {
+                    program.load_quilt();
+                }
             });
             main_menu_bar_size = ui.window_size();
         });
