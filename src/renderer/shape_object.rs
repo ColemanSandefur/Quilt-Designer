@@ -71,9 +71,9 @@ impl Savable for ShapeDataStruct {
         self.shape.to_save(save_data)
     }
 
-    fn from_save(yaml: Yaml, _save_data: &mut SaveData) -> Box<Self> where Self: Sized {
+    fn from_save(yaml: Yaml, save_data: &mut SaveData) -> Box<Self> where Self: Sized {
         Box::new(Self {
-            shape: PathShape::from_save_blueprint(yaml),
+            shape: PathShape::from_save(yaml, save_data),
             picker: None,
         })
     }

@@ -223,12 +223,26 @@ impl Savable for PathShape {
     }
 
     fn from_save(yaml: Yaml, _save_data: &mut SaveData) -> Box<Self> where Self: Sized {
-        // TODO[epic=parsing] load textures and set color
-
         let map = LinkedHashMap::from(yaml);
+
         let path = ShapePath::from_save_blueprint(map.get("path").clone());
 
-        let s = Self::new(*path, 0);
+        // Load texture
+        let texture_path = String::from(map.get("texture"));
+        let texture = if let Some(location) = texture_path.find('.') {
+            let texture_hash = &texture_path[0..location];
+    
+            textures::get_texture_by_hash(texture_hash)
+        } else {None};
+
+        let mut s = Self::new(*path, 0);
+        
+        // set_color will set the tex id to 0, so do it before setting texture_id
+        s.set_color(map.get("color").into());
+
+        if let Some(texture) = texture {
+            s.set_tex_id(texture.get_texture_index() as u32 + 1);
+        }
 
         Box::new(s)
     }

@@ -132,7 +132,7 @@ impl Quilt {
         ])
     }
 
-    pub fn from_save(&self, yaml: Yaml, picker: &mut Picker, brush: Arc<Mutex<Brush>>, save_data: &mut SaveData) -> Self {
+    pub fn from_save(yaml: Yaml, picker: &mut Picker, brush: Arc<Mutex<Brush>>, save_data: &mut SaveData) -> Self {
         let yaml_map = LinkedHashMap::from(yaml);
 
         let quilt_yaml = Vec::<Yaml>::from(yaml_map.get("quilt"));

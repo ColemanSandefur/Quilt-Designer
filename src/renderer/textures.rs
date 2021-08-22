@@ -8,6 +8,7 @@ use sha2::Digest;
 use lazy_static::lazy_static;
 use glium::Surface;
 use glium::texture::RawImage2d;
+use std::collections::{HashMap};
 
 static mut TEXTURE_ARRAY: Option<SrgbTexture2dArray> = None; // Given to renderer
 static mut TEXTURE_COUNT: u32 = 0;
@@ -16,6 +17,7 @@ static IMAGE_SIZE: u32 = 2048; // Import image size, images will either upscale,
 
 lazy_static!{
     pub static ref HASHER: Mutex<sha2::Sha256> = Mutex::new(sha2::Sha256::new());
+    static ref TEXTURE_HASH_MAP: Mutex<HashMap<String, Texture>> = Mutex::new(HashMap::with_capacity(10));
 }
 
 #[derive(Clone)]
@@ -145,6 +147,10 @@ pub fn get_textures() -> &'static Vec<Texture> {
     }
 }
 
+pub fn get_texture_by_hash(hash: &str) -> Option<Texture> {
+    TEXTURE_HASH_MAP.lock().get(hash).cloned()
+}
+
 pub fn add_textures(vec: Vec<DynamicImage>, facade: &impl glium::backend::Facade, textures: &mut imgui::Textures<imgui_glium_renderer::Texture>) {
     unsafe {
         if vec.len() == 0 {
@@ -202,6 +208,17 @@ pub fn add_textures(vec: Vec<DynamicImage>, facade: &impl glium::backend::Facade
             );
 
             let texture = Texture::new(TEXTURES.as_mut().unwrap().len(), texture_id, data, arc_source);
+
+            {
+                let mut texture_hm_lock = TEXTURE_HASH_MAP.lock();
+
+                // Prevent loading the same texture twice, I look at the hash of the textures
+                if texture_hm_lock.contains_key(texture.get_hash()) {
+                    return;
+                }
+                
+                texture_hm_lock.insert(texture.get_hash().to_string(), texture.clone());
+            }
 
             TEXTURES.as_mut().unwrap().push(texture);
         }

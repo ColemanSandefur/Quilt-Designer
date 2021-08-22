@@ -2,7 +2,7 @@ pub mod quilt;
 pub mod ui_manager;
 pub mod update_status;
 
-use crate::parse::{SaveData};
+use crate::parse::{SaveData, Yaml};
 use crate::renderer::Renderer;
 use crate::renderer::util::keyboard_tracker::KeyboardTracker;
 use crate::renderer::textures;
@@ -213,26 +213,24 @@ impl Program {
         println!("Finished saving");
     }
 
-    fn load_quilt(&self, name: &str) {
+    fn load_quilt(&mut self, name: &str) {
         let path_name = format!("./saves/{}", name);
         let path = std::path::Path::new(&path_name);
         let file = std::fs::File::open(path).unwrap();
         let mut archive = zip::ZipArchive::new(file).unwrap();
-        
-        println!("Loaded archive");
-        
-        let mut contents = String::new();
-        archive.by_name("save.yaml").unwrap().read_to_string(&mut contents).unwrap();
 
-
+        //
+        // Load textures
+        //
+        
         let mut archive_texture_paths = Vec::with_capacity(archive.file_names().count());
-
+        
         for path in archive.file_names() {
             if path.contains(".png") {
                 archive_texture_paths.push(path.to_string());
             }
         }
-
+        
         let textures: Vec<DynamicImage> = archive_texture_paths.iter().map(|path| {
             let mut bytes = Vec::new();
             archive.by_name(path).unwrap().read_to_end(&mut bytes).unwrap();
@@ -240,7 +238,25 @@ impl Program {
             reader.set_format(image::ImageFormat::Png);
             reader.decode().unwrap()
         }).collect();
-
+        
         textures::add_textures(textures, &*self.display, self.glium_renderer.borrow_mut().textures());
+
+        //
+        // Start loading the save
+        //
+
+        let mut contents = String::new();
+        archive.by_name("save.yaml").unwrap().read_to_string(&mut contents).unwrap();
+
+        let mut save_data = SaveData {
+            writer: None,
+            reader: Some(archive),
+            files_written: Vec::new(),
+        };
+
+        let save_yaml = Yaml::load_from_str(&contents);
+
+        self.quilt = Quilt::from_save(save_yaml, self.renderer.get_picker_mut(), self.brush.clone(), &mut save_data);
+
     }
 }

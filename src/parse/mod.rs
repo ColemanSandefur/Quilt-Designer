@@ -25,6 +25,10 @@ impl Yaml {
         yaml_rust::YamlLoader::load_from_str(&contents).unwrap().remove(0).into()
     }
 
+    pub fn load_from_str(contents: &str) -> Self {
+        yaml_rust::YamlLoader::load_from_str(&contents).unwrap().remove(0).into()
+    }
+
     pub fn save_to_file(&self, path: &Path) {
         let mut file = File::create(path).expect("Error creating file to save");
 
