@@ -36,7 +36,7 @@ pub fn init(title: &str) -> System {
         .with_vsync(true);
     let builder = WindowBuilder::new()
     .with_title(title.to_owned())
-    .with_inner_size(glutin::dpi::LogicalSize::new(1024f64, 768f64));
+    .with_inner_size(glutin::dpi::LogicalSize::new(512f64, 384f64));
     let display = Rc::new(Display::new(builder, context, &event_loop).expect("Failed to initialize display"));
     
     //

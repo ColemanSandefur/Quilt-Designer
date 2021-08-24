@@ -78,8 +78,8 @@ impl UiManager {
             .build(ui, || {
                 // calculates how many columns can fit in the window
                 let num_buttons = 1 + crate::renderer::textures::get_texture_count() as i32; // will be the total of all textures (once they are added)
-                let num_rows = std::cmp::min(((ui.window_content_region_width() - current_style.window_padding[0]) / (Self::BUTTON_SIZE + 2.0 * current_style.window_padding[0])) as i32, num_buttons);
-                ui.columns(num_rows, im_str!("columns"), false);
+                let num_columns = std::cmp::max(1, std::cmp::min(((ui.window_content_region_width() - current_style.window_padding[0]) / (Self::BUTTON_SIZE + 2.0 * current_style.window_padding[0])) as i32, num_buttons));
+                ui.columns(num_columns, im_str!("columns"), false);
 
                 let offset = if ui.column_count() > 1 {current_style.window_padding[0]} else {0.0};
                 let indentation = ui.current_column_width() / 2.0 - Self::BUTTON_SIZE / 2.0 - offset;
@@ -175,8 +175,8 @@ impl UiManager {
 
                 // calculates how many columns can fit in the window
                 let num_buttons = block_list.len() as i32;
-                let num_rows = std::cmp::min(((ui.window_content_region_width() - current_style.window_padding[0]) / (Self::BUTTON_SIZE + 2.0 * current_style.window_padding[0])) as i32, num_buttons);
-                ui.columns(num_rows, im_str!("columns"), false);
+                let num_columns = std::cmp::max(1, std::cmp::min(((ui.window_content_region_width() - current_style.window_padding[0]) / (Self::BUTTON_SIZE + 2.0 * current_style.window_padding[0])) as i32, num_buttons));
+                ui.columns(num_columns, im_str!("columns"), false);
 
                 let offset = if ui.column_count() > 1 {current_style.window_padding[0]} else {0.0};
                 let indentation = ui.current_column_width() / 2.0 - Self::BUTTON_SIZE / 2.0 - offset;

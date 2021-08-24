@@ -100,7 +100,7 @@ pub struct Block {
     row: usize,
     column: usize,
 
-    rotation: f32,
+    rotation: Arc<Mutex<f32>>,
     model_transform: Matrix,
     brush: Weak<Mutex<Brush>>,
 }
@@ -109,7 +109,7 @@ impl Block {
     pub const BLOCK_BORDER_WIDTH: f32 = 0.05;
     pub const SHAPE_BORDER_WIDTH: f32 = 0.02;
 
-    fn configure_click(weak_shape_protector: Weak<Mutex<ShapeProtector>>, weak_shape: Weak<Mutex<ShapeDataStruct>>, weak_brush: Weak<Mutex<Brush>>, weak_update: WeakUpdateStatus, weak_picker_table: Weak<Mutex<PickerTable>>) -> impl Fn(u32) + Sync + Send + 'static {
+    fn configure_click(weak_shape_protector: Weak<Mutex<ShapeProtector>>, weak_shape: Weak<Mutex<ShapeDataStruct>>, weak_brush: Weak<Mutex<Brush>>, weak_update: WeakUpdateStatus, weak_picker_table: Weak<Mutex<PickerTable>>, weak_rotation: Weak<Mutex<f32>>) -> impl Fn(u32) + Sync + Send + 'static {
         
         move |_| {
 
@@ -138,7 +138,7 @@ impl Block {
                                             let shape = Arc::new(Mutex::new(*shape_entry));
 
                                             let token = picker_table.lock().subscribe(
-                                                Self::configure_click(weak_shape_protector.clone(), Arc::downgrade(&shape), weak_brush.clone(), weak_update.clone(), weak_picker_table.clone())
+                                                Self::configure_click(weak_shape_protector.clone(), Arc::downgrade(&shape), weak_brush.clone(), weak_update.clone(), weak_picker_table.clone(), weak_rotation.clone())
                                             );
 
                                             {
@@ -150,6 +150,10 @@ impl Block {
             
                                             shape
                                         }).collect();
+
+                                        if let Some(rotation) = Weak::upgrade(&weak_rotation) {
+                                            *rotation.lock() = Brush::get_rotation();
+                                        }
             
                                         vec.clear();
 
@@ -180,6 +184,7 @@ impl Block {
 
         let shape_protector_weak = Arc::downgrade(&shape_protector.clone());
         let weak_brush = Arc::downgrade(&brush);
+        let rotation = Arc::new(Mutex::new(0.0));
         shape_protector.lock().modify(|vec| {
 
             let shapes_vec = vec!{
@@ -194,7 +199,7 @@ impl Block {
             let picker_table = Arc::downgrade(&picker.get_table());
 
             for shape in shapes_vec {
-                shape.lock().subscribe(picker, Self::configure_click(shape_protector_weak.clone(), Arc::downgrade(&shape), weak_brush.clone(), quilt_update.weak(), picker_table.clone()));
+                shape.lock().subscribe(picker, Self::configure_click(shape_protector_weak.clone(), Arc::downgrade(&shape), weak_brush.clone(), quilt_update.weak(), picker_table.clone(), Arc::downgrade(&rotation)));
 
                 vec.push(shape);
             }
@@ -209,7 +214,7 @@ impl Block {
             row,
             column,
 
-            rotation: 0.0,
+            rotation,
             model_transform: Matrix::new(),
             brush: Arc::downgrade(&brush),
         }
@@ -241,7 +246,9 @@ impl Block {
         let row = usize::from(map.get("row"));
         let column = usize::from(map.get("column"));
         let yaml_vec: Vec<Yaml> = map.get("shapes").into();
-        let rotation: f32 = map.get("rotation").into();
+        let rotation = Arc::new(Mutex::new(f32::from(map.get("rotation"))));
+
+        // println!("Rotation: {}", rotation);
 
         let shape_protector = Arc::new(Mutex::new(ShapeProtector::new()));
         let shape_protector_weak = Arc::downgrade(&shape_protector.clone());
@@ -253,7 +260,7 @@ impl Block {
             let mut new_shapes: Vec<Arc<Mutex<ShapeDataStruct>>> = yaml_vec.into_iter().map(|data| {
                 let mut shape = ShapeDataStruct::from_save(data, save_data);
 
-                shape.shape.set_rotation(rotation);
+                shape.shape.set_rotation(*rotation.lock());
 
                 Arc::new(Mutex::new(*shape))
             }).collect();
@@ -262,7 +269,7 @@ impl Block {
             new_shapes.push({
                 let mut border = BlockPattern::get_border();
 
-                border.shape.set_rotation(rotation);
+                border.shape.set_rotation(*rotation.lock());
 
                 Arc::new(Mutex::new(*border))
             });
@@ -270,7 +277,7 @@ impl Block {
             let picker_table = Arc::downgrade(&picker.get_table());
 
             for shape in new_shapes {
-                shape.lock().subscribe(picker, Self::configure_click(shape_protector_weak.clone(), Arc::downgrade(&shape), weak_brush.clone(), quilt_needs_updated.weak(), picker_table.clone()));
+                shape.lock().subscribe(picker, Self::configure_click(shape_protector_weak.clone(), Arc::downgrade(&shape), weak_brush.clone(), quilt_needs_updated.weak(), picker_table.clone(), Arc::downgrade(&rotation)));
 
                 vec.push(shape);
             }
@@ -304,7 +311,7 @@ impl Block {
             ("shapes", Yaml::from(vec)),
             ("row", self.row.into()),
             ("column", self.column.into()),
-            ("rotation", self.rotation.into()),
+            ("rotation", (*self.rotation.lock()).into()),
         ])
     }
 }
