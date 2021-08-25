@@ -2,6 +2,7 @@ use crate::program::Program;
 use crate::program::quilt::brush::*;
 
 use lazy_static::lazy_static;
+use parking_lot::Mutex;
 use imgui::StyleVar;
 
 struct ClickState {
@@ -55,12 +56,16 @@ impl UiManager {
         let style = ui.push_style_var(StyleVar::WindowBorderSize(1.0));
         ui.main_menu_bar(|| {
             ui.menu(im_str!("File"), true, || {
-                if ui.small_button(im_str!("Save")) {
-                    program.save_quilt();
+                if ui.small_button(im_str!("New")) {
+                    SetupUi::open_window();
                 }
-
+                
                 if ui.small_button(im_str!("Open")) {
                     program.load_quilt();
+                }
+                
+                if ui.small_button(im_str!("Save")) {
+                    program.save_quilt();
                 }
             });
             main_menu_bar_size = ui.window_size();
@@ -205,6 +210,8 @@ impl UiManager {
 
                 }
             });
+
+        SetupUi::draw(program, frame, ui);
         
             
         style_colors.pop(&ui);
@@ -220,3 +227,131 @@ impl UiManager {
         false
     }
 }
+
+//
+// QuiltUi
+//
+// The main gui (side-bars for selecting color and patterns, etc)
+//
+
+// mod quilt_ui {
+//     pub struct QuiltUI {
+
+//     }
+// }
+
+//
+// SetupUi
+//
+// Used for prompting the user to create a quilt
+//
+
+mod setup_ui {
+    use super::*;
+    use imgui::*;
+
+    lazy_static!  {
+        static ref QUILT_DIMENSIONS: Mutex<(i32, i32)> = Mutex::new((SetupUi::DEFAULT_QUILT_DIMENSIONS.0 as i32, SetupUi::DEFAULT_QUILT_DIMENSIONS.1 as i32));
+        static ref QUILT_PROMPT_OPEN: Mutex<bool> = Mutex::new(false);
+    }
+
+    pub struct SetupUi {}
+
+    impl SetupUi {
+        const CREATION_BUTTON_DIMENSIONS: [f32; 2] = [100.0, 20.0];
+        const DEFAULT_QUILT_DIMENSIONS: (u32, u32) = (6, 8);
+        const WARNING_SIZE: u32 = 50; // Display a warning when a quilt dimensions gets larger than this (potential performance issues)
+
+        pub fn open_window() {
+            *QUILT_PROMPT_OPEN.lock() = true;
+        }
+
+        pub fn close_window() {
+            *QUILT_PROMPT_OPEN.lock() = false;
+        }
+
+        fn reset_dimensions() {
+            *QUILT_DIMENSIONS.lock() = (SetupUi::DEFAULT_QUILT_DIMENSIONS.0 as i32, SetupUi::DEFAULT_QUILT_DIMENSIONS.1 as i32)
+        }
+
+        pub fn draw(program: &mut Program, frame: &mut impl glium::Surface, ui: &mut imgui::Ui) -> bool {
+            let dimensions = frame.get_dimensions();
+
+            let style_var = ui.push_style_vars(&vec![
+                StyleVar::WindowPadding([20.0; 2]),
+                StyleVar::WindowRounding(10.0),
+            ]);
+
+            let style_colors = ui.push_style_colors(&vec![
+                (StyleColor::Button, [0.3, 0.3, 0.3, 1.0]),
+            ]);
+            
+            let mut quilt_prompt_open = QUILT_PROMPT_OPEN.lock();
+            
+            // Automatically set quilt prompt to open when program doesn't have a quilt yet
+            *quilt_prompt_open = *quilt_prompt_open || !program.has_quilt();
+            
+            if *quilt_prompt_open {
+                let mut cancel_clicked = false;
+                let mut create_clicked = false;
+
+                Window::new(im_str!("New Quilt"))
+                    .always_auto_resize(true)
+                    .opened(&mut *quilt_prompt_open)
+                    .collapsible(false)
+                    .position_pivot([0.5; 2])
+                    .position([dimensions.0 as f32 / 2.0, dimensions.1 as f32 / 2.0], Condition::Always)
+                    .movable(false)
+                    .resizable(false)
+                    .build(ui, || {
+                        let mut quilt_dimensions = QUILT_DIMENSIONS.lock();
+                        ui.input_int(im_str!("Width"), &mut quilt_dimensions.0).build();
+                        ui.input_int(im_str!("Height"), &mut quilt_dimensions.1).build();
+
+                        // Make sure that neither of the dimensions ever go below 1
+                        quilt_dimensions.0 = std::cmp::max(1, quilt_dimensions.0);
+                        quilt_dimensions.1 = std::cmp::max(1, quilt_dimensions.1);
+                        
+                        // Display a performance warning if quilt is becoming too large
+                        if quilt_dimensions.0 > Self::WARNING_SIZE as i32 || quilt_dimensions.1 > Self::WARNING_SIZE as i32 {
+                            ui.text_wrapped(im_str!("Warning: large quilts can have performance issues"));
+                        } else {
+                            ui.new_line();
+                        }
+
+                        if ui.button(im_str!("Cancel"), Self::CREATION_BUTTON_DIMENSIONS) {
+                            cancel_clicked = true;
+                        }
+                        ui.same_line(0.0);
+                        if ui.button(im_str!("Create"), Self::CREATION_BUTTON_DIMENSIONS) {
+                            create_clicked = true;
+                        }
+                    });
+                
+                if cancel_clicked {
+                    *quilt_prompt_open = false;
+                }
+
+                if create_clicked {
+                    *quilt_prompt_open = false;
+                    
+                    let quilt_dimensions = QUILT_DIMENSIONS.lock();
+                    program.new_quilt(quilt_dimensions.0 as usize, quilt_dimensions.1 as  usize);
+                }
+
+                // reset the dimensions if the quilt creation window was closed this frame
+                if !*quilt_prompt_open {
+                    Self::reset_dimensions();
+                }
+            }
+
+
+            style_var.pop(&ui);
+            style_colors.pop(&ui);
+
+            false
+        }
+    }
+}
+
+pub use setup_ui::*;

@@ -38,7 +38,7 @@ pub struct Program {
     keyboard_tracker: KeyboardTracker, // Keeps track of which keys are pressed, doesn't handle any listeners
     renderer: Renderer, // Main renderer instance
     glium_renderer: Rc<RefCell<GliumRenderer>>,
-    quilt: Quilt,
+    quilt: Option<Quilt>,
     brush: Arc<Mutex<Brush>>, // reference to brush (what the mouse will do on click)
 }
 
@@ -56,13 +56,15 @@ impl Program {
             keyboard_tracker: KeyboardTracker::new(),
             renderer,
             glium_renderer,
-            quilt,
+            quilt: None,
             brush,
         }
     }
 
     pub fn draw(&mut self, frame: &mut glium::Frame, ui: &mut imgui::Ui) {
-        self.quilt.draw(&mut self.renderer);
+        if let Some(quilt) = &mut self.quilt {
+            quilt.draw(&mut self.renderer);
+        }
 
         self.renderer.start_frame();
         self.renderer.render(frame);
@@ -133,7 +135,7 @@ impl Program {
                     }
 
                     VirtualKeyCode::U => {
-                        self.quilt = Quilt::new(1, 1, self.renderer.get_picker_mut(), self.brush.clone());
+                        self.quilt = Some(Quilt::new(1, 1, self.renderer.get_picker_mut(), self.brush.clone()));
                     }
                     _ => ()
                 }
@@ -214,28 +216,30 @@ impl Program {
     }
 
     fn save_quilt_to_path(&self, path: impl AsRef<std::path::Path>) {
-        let file = std::fs::File::create(path).unwrap();
-        let zip = zip::ZipWriter::new(file);
+        if let Some(quilt) = &self.quilt {
+            let file = std::fs::File::create(path).unwrap();
+            let zip = zip::ZipWriter::new(file);
 
-        let mut save_data = SaveData {
-            writer: Some(zip),
-            reader: None,
-            files_written: Vec::new(),
-        };
+            let mut save_data = SaveData {
+                writer: Some(zip),
+                reader: None,
+                files_written: Vec::new(),
+            };
 
-        println!("Started saving");
+            println!("Started saving");
 
-        let yaml = self.quilt.to_save(&mut save_data);
+            let yaml = quilt.to_save(&mut save_data);
 
-        let output = yaml.dump_to_string();
-        let mut zip = save_data.writer.unwrap();
+            let output = yaml.dump_to_string();
+            let mut zip = save_data.writer.unwrap();
 
-        zip.start_file("save.yaml", Default::default()).unwrap();
-        write!(zip, "{}", output).unwrap();
+            zip.start_file("save.yaml", Default::default()).unwrap();
+            write!(zip, "{}", output).unwrap();
 
-        zip.finish().unwrap();
+            zip.finish().unwrap();
 
-        println!("Finished saving");
+            println!("Finished saving");
+        }
     }
 
     fn load_quilt_from_path(&mut self, path: impl AsRef<std::path::Path>) {
@@ -283,7 +287,15 @@ impl Program {
 
         let save_yaml = Yaml::load_from_str(&contents);
 
-        self.quilt = Quilt::from_save(save_yaml, self.renderer.get_picker_mut(), self.brush.clone(), &mut save_data);
+        self.quilt = Some(Quilt::from_save(save_yaml, self.renderer.get_picker_mut(), self.brush.clone(), &mut save_data));
 
+    }
+
+    pub fn new_quilt(&mut self, width: usize, height: usize) {
+        self.quilt = Some(Quilt::new(width, height, self.renderer.get_picker_mut(), self.brush.clone()));
+    }
+
+    pub fn has_quilt(&self) -> bool {
+        self.quilt.is_some()
     }
 }
