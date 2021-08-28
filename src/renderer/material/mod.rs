@@ -28,11 +28,13 @@ pub fn get_material_manager() -> &'static MaterialManager {
 pub enum MaterialType {
     SolidColorMaterial,
     ClickMaterial,
+    FxaaMaterial,
 }
 
 pub struct MaterialManager {
     click_material: ClickMaterial,
     solid_color_material: SolidColorMaterial,
+    fxaa_material: FxaaMaterial,
 }
 
 impl MaterialManager {
@@ -46,14 +48,20 @@ impl MaterialManager {
         self.solid_color_material.clone()
     }
 
+    pub fn get_fxaa_material(&self) -> FxaaMaterial {
+        self.fxaa_material.clone()
+    }
+
     pub fn load_all(display: &dyn glium::backend::Facade) -> Self {
 
         let click_material = ClickMaterial::new(Self::load_from_file(std::path::Path::new("./shaders/picker"), display), [1.0, 1.0, 1.0, 1.0]);
         let solid_color_material = SolidColorMaterial::new(Self::load_from_file(std::path::Path::new("./shaders/solid_color"), display));
+        let fxaa_material = FxaaMaterial::new(Self::load_from_file(std::path::Path::new("./shaders/fxaa"), display));
 
         Self {
             click_material,
-            solid_color_material
+            solid_color_material,
+            fxaa_material,
         }
     }
 
@@ -168,4 +176,43 @@ impl ClickMaterial {
     pub fn get_shader_type(&self) -> MaterialType {
         MaterialType::ClickMaterial
     }
+}
+
+#[derive(Clone)]
+pub struct FxaaMaterial {
+    pub shader: Rc<glium::Program>,
+}
+
+impl FxaaMaterial {
+    pub fn new(shader: Rc<glium::Program>) -> Self {
+        Self {
+            shader,
+        }
+    }
+
+    pub fn draw(&self, shape: &(&glium::VertexBuffer<Vertex>, &glium::IndexBuffer<u32>), surface: &mut impl glium::Surface, from_surface: &glium::texture::Texture2d, enabled: bool, draw_parameters: &glium::DrawParameters<'_>) {
+        let target_dimensions = surface.get_dimensions();
+
+        let uniforms = uniform! {
+            tex: from_surface,
+            enabled: if enabled {1i32} else {0i32},
+            resolution: (target_dimensions.0 as f32, target_dimensions.1 as f32)
+        };
+        
+        surface.draw(shape.0, shape.1, &self.shader, &uniforms, draw_parameters).unwrap();
+    }
+
+    // pub fn draw(&self, shape: &(&glium::VertexBuffer<Vertex>, &glium::IndexBuffer<u32>), surface: &mut impl glium::Surface, from_surface: &glium::texture::Texture2d, world_transform: &WorldTransform, draw_parameters: &glium::DrawParameters<'_>) {
+    //     let target_dimensions = surface.get_dimensions();
+
+    //     let uniforms = uniform! {
+    //         tex: from_surface,
+    //         enabled: 1i32,
+    //         resolution: (target_dimensions.0 as f32, target_dimensions.1 as f32)
+    //     };
+
+    //     world_transform.to_uniform().add("tex", from_surface).add("enabled", 1i32).add("resolution", (target_dimensions.0 as f32, target_dimensions.1 as f32));
+        
+    //     surface.draw(shape.0, shape.1, &self.shader, &uniforms, draw_parameters).unwrap();
+    // }
 }

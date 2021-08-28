@@ -1,11 +1,13 @@
 use crate::parse::{Yaml, SavableBlueprint, Savable, SaveData}; 
-use crate::renderer::matrix::{Matrix};
 use crate::renderer::shape::{Shape, PathShape};
 use crate::renderer::picker::{Picker, PickerToken};
 
-
-// Everything rendered will be a Shape Object, this will be added to the renderer's list
-// the renderer will then handle the drawing of the object
+//
+// ShapeDataStruct
+//
+// A wrapper around a shape
+// Helps manage possible tokens
+//
 
 pub struct ShapeDataStruct {
     pub shape: Box<dyn Shape>,
@@ -44,13 +46,6 @@ impl Clone for ShapeDataStruct {
             picker: None,
         }
     }
-}
-
-pub trait ShapeObject {
-    fn get_shapes(&self) -> &Vec<Box<ShapeDataStruct>>;
-    fn get_shapes_mut(&mut self) -> &mut Vec<Box<ShapeDataStruct>>;
-    fn get_model_transform(&self) -> &Matrix;
-    fn get_model_transform_mut(&mut self) -> &mut Matrix;
 }
 
 impl SavableBlueprint for ShapeDataStruct {

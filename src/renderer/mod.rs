@@ -1,3 +1,5 @@
+pub mod drawable_frame;
+pub mod fxaa;
 pub mod material;
 pub mod matrix;
 pub mod shape;
@@ -7,6 +9,7 @@ pub mod textures;
 pub mod util;
 pub mod vertex;
 
+use fxaa::Fxaa;
 use picker::{Picker};
 use vertex::Vertex;
 use matrix::{Matrix, WorldTransform};
@@ -18,6 +21,7 @@ use std::rc::{Weak, Rc};
 use std::cell::RefCell;
 use glium::{VertexBuffer, IndexBuffer};
 use std::ops::Deref;
+use glium::Surface;
 
 pub struct RenderTable {
     random_gen: ThreadRng,
@@ -144,6 +148,9 @@ pub struct Renderer {
     // Holds all items that will be rendered
     render_items: Rc<RefCell<RenderTable>>,
 
+    frame: Fxaa,
+    pub fxaa_enabled: bool,
+
     vertex_vec: Vec<Vertex>,
     index_vec: Vec<u32>,
     vertex_buffer: VertexBuffer<Vertex>,
@@ -170,6 +177,9 @@ impl Renderer {
             picker: Picker::new(&*display),
             frame_timing: FrameTiming::new(),
             cursor_pos: None,
+
+            frame: Fxaa::new(display.clone()),
+            fxaa_enabled: true,
 
             vertex_buffer: VertexBuffer::empty_dynamic(&*display, Self::INIT_VERTICES).unwrap(),
             index_buffer: IndexBuffer::empty_dynamic(&*display, glium::index::PrimitiveType::TrianglesList, Self::INIT_INDICES).unwrap(),
@@ -259,7 +269,13 @@ impl Renderer {
             world: self.world_transform,
         };
 
-        material::get_material_manager().get_solid_color_material().draw(&(&self.vertex_buffer, &self.index_buffer), target, &global_transform, &Default::default());
+        // material::get_material_manager().get_solid_color_material().draw(&(&self.vertex_buffer, &self.index_buffer), target, &global_transform, &Default::default());
+
+        self.frame.draw(target, |frame| {
+            frame.clear_color(0.02, 0.02, 0.02, 1.0);
+
+            material::get_material_manager().get_solid_color_material().draw(&(&self.vertex_buffer, &self.index_buffer), frame, &global_transform, &Default::default());
+        }, self.fxaa_enabled);
 
         self.picker.draw(self.vertex_buffer.get_context(), &global_transform, &self.vertex_buffer, &self.index_buffer, &Default::default());
     }

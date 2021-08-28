@@ -68,6 +68,13 @@ impl UiManager {
                     program.save_quilt();
                 }
             });
+
+            ui.menu(im_str!("Window"), true, || {
+                if ui.small_button(im_str!("FXAA")) {
+                    program.get_renderer_mut().fxaa_enabled = !program.get_renderer_mut().fxaa_enabled;
+                }
+            });
+
             main_menu_bar_size = ui.window_size();
         });
         style.pop(ui);
@@ -246,6 +253,7 @@ impl UiManager {
 // Used for prompting the user to create a quilt
 //
 
+pub use setup_ui::*; // Re-export for convenience 
 mod setup_ui {
     use super::*;
     use imgui::*;
@@ -353,5 +361,3 @@ mod setup_ui {
         }
     }
 }
-
-pub use setup_ui::*;

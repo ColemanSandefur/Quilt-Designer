@@ -99,16 +99,11 @@ impl Program {
 
         if let WindowEvent::MouseWheel{delta, ..} = event {
             if let MouseScrollDelta::LineDelta(_x, y) = delta {
-                // line delta is either 1 or -1
                 self.renderer.get_world_transform_mut().add_scale(0.0, 0.0, -1.0 * y);
                 let translation = self.renderer.get_world_transform_mut().get_scale();
                 if translation.2 <= -0.7 {
                     self.renderer.get_world_transform_mut().set_scale(translation.0, translation.1, -0.7);
                 }
-            } 
-            
-            if let MouseScrollDelta::PixelDelta(_) = delta {
-                // Probably trackpad?
             }
         }
     }
