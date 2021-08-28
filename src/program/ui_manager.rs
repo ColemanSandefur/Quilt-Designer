@@ -1,5 +1,6 @@
 use crate::program::Program;
 use crate::program::quilt::brush::*;
+use crate::renderer::anti_aliasing::AntiAliasMode;
 
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
@@ -70,9 +71,26 @@ impl UiManager {
             });
 
             ui.menu(im_str!("Window"), true, || {
-                if ui.small_button(im_str!("FXAA")) {
-                    program.get_renderer_mut().fxaa_enabled = !program.get_renderer_mut().fxaa_enabled;
-                }
+                ui.menu(im_str!("Anti-Aliasing"), true, || {
+                    if ui.small_button(im_str!("None")) {
+                        program.get_renderer_mut().get_anti_aliasing_mut().set_multi_sample_mode(AntiAliasMode::NONE);
+                    }
+
+                    if ui.small_button(im_str!("FXAA")) {
+                        // program.get_renderer_mut().fxaa_enabled = !program.get_renderer_mut().fxaa_enabled;
+                        program.get_renderer_mut().get_anti_aliasing_mut().set_multi_sample_mode(AntiAliasMode::FXAA);
+                    }
+
+                    ui.menu(im_str!("MSAA"), true, || {
+                        // create buttons for 2x, 4x, 8x, 16x MSAA
+                        for i in 1..5 {
+                            let sample = 2u32.pow(i);
+                            if ui.small_button(&ImString::new(format!("{}x", sample))) {
+                                program.get_renderer_mut().get_anti_aliasing_mut().set_multi_sample_mode(AntiAliasMode::MSAA(sample));
+                            }
+                        }
+                    });
+                })
             });
 
             main_menu_bar_size = ui.window_size();
